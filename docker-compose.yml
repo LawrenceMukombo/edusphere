@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-postgres}@db:5432/edusphere_db?schema=public
+      - JWT_SECRET=${JWT_SECRET:-edusphere-enterprise-production-jwt-key}
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:16-alpine
+    restart: always
+    volumes:
+      - edusphere_db_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_DB=edusphere_db
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
+
+volumes:
+  edusphere_db_data:

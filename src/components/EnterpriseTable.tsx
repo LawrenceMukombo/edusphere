@@ -1,0 +1,452 @@
+// src/components/EnterpriseTable.tsx
+'use client';
+
+import React, { useState, useMemo } from 'react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Download,
+  Eye,
+  Search,
+  Filter,
+  Check,
+  AlertCircle,
+  RefreshCw,
+} from 'lucide-react';
+
+export interface ColumnDef<T> {
+  key: string;
+  header: string;
+  accessor?: (row: T) => any;
+  sortable?: boolean;
+  filterable?: boolean;
+  filterOptions?: string[];
+  render?: (row: T) => React.ReactNode;
+  defaultVisible?: boolean;
+}
+
+interface EnterpriseTableProps<T> {
+  data: T[];
+  columns: ColumnDef<T>[];
+  title?: string;
+  description?: string;
+  isLoading?: boolean;
+  error?: string | null;
+  onRefresh?: () => void;
+  searchPlaceholder?: string;
+  exportFilename?: string;
+  actions?: React.ReactNode;
+  rowActions?: (row: T) => React.ReactNode;
+}
+
+export function EnterpriseTable<T extends { id?: string | number }>({
+  data,
+  columns,
+  title,
+  description,
+  isLoading = false,
+  error = null,
+  onRefresh,
+  searchPlaceholder = 'Search records...',
+  exportFilename = 'edusphere-export',
+  actions,
+  rowActions,
+}: EnterpriseTableProps<T>) {
+  // State: Search & Filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({});
+
+  // State: Sorting
+  const [sortKey, setSortKey] = useState<string | null>(null);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+  // State: Column Visibility
+  const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    columns.forEach((col) => {
+      initial[col.key] = col.defaultVisible !== false;
+    });
+    return initial;
+  });
+  const [showColumnDropdown, setShowColumnDropdown] = useState(false);
+
+  // State: Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  // Column toggle handler
+  const toggleColumn = (key: string) => {
+    setVisibleColumns((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Sort handler
+  const handleSort = (key: string) => {
+    if (sortKey === key) {
+      if (sortOrder === 'asc') setSortOrder('desc');
+      else {
+        setSortKey(null);
+        setSortOrder('asc');
+      }
+    } else {
+      setSortKey(key);
+      setSortOrder('asc');
+    }
+  };
+
+  // Filter & Search Logic
+  const filteredData = useMemo(() => {
+    if (!data) return [];
+    return data.filter((row: any) => {
+      // 1. Search across all visible fields
+      if (searchTerm) {
+        const query = searchTerm.toLowerCase();
+        const matches = Object.values(row).some((val) => {
+          if (val === null || val === undefined) return false;
+          if (typeof val === 'object') return false;
+          return String(val).toLowerCase().includes(query);
+        });
+        if (!matches) return false;
+      }
+
+      // 2. Active column filters
+      for (const [key, filterVal] of Object.entries(activeFilters)) {
+        if (!filterVal || filterVal === 'ALL') continue;
+        const col = columns.find((c) => c.key === key);
+        const cellValue = col?.accessor ? col.accessor(row) : row[key];
+        if (String(cellValue) !== filterVal) return false;
+      }
+
+      return true;
+    });
+  }, [data, searchTerm, activeFilters, columns]);
+
+  // Sort Logic
+  const sortedData = useMemo(() => {
+    if (!sortKey) return filteredData;
+    const col = columns.find((c) => c.key === sortKey);
+
+    return [...filteredData].sort((a: any, b: any) => {
+      const valA = col?.accessor ? col.accessor(a) : a[sortKey];
+      const valB = col?.accessor ? col.accessor(b) : b[sortKey];
+
+      if (valA === valB) return 0;
+      if (valA === null || valA === undefined) return 1;
+      if (valB === null || valB === undefined) return -1;
+
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return sortOrder === 'asc' ? valA - valB : valB - valA;
+      }
+
+      return sortOrder === 'asc'
+        ? String(valA).localeCompare(String(valB))
+        : String(valB).localeCompare(String(valA));
+    });
+  }, [filteredData, sortKey, sortOrder, columns]);
+
+  // Pagination Logic
+  const totalRecords = sortedData.length;
+  const totalPages = Math.ceil(totalRecords / pageSize) || 1;
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return sortedData.slice(start, start + pageSize);
+  }, [sortedData, currentPage, pageSize]);
+
+  // CSV Export
+  const handleExportCSV = () => {
+    const exportableCols = columns.filter((col) => visibleColumns[col.key]);
+    const headers = exportableCols.map((c) => `"${c.header.replace(/"/g, '""')}"`).join(',');
+
+    const rows = sortedData.map((row) =>
+      exportableCols
+        .map((col) => {
+          const val = col.accessor ? col.accessor(row) : (row as any)[col.key];
+          const stringVal = val === null || val === undefined ? '' : String(val);
+          return `"${stringVal.replace(/"/g, '""')}"`;
+        })
+        .join(',')
+    );
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `${exportFilename}-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+      {/* Table Header Section */}
+      <div className="p-5 border-b border-slate-100 flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-slate-50/50">
+        <div>
+          {title && <h3 className="text-lg font-bold text-slate-900 tracking-tight">{title}</h3>}
+          {description && <p className="text-xs text-slate-500 mt-0.5">{description}</p>}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          {actions}
+
+          {/* Search Box */}
+          <div className="relative min-w-[220px]">
+            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder={searchPlaceholder}
+              className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+            />
+          </div>
+
+          {/* Column Visibility Selector (Rule 24 requirement) */}
+          <div className="relative">
+            <button
+              onClick={() => setShowColumnDropdown(!showColumnDropdown)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition"
+              title="Show / Hide Columns"
+            >
+              <Eye className="w-3.5 h-3.5 text-slate-500" />
+              <span>Columns</span>
+            </button>
+
+            {showColumnDropdown && (
+              <div className="absolute right-0 mt-1 w-52 bg-white border border-slate-200 rounded-lg shadow-lg z-30 py-2">
+                <div className="px-3 py-1 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-100">
+                  Visible Columns
+                </div>
+                <div className="max-h-60 overflow-y-auto px-1 py-1">
+                  {columns.map((col) => (
+                    <button
+                      key={col.key}
+                      onClick={() => toggleColumn(col.key)}
+                      className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50 rounded"
+                    >
+                      <span>{col.header}</span>
+                      {visibleColumns[col.key] && <Check className="w-3.5 h-3.5 text-blue-600 font-bold" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* CSV Export Option (Rule 24 requirement) */}
+          <button
+            onClick={handleExportCSV}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition"
+            title="Export Table Data to CSV"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export CSV</span>
+          </button>
+
+          {/* Refresh Action */}
+          {onRefresh && (
+            <button
+              onClick={onRefresh}
+              className="p-1.5 text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition"
+              title="Refresh Records"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-blue-600' : ''}`} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Filter Chips Bar if any filters exist */}
+      {columns.some((c) => c.filterable && c.filterOptions) && (
+        <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-100 flex flex-wrap items-center gap-2">
+          <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+            <Filter className="w-3 h-3 text-slate-400" /> Filters:
+          </span>
+          {columns
+            .filter((c) => c.filterable && c.filterOptions)
+            .map((col) => (
+              <select
+                key={col.key}
+                value={activeFilters[col.key] || 'ALL'}
+                onChange={(e) => {
+                  setActiveFilters((prev) => ({ ...prev, [col.key]: e.target.value }));
+                  setCurrentPage(1);
+                }}
+                className="text-xs bg-white border border-slate-200 rounded-md px-2 py-1 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="ALL">All {col.header}s</option>
+                {col.filterOptions?.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            ))}
+          {Object.values(activeFilters).some((v) => v && v !== 'ALL') && (
+            <button
+              onClick={() => {
+                setActiveFilters({});
+                setCurrentPage(1);
+              }}
+              className="text-[11px] text-blue-600 hover:text-blue-800 font-medium ml-1"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Table Content Area */}
+      <div className="overflow-x-auto min-h-[280px]">
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center p-16 text-slate-400">
+            <RefreshCw className="w-8 h-8 animate-spin text-blue-500 mb-2" />
+            <p className="text-xs font-medium">Loading enterprise records...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center p-16 text-rose-500">
+            <AlertCircle className="w-8 h-8 mb-2" />
+            <p className="text-xs font-semibold">Failed to load records: {error}</p>
+          </div>
+        ) : paginatedData.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-16 text-slate-400">
+            <Search className="w-8 h-8 text-slate-300 mb-2" />
+            <p className="text-sm font-semibold text-slate-600">No records found</p>
+            <p className="text-xs text-slate-400 mt-0.5">Try adjusting your search query or active filter settings.</p>
+          </div>
+        ) : (
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 bg-slate-50/80">
+                {columns
+                  .filter((col) => visibleColumns[col.key])
+                  .map((col) => (
+                    <th
+                      key={col.key}
+                      onClick={() => col.sortable !== false && handleSort(col.key)}
+                      className={`px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider ${
+                        col.sortable !== false ? 'cursor-pointer hover:bg-slate-100 select-none' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span>{col.header}</span>
+                        {col.sortable !== false && (
+                          <span className="text-slate-400">
+                            {sortKey === col.key ? (
+                              sortOrder === 'asc' ? (
+                                <ArrowUp className="w-3.5 h-3.5 text-blue-600 font-bold" />
+                              ) : (
+                                <ArrowDown className="w-3.5 h-3.5 text-blue-600 font-bold" />
+                              )
+                            ) : (
+                              <ArrowUpDown className="w-3 h-3 opacity-40 hover:opacity-100" />
+                            )}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                  ))}
+                {rowActions && (
+                  <th className="px-4 py-3 text-xs font-semibold text-slate-600 uppercase tracking-wider text-right">
+                    Actions
+                  </th>
+                )}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-xs">
+              {paginatedData.map((row: any, idx) => (
+                <tr key={row.id || idx} className="hover:bg-blue-50/40 transition">
+                  {columns
+                    .filter((col) => visibleColumns[col.key])
+                    .map((col) => (
+                      <td key={col.key} className="px-4 py-3 text-slate-700 whitespace-nowrap">
+                        {col.render ? col.render(row) : col.accessor ? col.accessor(row) : row[col.key]}
+                      </td>
+                    ))}
+                  {rowActions && <td className="px-4 py-3 text-right whitespace-nowrap">{rowActions(row)}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Enterprise Pagination Bar (Rule 24 requirement) */}
+      <div className="p-4 border-t border-slate-100 bg-slate-50/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+        <div className="flex items-center gap-3">
+          <span>
+            Showing <strong className="text-slate-900">{totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1}</strong> to{' '}
+            <strong className="text-slate-900">{Math.min(currentPage * pageSize, totalRecords)}</strong> of{' '}
+            <strong className="text-slate-900">{totalRecords}</strong> records
+          </span>
+
+          {/* Page Size Selector */}
+          <div className="flex items-center gap-1.5 ml-2">
+            <span className="text-slate-500">Rows per page:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="bg-white border border-slate-300 rounded px-2 py-0.5 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Page Navigation Controls */}
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setCurrentPage(1)}
+            disabled={currentPage === 1}
+            className="p-1 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            title="First Page"
+          >
+            <ChevronsLeft className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="p-1 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Previous Page"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          <span className="px-3 py-1 text-slate-700 font-medium">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages || totalPages === 0}
+            className="p-1 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Next Page"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => setCurrentPage(totalPages)}
+            disabled={currentPage === totalPages || totalPages === 0}
+            className="p-1 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
+            title="Last Page"
+          >
+            <ChevronsRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

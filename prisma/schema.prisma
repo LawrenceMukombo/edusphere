@@ -1,0 +1,814 @@
+// EduSphere SMIS — Prisma Database Schema
+// PostgreSQL 18+ Relational Data Model
+// Version: 1.0.0 | Baseline: Zambia School MIS Enterprise PRD 2026
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ----------------------------------------------------------------------------
+// 1. MULTI-TENANCY, CAMPUSES & SUBSCRIPTIONS
+// ----------------------------------------------------------------------------
+
+enum OrgType {
+  ECE_CENTRE
+  PRIMARY_ONLY
+  SECONDARY_ONLY
+  COMBINED_PRIMARY_SECONDARY
+  MULTI_CAMPUS_GROUP
+}
+
+enum SubscriptionTier {
+  COMMUNITY_STARTER // 1-80 learners
+  GROWING_SCHOOL    // 81-250 learners
+  PROFESSIONAL      // 251-600 learners
+  CAMPUS_PLUS       // 601-1500 learners
+  ENTERPRISE_GROUP  // >1500 learners
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  GRACE_PERIOD
+  SUSPENDED
+  EXPIRED
+}
+
+model Organisation {
+  id              String             @id @default(uuid())
+  code            String             @unique // e.g. "EDS-ZM-001"
+  name            String
+  officialName    String?
+  type            OrgType            @default(COMBINED_PRIMARY_SECONDARY)
+  registrationNo  String?            // Ministry of Education / PACRA reg no
+  taxNumber       String?            // TPIN for ZRA
+  email           String
+  phone           String
+  address         String?
+  city            String             @default("Lusaka")
+  province        String             @default("Lusaka")
+  country         String             @default("Zambia")
+  timezone        String             @default("Africa/Lusaka")
+  currency        String             @default("ZMW")
+  logoUrl         String?
+  primaryColor    String             @default("#1e3a8a")
+  isActive        Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  campuses        Campus[]
+  users           User[]
+  subscriptions   Subscription[]
+  entitlements    ModuleEntitlement[]
+  academicYears   AcademicYear[]
+  learners        Learner[]
+  guardians       Guardian[]
+  staff           Staff[]
+  feeSchedules    FeeSchedule[]
+  invoices        Invoice[]
+  payments        Payment[]
+  receipts        Receipt[]
+  ledgerEntries   LedgerEntry[]
+  auditEvents     AuditEvent[]
+  notices         Notice[]
+
+  @@index([code])
+}
+
+model Campus {
+  id              String       @id @default(uuid())
+  organisationId  String
+  name            String       // e.g. "Main Campus", "Avondale Branch"
+  code            String       // e.g. "MC", "AV"
+  address         String?
+  city            String?
+  phone           String?
+  isMainCampus    Boolean      @default(false)
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  classes         Class[]
+  learners        Learner[]
+  staff           Staff[]
+
+  @@unique([organisationId, code])
+  @@index([organisationId])
+}
+
+model Subscription {
+  id              String             @id @default(uuid())
+  organisationId  String
+  tier            SubscriptionTier   @default(GROWING_SCHOOL)
+  status          SubscriptionStatus @default(ACTIVE)
+  activeLearnerCap Int               @default(250)
+  currentActiveLearners Int          @default(0)
+  billingCycle    String             @default("TERMLY") // MONTHLY, TERMLY, ANNUAL
+  priceZMW        Decimal            @default(399.00) @db.Decimal(10, 2)
+  startDate       DateTime           @default(now())
+  endDate         DateTime
+  gracePeriodEnds DateTime?
+  autoRenew       Boolean            @default(true)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  organisation    Organisation       @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, status])
+}
+
+model ModuleEntitlement {
+  id              String       @id @default(uuid())
+  organisationId  String
+  moduleKey       String       // e.g. "ONLINE_PAYMENTS", "HR_PAYROLL", "LMS", "TRANSPORT", "LIBRARY"
+  isEnabled       Boolean      @default(true)
+  enabledAt       DateTime     @default(now())
+  validUntil      DateTime?
+
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, moduleKey])
+  @@index([organisationId])
+}
+
+// ----------------------------------------------------------------------------
+// 2. USERS, ROLES & ACCESS CONTROL
+// ----------------------------------------------------------------------------
+
+enum SystemRole {
+  PLATFORM_SUPER_ADMIN
+  SCHOOL_PROPRIETOR
+  HEADTEACHER
+  DEPUTY_HEADTEACHER
+  REGISTRAR
+  BURSAR
+  TEACHER
+  ECE_PRACTITIONER
+  PARENT_GUARDIAN
+  HR_OFFICER
+  LEARNER
+  AUDITOR_READONLY
+}
+
+model User {
+  id              String       @id @default(uuid())
+  organisationId  String?
+  email           String       @unique
+  passwordHash    String
+  firstName       String
+  lastName        String
+  phone           String?
+  role            SystemRole   @default(TEACHER)
+  isActive        Boolean      @default(true)
+  mfaEnabled      Boolean      @default(false)
+  lastLoginAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  organisation    Organisation? @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  staff           Staff?
+  guardian        Guardian?
+  auditEvents     AuditEvent[]
+
+  @@index([organisationId, role])
+  @@index([email])
+}
+
+model AuditEvent {
+  id              String       @id @default(uuid())
+  organisationId  String
+  userId          String?
+  action          String       // e.g. "STUDENT_ADMITTED", "RESULT_PUBLISHED", "PAYMENT_RECORDED"
+  entityType      String       // e.g. "Learner", "Invoice", "Score"
+  entityId        String
+  detailsJson     String?      // Snapshot / payload
+  ipAddress       String?
+  userAgent       String?
+  createdAt       DateTime     @default(now())
+
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user            User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, entityType, entityId])
+  @@index([createdAt])
+}
+
+// ----------------------------------------------------------------------------
+// 3. LEARNER REGISTRY, GUARDIANS & ADMISSIONS
+// ----------------------------------------------------------------------------
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum LearnerStatus {
+  ENROLLED
+  APPLICANT
+  TRANSFERRED_OUT
+  SUSPENDED
+  ALUMNI
+  WITHDRAWN
+}
+
+enum GuardianRelationship {
+  FATHER
+  MOTHER
+  LEGAL_GUARDIAN
+  GRANDPARENT
+  AUNT_UNCLE
+  FOSTER_PARENT
+  OTHER
+}
+
+model Learner {
+  id              String         @id @default(uuid())
+  organisationId  String
+  campusId        String
+  studentNumber   String         // Unique human-readable school ID: e.g. "EDS-2026-0042"
+  firstName       String
+  middleName      String?
+  lastName        String
+  gender          Gender
+  dateOfBirth     DateTime
+  birthCertificateNo String?
+  nationality     String         @default("Zambian")
+  status          LearnerStatus  @default(ENROLLED)
+  currentClassId  String?
+  admissionDate   DateTime       @default(now())
+  allergies       String?
+  medicalNotes    String?
+  emergencyContact String?
+  photoUrl        String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organisation    Organisation   @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  campus          Campus         @relation(fields: [campusId], references: [id], onDelete: Restrict)
+  currentClass    Class?         @relation(fields: [currentClassId], references: [id], onDelete: SetNull)
+  guardians       LearnerGuardianRelationship[]
+  enrolments      Enrolment[]
+  attendanceRecords AttendanceRecord[]
+  scores          Score[]
+  competencyObservations CompetencyObservation[]
+  reportCards     ReportCardVersion[]
+  invoices        Invoice[]
+  payments        Payment[]
+
+  @@unique([organisationId, studentNumber])
+  @@index([organisationId, status])
+  @@index([currentClassId])
+}
+
+model Guardian {
+  id              String         @id @default(uuid())
+  organisationId  String
+  userId          String?        @unique
+  firstName       String
+  lastName        String
+  phone           String
+  email           String?
+  nrcNumber       String?        // National Registration Card
+  address         String?
+  occupation      String?
+  employer        String?
+  isVerified      Boolean        @default(false)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organisation    Organisation   @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  user            User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  learners        LearnerGuardianRelationship[]
+  absenceExplanations AbsenceExplanation[]
+
+  @@index([organisationId, phone])
+}
+
+model LearnerGuardianRelationship {
+  id              String               @id @default(uuid())
+  learnerId       String
+  guardianId      String
+  relationship    GuardianRelationship
+  isPrimary       Boolean              @default(true)
+  hasFinancialAuthority Boolean        @default(true)
+  canPickUp       Boolean              @default(true)
+  emergencyOrder  Int                  @default(1)
+  isAccessRevoked Boolean              @default(false)
+  revokedAt       DateTime?
+  revokedReason   String?
+  createdAt       DateTime             @default(now())
+
+  learner         Learner              @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  guardian        Guardian             @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+
+  @@unique([learnerId, guardianId])
+  @@index([guardianId])
+  @@index([learnerId])
+}
+
+model Enrolment {
+  id              String       @id @default(uuid())
+  learnerId       String
+  academicYearId  String
+  classId         String
+  termId          String?
+  startDate       DateTime     @default(now())
+  endDate         DateTime?
+  isCurrent       Boolean      @default(true)
+  promotionStatus String       @default("PROMOTED") // PROMOTED, REPEATING, TRANSFERRED
+  createdAt       DateTime     @default(now())
+
+  learner         Learner      @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  academicYear    AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Restrict)
+  class           Class        @relation(fields: [classId], references: [id], onDelete: Restrict)
+
+  @@index([learnerId, academicYearId])
+}
+
+// ----------------------------------------------------------------------------
+// 4. ACADEMICS, CURRICULUM & ASSESSMENT ENGINE
+// ----------------------------------------------------------------------------
+
+enum CurriculumFramework {
+  ZAMBIA_REFORMED_2026 // 6-year primary, 3-year junior secondary, 3-year senior
+  ZAMBIA_LEGACY_7_5    // 7-year primary, 5-year secondary
+  EARLY_CHILDHOOD_ECE  // Developmental milestones & competency
+  HYBRID_INTERNATIONAL
+}
+
+enum EducationStage {
+  ECE_NURSERY
+  ECE_RECEPTION
+  PRIMARY
+  JUNIOR_SECONDARY
+  SENIOR_SECONDARY
+}
+
+enum AssessmentType {
+  CONTINUOUS_ASSESSMENT
+  MID_TERM_TEST
+  END_TERM_EXAMINATION
+  COMPETENCY_EVALUATION
+  MILESTONE_OBSERVATION
+}
+
+enum ResultStatus {
+  DRAFT
+  SUBMITTED
+  MODERATED
+  APPROVED
+  PUBLISHED
+  ARCHIVED
+}
+
+model AcademicYear {
+  id              String       @id @default(uuid())
+  organisationId  String
+  name            String       // e.g. "2026 Academic Year"
+  startDate       DateTime
+  endDate         DateTime
+  isCurrent       Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  terms           Term[]
+  enrolments      Enrolment[]
+  classes         Class[]
+  feeSchedules    FeeSchedule[]
+
+  @@unique([organisationId, name])
+  @@index([organisationId, isCurrent])
+}
+
+model Term {
+  id              String       @id @default(uuid())
+  academicYearId  String
+  name            String       // "Term 1", "Term 2", "Term 3"
+  termNumber      Int          // 1, 2, 3
+  startDate       DateTime
+  endDate         DateTime
+  isCurrent       Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+
+  academicYear    AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  assessments     Assessment[]
+  attendanceSessions AttendanceSession[]
+  invoices        Invoice[]
+  reportCards     ReportCardVersion[]
+
+  @@index([academicYearId, termNumber])
+}
+
+model Class {
+  id              String         @id @default(uuid())
+  campusId        String
+  academicYearId  String
+  name            String         // e.g. "Grade 1A", "Form 2 Blue", "Reception Stars"
+  stage           EducationStage @default(PRIMARY)
+  stream          String?        // e.g. "A", "B", "North"
+  capacity        Int            @default(40)
+  classTeacherId  String?
+  createdAt       DateTime       @default(now())
+
+  campus          Campus         @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  academicYear    AcademicYear   @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  classTeacher    Staff?         @relation(fields: [classTeacherId], references: [id], onDelete: SetNull)
+  learners        Learner[]
+  enrolments      Enrolment[]
+  subjects        SubjectAssignment[]
+  attendanceSessions AttendanceSession[]
+  reportCards     ReportCardVersion[]
+
+  @@index([campusId, academicYearId])
+}
+
+model Subject {
+  id              String       @id @default(uuid())
+  organisationId  String
+  name            String       // e.g. "Mathematics", "English Language", "Literacy & Language"
+  code            String       // e.g. "MATH", "ENG", "SCI"
+  stage           EducationStage
+  isCore          Boolean      @default(true)
+
+  assignments     SubjectAssignment[]
+  assessments     Assessment[]
+
+  @@unique([organisationId, code])
+}
+
+model SubjectAssignment {
+  id              String       @id @default(uuid())
+  classId         String
+  subjectId       String
+  teacherId       String?
+
+  class           Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject         Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher         Staff?       @relation(fields: [teacherId], references: [id], onDelete: SetNull)
+
+  @@unique([classId, subjectId])
+}
+
+model Assessment {
+  id              String         @id @default(uuid())
+  termId          String
+  subjectId       String
+  name            String         // e.g. "End of Term 1 Examination"
+  type            AssessmentType @default(END_TERM_EXAMINATION)
+  maxMarks        Decimal        @default(100.00) @db.Decimal(5, 2)
+  weightPercentage Decimal       @default(100.00) @db.Decimal(5, 2)
+  status          ResultStatus   @default(DRAFT)
+  dueDate         DateTime?
+  createdAt       DateTime       @default(now())
+
+  term            Term           @relation(fields: [termId], references: [id], onDelete: Cascade)
+  subject         Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  scores          Score[]
+
+  @@index([termId, subjectId])
+}
+
+model Score {
+  id              String       @id @default(uuid())
+  assessmentId    String
+  learnerId       String
+  marksObtained   Decimal?     @db.Decimal(5, 2)
+  letterGrade     String?      // e.g. "A+", "B", "1"
+  teacherComments String?
+  isAbsent        Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  assessment      Assessment   @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  learner         Learner      @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+
+  @@unique([assessmentId, learnerId])
+  @@index([learnerId])
+}
+
+model CompetencyObservation {
+  id              String       @id @default(uuid())
+  learnerId       String
+  domain          String       // e.g. "Cognitive Development", "Motor Skills", "Social & Emotional"
+  competencyName  String       // e.g. "Can count 1 to 20", "Cooperates with peers"
+  rating          String       // "EMERGING", "DEVELOPING", "COMPETENT", "MASTERED"
+  observations    String?
+  termId          String
+  assessedAt      DateTime     @default(now())
+
+  learner         Learner      @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+
+  @@index([learnerId, termId])
+}
+
+model ReportCardVersion {
+  id              String       @id @default(uuid())
+  learnerId       String
+  classId         String
+  termId          String
+  versionNumber   Int          @default(1)
+  status          ResultStatus @default(PUBLISHED)
+  summaryJson     String       // Complete compiled snapshot of marks, grades, attendance
+  teacherRemarks  String?
+  principalRemarks String?
+  attendancePresent Int        @default(0)
+  attendanceTotal Int          @default(0)
+  approvedById    String?
+  publishedAt     DateTime     @default(now())
+
+  learner         Learner      @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  class           Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  term            Term         @relation(fields: [termId], references: [id], onDelete: Cascade)
+
+  @@unique([learnerId, termId, versionNumber])
+  @@index([learnerId, status])
+}
+
+// ----------------------------------------------------------------------------
+// 5. ATTENDANCE & OFFLINE SYNCHRONIZATION
+// ----------------------------------------------------------------------------
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+model AttendanceSession {
+  id              String       @id @default(uuid())
+  classId         String
+  termId          String
+  date            DateTime     @db.Date
+  takenById       String?
+  submittedAt     DateTime     @default(now())
+
+  class           Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  term            Term         @relation(fields: [termId], references: [id], onDelete: Cascade)
+  records         AttendanceRecord[]
+
+  @@unique([classId, date])
+  @@index([date])
+}
+
+model AttendanceRecord {
+  id              String            @id @default(uuid())
+  sessionId       String
+  learnerId       String
+  status          AttendanceStatus  @default(PRESENT)
+  arrivalMinutesLate Int?
+  remarks         String?
+
+  session         AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  learner         Learner           @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  explanation     AbsenceExplanation?
+
+  @@unique([sessionId, learnerId])
+  @@index([learnerId, status])
+}
+
+model AbsenceExplanation {
+  id              String            @id @default(uuid())
+  attendanceRecordId String         @unique
+  guardianId      String
+  reason          String
+  isExcused       Boolean           @default(false)
+  reviewedById    String?
+  reviewedAt      DateTime?
+  createdAt       DateTime          @default(now())
+
+  attendanceRecord AttendanceRecord @relation(fields: [attendanceRecordId], references: [id], onDelete: Cascade)
+  guardian        Guardian          @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+}
+
+// ----------------------------------------------------------------------------
+// 6. FINANCIAL LEDGER, INVOICING & PAYMENTS
+// ----------------------------------------------------------------------------
+
+enum FeeCategory {
+  TUITION
+  REGISTRATION
+  EXAMINATION
+  TRANSPORT
+  BOARDING
+  MEALS
+  UNIFORM
+  DEVELOPMENT_LEVY
+  OTHER
+}
+
+enum InvoiceStatus {
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  BANK_DEPOSIT
+  AIRTEL_MONEY
+  MTN_MONEY
+  CHEQUE
+}
+
+model FeeSchedule {
+  id              String       @id @default(uuid())
+  organisationId  String
+  academicYearId  String
+  category        FeeCategory  @default(TUITION)
+  name            String       // e.g. "Primary Grade 1-4 Tuition"
+  amount          Decimal      @db.Decimal(10, 2)
+  applicableStage EducationStage
+  createdAt       DateTime     @default(now())
+
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  academicYear    AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, academicYearId])
+}
+
+model Invoice {
+  id              String        @id @default(uuid())
+  organisationId  String
+  learnerId       String
+  termId          String
+  invoiceNumber   String        // e.g. "INV-2026-00341"
+  idempotencyKey  String?       @unique
+  totalAmount     Decimal       @db.Decimal(10, 2)
+  paidAmount      Decimal       @default(0.00) @db.Decimal(10, 2)
+  balance         Decimal       @db.Decimal(10, 2)
+  status          InvoiceStatus @default(ISSUED)
+  dueDate         DateTime
+  issuedDate      DateTime      @default(now())
+
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  learner         Learner       @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  term            Term          @relation(fields: [termId], references: [id], onDelete: Restrict)
+  lines           InvoiceLine[]
+  allocations     PaymentAllocation[]
+  ledgerEntries   LedgerEntry[]
+
+  @@unique([organisationId, invoiceNumber])
+  @@index([organisationId, status])
+  @@index([learnerId])
+}
+
+model InvoiceLine {
+  id              String       @id @default(uuid())
+  invoiceId       String
+  category        FeeCategory
+  description     String
+  unitPrice       Decimal      @db.Decimal(10, 2)
+  quantity        Int          @default(1)
+  lineTotal       Decimal      @db.Decimal(10, 2)
+
+  invoice         Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id              String        @id @default(uuid())
+  organisationId  String
+  learnerId       String
+  paymentNumber   String        // e.g. "PAY-2026-0089"
+  amount          Decimal       @db.Decimal(10, 2)
+  paymentMethod   PaymentMethod @default(BANK_TRANSFER)
+  referenceNumber String        // External bank / mobile money reference
+  receivedDate    DateTime      @default(now())
+  recordedById    String?
+  notes           String?
+  createdAt       DateTime      @default(now())
+
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  learner         Learner       @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  allocations     PaymentAllocation[]
+  receipt         Receipt?
+  ledgerEntries   LedgerEntry[]
+
+  @@unique([organisationId, paymentNumber])
+  @@index([organisationId, referenceNumber])
+}
+
+model PaymentAllocation {
+  id              String       @id @default(uuid())
+  paymentId       String
+  invoiceId       String
+  allocatedAmount Decimal      @db.Decimal(10, 2)
+  createdAt       DateTime     @default(now())
+
+  payment         Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice         Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@index([invoiceId])
+}
+
+model Receipt {
+  id              String       @id @default(uuid())
+  organisationId  String
+  paymentId       String       @unique
+  receiptNumber   String       // e.g. "REC-2026-00412"
+  amount          Decimal      @db.Decimal(10, 2)
+  issuedAt        DateTime     @default(now())
+
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  payment         Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, receiptNumber])
+}
+
+enum LedgerEntryType {
+  DEBIT_CHARGE       // An invoice charge
+  CREDIT_PAYMENT     // A payment made
+  CREDIT_CONCESSION  // Sibling discount / scholarship
+  DEBIT_REVERSAL     // Reversing a bounced cheque/payment
+  CREDIT_REFUND      // Refunding excess fees
+}
+
+model LedgerEntry {
+  id              String          @id @default(uuid())
+  organisationId  String
+  learnerId       String
+  invoiceId       String?
+  paymentId       String?
+  entryType       LedgerEntryType
+  amount          Decimal         @db.Decimal(10, 2)
+  balanceAfter    Decimal         @db.Decimal(10, 2)
+  description     String
+  postedById      String?
+  postedAt        DateTime        @default(now())
+
+  organisation    Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  invoice         Invoice?        @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  payment         Payment?        @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, learnerId])
+  @@index([postedAt])
+}
+
+// ----------------------------------------------------------------------------
+// 7. STAFF, TEACHER CREDENTIALS (TCZ) & HR
+// ----------------------------------------------------------------------------
+
+enum EmploymentStatus {
+  FULL_TIME
+  PART_TIME
+  PROBATION
+  CONTRACT
+  RESIGNED
+}
+
+model Staff {
+  id              String           @id @default(uuid())
+  organisationId  String
+  campusId        String
+  userId          String?          @unique
+  staffNumber     String           // e.g. "STF-014"
+  firstName       String
+  lastName        String
+  email           String
+  phone           String
+  jobTitle        String           // e.g. "Senior Teacher - Sciences"
+  qualification   String?          // e.g. "BEd Mathematics (UNZA)"
+  tczNumber       String?          // Teaching Council of Zambia registration number
+  tczCertificateExpiry DateTime?   // TCZ Practising Certificate expiry
+  employmentStatus EmploymentStatus @default(FULL_TIME)
+  dateJoined      DateTime         @default(now())
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  organisation    Organisation     @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  campus          Campus           @relation(fields: [campusId], references: [id], onDelete: Restrict)
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  classesTaught   Class[]
+  subjectsTaught  SubjectAssignment[]
+
+  @@unique([organisationId, staffNumber])
+  @@index([organisationId, tczNumber])
+}
+
+// ----------------------------------------------------------------------------
+// 8. COMMUNICATIONS & NOTICES
+// ----------------------------------------------------------------------------
+
+model Notice {
+  id              String       @id @default(uuid())
+  organisationId  String
+  title           String
+  content         String
+  targetRole      SystemRole?
+  isPinned        Boolean      @default(false)
+  publishedAt     DateTime     @default(now())
+
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, publishedAt])
+}
