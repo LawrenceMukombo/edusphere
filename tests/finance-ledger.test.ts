@@ -107,4 +107,56 @@ describe('AC-06 & AC-07: Financial Ledger Integrity, Idempotency & Reversals', (
     const paymentStillExists = await prisma.payment.findUnique({ where: { id: payment.id } });
     expect(paymentStillExists).not.toBeNull();
   });
+
+  it('getAllLearnersFeeBalances calculates accurate ageing buckets and net fee balances', async () => {
+    const balances = await FinanceService.getAllLearnersFeeBalances(orgId);
+    expect(Array.isArray(balances)).toBe(true);
+    expect(balances.length).toBeGreaterThan(0);
+
+    const first = balances[0];
+    expect(first).toHaveProperty('id');
+    expect(first).toHaveProperty('studentNumber');
+    expect(first).toHaveProperty('totalBilled');
+    expect(first).toHaveProperty('totalPaid');
+    expect(first).toHaveProperty('balance');
+    expect(first).toHaveProperty('financialStatus');
+    expect(first).toHaveProperty('ageing');
+    expect(first.ageing).toHaveProperty('current');
+    expect(first.ageing).toHaveProperty('days31to60');
+    expect(first.ageing).toHaveProperty('days61to90');
+    expect(first.ageing).toHaveProperty('over90days');
+  });
+
+  it('getLearnerPaymentHistory returns complete chronological payment journal and receipts for learner', async () => {
+    const history = await FinanceService.getLearnerPaymentHistory(orgId, pupilId);
+    expect(history).toHaveProperty('learner');
+    expect(history).toHaveProperty('payments');
+    expect(history).toHaveProperty('totalPaid');
+    expect(Array.isArray(history.payments)).toBe(true);
+    if (history.payments.length > 0) {
+      const paymentItem = history.payments[0];
+      expect(paymentItem).toHaveProperty('paymentNumber');
+      expect(paymentItem).toHaveProperty('amount');
+      expect(paymentItem).toHaveProperty('paymentMethod');
+      expect(paymentItem).toHaveProperty('receivedDate');
+    }
+  });
+
+  it('getFinancialReports aggregates Daily Cashbook, Category Revenues, Class Collections and Aged Debtors', async () => {
+    const reports = await FinanceService.getFinancialReports(orgId);
+    expect(reports).toHaveProperty('cashbook');
+    expect(reports).toHaveProperty('categoryRevenue');
+    expect(reports).toHaveProperty('classComparison');
+    expect(reports).toHaveProperty('ageingSummary');
+    expect(reports).toHaveProperty('totals');
+
+    expect(Array.isArray(reports.cashbook)).toBe(true);
+    expect(Array.isArray(reports.categoryRevenue)).toBe(true);
+    expect(Array.isArray(reports.classComparison)).toBe(true);
+    expect(reports.ageingSummary).toHaveProperty('totalOutstanding');
+    expect(reports.ageingSummary).toHaveProperty('current');
+    expect(reports.ageingSummary).toHaveProperty('days31to60');
+    expect(reports.ageingSummary).toHaveProperty('days61to90');
+    expect(reports.ageingSummary).toHaveProperty('over90days');
+  });
 });

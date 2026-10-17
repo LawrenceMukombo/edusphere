@@ -253,4 +253,273 @@ export class FinanceService {
 
     return { entries, invoices, payments };
   }
+
+  /**
+   * Capture all learners' fee balances with comprehensive aged receivables (debtors ageing)
+   */
+  static async getAllLearnersFeeBalances(organisationId: string, filters?: { classId?: string; status?: string; search?: string }) {
+    const where: any = { organisationId };
+    if (filters?.classId) where.currentClassId = filters.classId;
+    if (filters?.search) {
+      where.OR = [
+        { firstName: { contains: filters.search, mode: 'insensitive' } },
+        { lastName: { contains: filters.search, mode: 'insensitive' } },
+        { studentNumber: { contains: filters.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const learners = await prisma.learner.findMany({
+      where,
+      include: {
+        currentClass: true,
+        campus: true,
+        guardians: {
+          include: { guardian: true },
+          where: { isAccessRevoked: false },
+        },
+        invoices: {
+          where: { organisationId },
+          include: { lines: true },
+          orderBy: { dueDate: 'asc' },
+        },
+        payments: {
+          where: { organisationId },
+          include: { receipt: true },
+          orderBy: { receivedDate: 'desc' },
+        },
+      },
+      orderBy: { lastName: 'asc' },
+    });
+
+    const now = new Date();
+
+    return learners.map((learner) => {
+      const totalBilled = learner.invoices.reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
+      const totalPaid = learner.invoices.reduce((sum, inv) => sum + Number(inv.paidAmount), 0);
+      const balance = Math.max(0, totalBilled - totalPaid);
+
+      // Debtors Ageing Calculation based on invoice due dates
+      let currentBucket = 0;   // 0 - 30 days or not yet due
+      let days31to60 = 0;       // 31 - 60 days overdue
+      let days61to90 = 0;       // 61 - 90 days overdue
+      let over90days = 0;       // > 90 days overdue
+
+      for (const inv of learner.invoices) {
+        const invBalance = Number(inv.balance);
+        if (invBalance <= 0) continue;
+
+        const due = new Date(inv.dueDate);
+        const diffTime = now.getTime() - due.getTime();
+        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays <= 30) {
+          currentBucket += invBalance;
+        } else if (diffDays <= 60) {
+          days31to60 += invBalance;
+        } else if (diffDays <= 90) {
+          days61to90 += invBalance;
+        } else {
+          over90days += invBalance;
+        }
+      }
+
+      let financialStatus = 'NO_INVOICE';
+      if (totalBilled > 0) {
+        if (balance <= 0) financialStatus = 'CLEARED';
+        else if (totalPaid > 0) financialStatus = 'PARTIAL';
+        else if (over90days > 0 || days61to90 > 0) financialStatus = 'CHRONIC_ARREARS';
+        else financialStatus = 'ARREARS';
+      }
+
+      const primaryGuardian = learner.guardians?.[0]?.guardian;
+
+      return {
+        id: learner.id,
+        studentNumber: learner.studentNumber,
+        learnerName: `${learner.firstName} ${learner.lastName}`,
+        className: learner.currentClass?.name || 'Unassigned',
+        stage: learner.currentClass?.stage || 'PRIMARY',
+        campusName: learner.campus?.name || 'Main Campus',
+        totalBilled,
+        totalPaid,
+        balance,
+        financialStatus,
+        ageing: {
+          current: currentBucket,
+          days31to60,
+          days61to90,
+          over90days,
+        },
+        guardian: primaryGuardian
+          ? {
+              name: `${primaryGuardian.firstName} ${primaryGuardian.lastName}`,
+              phone: primaryGuardian.phone,
+              email: primaryGuardian.email,
+            }
+          : null,
+        invoiceCount: learner.invoices.length,
+        paymentCount: learner.payments.length,
+      };
+    });
+  }
+
+  /**
+   * Get detailed payment history for an individual learner
+   */
+  static async getLearnerPaymentHistory(organisationId: string, learnerId: string) {
+    const payments = await prisma.payment.findMany({
+      where: { organisationId, learnerId },
+      include: {
+        receipt: true,
+        allocations: {
+          include: {
+            invoice: {
+              include: { lines: true },
+            },
+          },
+        },
+      },
+      orderBy: { receivedDate: 'desc' },
+    });
+
+    const learner = await prisma.learner.findUnique({
+      where: { id: learnerId },
+      include: { currentClass: true, campus: true },
+    });
+
+    return {
+      learner,
+      payments,
+      totalPaid: payments.reduce((sum, p) => sum + Number(p.amount), 0),
+    };
+  }
+
+  /**
+   * Multi-type institutional financial reports:
+   * 1. Daily Cashbook (collections by date and channel)
+   * 2. Fee Category Revenue (by Tuition, Registration, Levies)
+   * 3. Cohort / Class Collection Performance
+   * 4. Aged Debtors Institutional Summary
+   */
+  static async getFinancialReports(organisationId: string) {
+    const [invoices, payments, classes, schedules] = await Promise.all([
+      prisma.invoice.findMany({
+        where: { organisationId },
+        include: { lines: true, learner: { include: { currentClass: true } } },
+      }),
+      prisma.payment.findMany({
+        where: { organisationId },
+        include: { receipt: true, learner: { include: { currentClass: true } } },
+        orderBy: { receivedDate: 'desc' },
+      }),
+      prisma.class.findMany({
+        where: { campus: { organisationId } },
+        include: { learners: true },
+      }),
+      prisma.feeSchedule.findMany({
+        where: { organisationId },
+      }),
+    ]);
+
+    // 1. Daily Cashbook Breakdown (grouped by date and method)
+    const cashbookMap = new Map<string, { date: string; cash: number; bank: number; airtel: number; mtn: number; cheque: number; total: number; transactions: number }>();
+
+    for (const p of payments) {
+      const dateKey = p.receivedDate.toISOString().split('T')[0];
+      if (!cashbookMap.has(dateKey)) {
+        cashbookMap.set(dateKey, { date: dateKey, cash: 0, bank: 0, airtel: 0, mtn: 0, cheque: 0, total: 0, transactions: 0 });
+      }
+      const entry = cashbookMap.get(dateKey)!;
+      const amount = Number(p.amount);
+      entry.total += amount;
+      entry.transactions += 1;
+
+      if (p.paymentMethod === PaymentMethod.CASH) entry.cash += amount;
+      else if (p.paymentMethod === PaymentMethod.BANK_TRANSFER || p.paymentMethod === PaymentMethod.BANK_DEPOSIT) entry.bank += amount;
+      else if (p.paymentMethod === PaymentMethod.AIRTEL_MONEY) entry.airtel += amount;
+      else if (p.paymentMethod === PaymentMethod.MTN_MONEY) entry.mtn += amount;
+      else if (p.paymentMethod === PaymentMethod.CHEQUE) entry.cheque += amount;
+    }
+
+    const cashbook = Array.from(cashbookMap.values()).sort((a, b) => b.date.localeCompare(a.date));
+
+    // 2. Fee Category Revenue Breakdown
+    const categoryMap = new Map<string, { category: string; billed: number; collectedEstimate: number }>();
+    for (const inv of invoices) {
+      for (const line of inv.lines) {
+        if (!categoryMap.has(line.category)) {
+          categoryMap.set(line.category, { category: line.category, billed: 0, collectedEstimate: 0 });
+        }
+        const cat = categoryMap.get(line.category)!;
+        const lineTotal = Number(line.lineTotal);
+        cat.billed += lineTotal;
+        // Proportion of payment collected
+        const invTotal = Number(inv.totalAmount) || 1;
+        const collectionRatio = Number(inv.paidAmount) / invTotal;
+        cat.collectedEstimate += lineTotal * collectionRatio;
+      }
+    }
+    const categoryRevenue = Array.from(categoryMap.values());
+
+    // 3. Class / Cohort Collection Comparison
+    const classComparison = classes.map((cls) => {
+      const classInvoices = invoices.filter((inv) => inv.learner?.currentClassId === cls.id);
+      const billed = classInvoices.reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
+      const collected = classInvoices.reduce((sum, inv) => sum + Number(inv.paidAmount), 0);
+      const outstanding = Math.max(0, billed - collected);
+      const collectionRate = billed > 0 ? Math.round((collected / billed) * 1000) / 10 : 0;
+
+      return {
+        classId: cls.id,
+        className: cls.name,
+        stage: cls.stage,
+        learnerCount: cls.learners.length,
+        billed,
+        collected,
+        outstanding,
+        collectionRate,
+      };
+    });
+
+    // 4. Institutional Debtors Ageing Summary
+    const now = new Date();
+    let ageingSummary = {
+      current: 0,
+      days31to60: 0,
+      days61to90: 0,
+      over90days: 0,
+      totalOutstanding: 0,
+    };
+
+    for (const inv of invoices) {
+      const invBalance = Number(inv.balance);
+      if (invBalance <= 0) continue;
+
+      ageingSummary.totalOutstanding += invBalance;
+      const due = new Date(inv.dueDate);
+      const diffTime = now.getTime() - due.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays <= 30) ageingSummary.current += invBalance;
+      else if (diffDays <= 60) ageingSummary.days31to60 += invBalance;
+      else if (diffDays <= 90) ageingSummary.days61to90 += invBalance;
+      else ageingSummary.over90days += invBalance;
+    }
+
+    const totalBilledAll = invoices.reduce((sum, inv) => sum + Number(inv.totalAmount), 0);
+    const totalCollectedAll = payments.reduce((sum, p) => sum + Number(p.amount), 0);
+
+    return {
+      totals: {
+        totalBilled: totalBilledAll,
+        totalCollected: totalCollectedAll,
+        totalOutstanding: ageingSummary.totalOutstanding,
+        overallCollectionRate: totalBilledAll > 0 ? Math.round((totalCollectedAll / totalBilledAll) * 1000) / 10 : 0,
+      },
+      cashbook,
+      categoryRevenue,
+      classComparison,
+      ageingSummary,
+    };
+  }
 }
