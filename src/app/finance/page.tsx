@@ -499,7 +499,7 @@ export default function FinancePage() {
 
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700 animate-in slide-in-from-top-4">
