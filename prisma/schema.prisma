@@ -90,6 +90,16 @@ model Campus {
   phone           String?
   isMainCampus    Boolean      @default(false)
   isActive        Boolean      @default(true)
+  latitude        Float?
+  longitude       Float?
+  elevationMeters Float?
+  catchmentRadiusKm Float?     @default(5.0)
+  capacity        Int?         @default(500)
+  campusType      String?      @default("BRANCH") // MAIN_CAMPUS, BRANCH, EARLY_YEARS, SPORTS_COMPLEX, TECHNICAL_WING
+  landAreaHectares Float?
+  facilitiesJson  String?      // JSON array of facilities
+  contactEmail    String?
+  headTeacherName String?
   createdAt       DateTime     @default(now())
   updatedAt       DateTime     @updatedAt
 
@@ -97,9 +107,51 @@ model Campus {
   classes         Class[]
   learners        Learner[]
   staff           Staff[]
+  transportRoutes TransportRoute[]
+  catchmentZones  CatchmentZone[]
 
   @@unique([organisationId, code])
   @@index([organisationId])
+}
+
+model CatchmentZone {
+  id              String       @id @default(uuid())
+  organisationId  String
+  campusId        String
+  zoneName        String       // e.g. "Woodlands / Kabulonga Primary Catchment", "Chamba Valley Feeder Area"
+  radiusKm        Float        @default(5.0)
+  centerLatitude  Float
+  centerLongitude Float
+  polygonGeoJson  String?      // Optional GeoJSON polygon coordinates
+  description     String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  campus          Campus       @relation(fields: [campusId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, campusId])
+}
+
+model TransportRoute {
+  id              String       @id @default(uuid())
+  organisationId  String
+  campusId        String
+  routeCode       String       // e.g. "BUS-01"
+  routeName       String       // e.g. "Chelstone - Avondale - Kabulonga Morning Shuttle"
+  vehicleReg      String?      // e.g. "BAX 4920 ZM"
+  driverName      String?
+  driverPhone     String?
+  capacity        Int          @default(30)
+  fareZMW         Decimal?     @db.Decimal(10, 2)
+  stopsJson       String?      // JSON array of stops [{ name, latitude, longitude, morningPickupTime, afternoonDropTime }]
+  isActive        Boolean      @default(true)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  campus          Campus       @relation(fields: [campusId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, routeCode])
+  @@index([organisationId, campusId])
 }
 
 model Subscription {
@@ -247,6 +299,9 @@ model Learner {
   medicalNotes    String?
   emergencyContact String?
   photoUrl        String?
+  residentialArea String?
+  latitude        Float?
+  longitude       Float?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 

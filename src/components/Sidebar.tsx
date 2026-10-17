@@ -15,10 +15,12 @@ import {
   ShieldCheck,
   Building,
   FileSpreadsheet,
+  Compass,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Overview', icon: LayoutDashboard },
+  { href: '/gis', label: 'Campuses & GIS', icon: Compass },
   { href: '/admissions', label: 'Admissions & SIS', icon: Users },
   { href: '/academics', label: 'Academics & Reports', icon: GraduationCap },
   { href: '/teacher', label: 'Teacher Workspace', icon: ClipboardCheck },
