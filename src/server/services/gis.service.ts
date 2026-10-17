@@ -36,7 +36,7 @@ export class GisService {
 
   /**
    * Approximate urban/peri-urban drive time in minutes based on distance.
-   * Assumes average speed of 30 km/h in Lusaka traffic + 3 min base buffer.
+   * Assumes average speed of 30 km/h in Solwezi traffic + 3 min base buffer.
    */
   static estimateTravelTimeMinutes(distanceKm: number): number {
     if (distanceKm <= 0) return 0;
@@ -87,7 +87,7 @@ export class GisService {
         name: campus.name,
         code: campus.code,
         address: campus.address,
-        city: campus.city || 'Lusaka',
+        city: campus.city || 'Solwezi',
         phone: campus.phone,
         isMainCampus: campus.isMainCampus,
         isActive: campus.isActive,
@@ -262,7 +262,7 @@ export class GisService {
 
         for (let i = 0; i <= numPoints; i++) {
           const angle = (i * 2 * Math.PI) / numPoints;
-          // Approximate lat/lng degree offsets for Lusaka latitude (-15 deg)
+          // Approximate lat/lng degree offsets for Solwezi latitude (-12.17 deg)
           const latOffset = (radiusKm / 111.32) * Math.sin(angle);
           const lngOffset = (radiusKm / (111.32 * Math.cos((centerLat * Math.PI) / 180))) * Math.cos(angle);
           points.push([centerLng + lngOffset, centerLat + latOffset]);
@@ -391,7 +391,7 @@ export class GisService {
         name: data.name,
         code: data.code,
         address: data.address,
-        city: data.city || 'Lusaka',
+        city: data.city || 'Solwezi',
         phone: data.phone,
         isMainCampus: data.isMainCampus || false,
         latitude: data.latitude,

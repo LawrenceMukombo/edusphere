@@ -76,7 +76,7 @@ export default function ParentPortalPage() {
             <ShieldCheck className="w-3.5 h-3.5" /> Verified Guardian Portal
           </span>
           <h1 className="text-xl font-black text-slate-900 mt-0.5">Family Academic & Fee Center</h1>
-          <p className="text-xs text-slate-500">Welcome, Mr. Kabaso Mwewa (Ibex Hill, Lusaka)</p>
+          <p className="text-xs text-slate-500">Welcome, Eng. Chileshe Mulenga (Kansanshi Golf Estate, Solwezi)</p>
         </div>
 
         {/* Multi-Child Switcher (PRD FR-PAR-001) */}
@@ -122,7 +122,7 @@ export default function ParentPortalPage() {
                 {currentChild.firstName} {currentChild.lastName}
               </h2>
               <p className="text-xs text-blue-200 mt-1">
-                Class: <strong>{currentChild.currentClass?.name || 'Form 2 Green'}</strong> • Campus: <strong>Senior Campus - Kabulonga</strong>
+                Class: <strong>{currentChild.currentClass?.name || 'Form 4 Green'}</strong> • Campus: <strong>Mushitala Campus (Near Kansanshi)</strong>
               </p>
             </div>
 
@@ -207,7 +207,7 @@ export default function ParentPortalPage() {
           <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200">
             <h3 className="text-base font-black text-slate-900">Online Fee Payment</h3>
             <p className="text-xs text-slate-500 mt-1">
-              Direct merchant settlement to Kabulonga Combined Academy bank account.
+              Direct merchant settlement to Legacy School Solwezi Stanbic bank account.
             </p>
 
             <form onSubmit={handleSimulatePayment} className="mt-4 space-y-4 text-xs">

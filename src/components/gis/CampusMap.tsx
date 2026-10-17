@@ -79,18 +79,24 @@ export default function CampusMap({
 
       const L = (await import('leaflet')).default;
 
-      // Default centre: Lusaka, Zambia (-15.4167, 28.2833)
+      // Default centre: Solwezi, North-Western Province (-12.1750, 26.3920)
       const map = L.map(mapContainerRef.current, {
-        center: [-15.4167, 28.3486],
-        zoom: 12,
+        center: [-12.1750, 26.3920],
+        zoom: 13,
         zoomControl: true,
       });
 
-      // Free, open-source OpenStreetMap basemap
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors | EduSphere GIS Engine',
-      }).addTo(map);
+      // High-performance CARTO Voyager basemap using authenticated API key
+      const cartoApiKey = 'cb1_2wxx_1_19a2e48a7de2e23331436131';
+      L.tileLayer(
+        `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?api_key=${cartoApiKey}`,
+        {
+          subdomains: 'abcd',
+          maxZoom: 20,
+          attribution:
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> | EduSphere Sovereign GIS Engine',
+        }
+      ).addTo(map);
 
       // Map click handler for picking location
       map.on('click', (e: any) => {
@@ -349,23 +355,23 @@ export default function CampusMap({
       <div className="absolute bottom-4 left-4 z-[400] bg-white/95 backdrop-blur-md p-3 rounded-xl border border-slate-200/80 shadow-md text-xs space-y-2 pointer-events-auto max-w-xs">
         <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider flex items-center justify-between">
           <span>Map Spatial Layers</span>
-          <span className="text-slate-400 font-normal">Lusaka Province</span>
+          <span className="text-slate-400 font-normal">North-Western Province (Solwezi Hub)</span>
         </div>
         <div className="flex items-center gap-2 text-slate-700">
           <span className="w-3 h-3 rounded-full bg-blue-600 border border-white shadow-xs" />
-          <span>Main Senior Campus</span>
+          <span>Mushitala Senior & Boarding Campus</span>
         </div>
         <div className="flex items-center gap-2 text-slate-700">
           <span className="w-3 h-3 rounded-full bg-emerald-600 border border-white shadow-xs" />
-          <span>Branch Campuses</span>
+          <span>Urban Day Primary & ECE Campus</span>
         </div>
         <div className="flex items-center gap-2 text-slate-700">
           <span className="w-3 h-3 rounded-full bg-amber-600 border border-white shadow-xs" />
-          <span>Early Years & Foundation Annexes</span>
+          <span>Boarding Houses Village & Sickbay</span>
         </div>
         <div className="flex items-center gap-2 text-slate-700">
           <span className="w-4 h-0.5 border-b-2 border-dashed border-indigo-500" />
-          <span>Bus Routes & Inter-Campus Shuttles</span>
+          <span>Inter-Campus Transit & Feeder Shuttles</span>
         </div>
         <div className="pt-1 text-[10px] text-slate-400 border-t border-slate-100">
           💡 Click anywhere on map to calculate closest campus & drive time.

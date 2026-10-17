@@ -186,14 +186,14 @@ export default function AcademicsPage() {
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-8 shadow-2xl border border-slate-200 print:p-0 print:shadow-none print:border-none">
             {/* Report Header */}
             <div className="text-center pb-6 border-b-2 border-slate-900">
-              <div className="w-12 h-12 rounded-xl bg-blue-800 text-white mx-auto flex items-center justify-center font-black text-xl mb-2">
-                KCA
+              <div className="w-12 h-12 rounded-xl bg-blue-900 text-amber-300 mx-auto flex items-center justify-center font-black text-xl mb-2 shadow-xs">
+                LSS
               </div>
               <h2 className="text-xl font-black text-slate-900 tracking-tight uppercase">
-                Kabulonga Combined Academy
+                Legacy School Solwezi
               </h2>
               <p className="text-xs text-slate-600">
-                P.O. Box 31089, Bishops Road, Kabulonga, Lusaka • Tel: +260 211 261000
+                Plot 889/890 Kansanshi Mine Road, Mushitala & Urban Campus, Solwezi • Tel: +260 974 371271
               </p>
               <div className="mt-2 inline-block px-4 py-1 rounded bg-slate-100 font-bold text-xs uppercase tracking-widest text-slate-800">
                 Official Learner Progress Report Card • 2026 Term 1

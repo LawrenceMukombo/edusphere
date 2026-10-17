@@ -81,9 +81,9 @@ export default function GisCampusesPage() {
 
   // Nearest Campus Calculator state
   const [calculatorInput, setCalculatorInput] = useState({
-    presetArea: 'Kabulonga',
-    latitude: -15.423,
-    longitude: 28.351,
+    presetArea: 'Mushitala / Kansanshi Mine Road',
+    latitude: -12.1642,
+    longitude: 26.3951,
   });
   const [calculatorResult, setCalculatorResult] = useState<any>(null);
   const [calculatingNearest, setCalculatingNearest] = useState(false);
@@ -116,10 +116,10 @@ export default function GisCampusesPage() {
     name: '',
     code: '',
     address: '',
-    city: 'Lusaka',
+    city: 'Solwezi',
     phone: '',
-    latitude: '-15.4200',
-    longitude: '28.3500',
+    latitude: '-12.1750',
+    longitude: '26.3920',
     catchmentRadiusKm: '6.0',
     capacity: '500',
     campusType: 'BRANCH',
@@ -128,15 +128,16 @@ export default function GisCampusesPage() {
     headTeacherName: '',
   });
 
-  // Preset Feeder Areas in Lusaka
+  // Preset Feeder Areas in Solwezi
   const PRESET_AREAS = [
-    { name: 'Kabulonga / Ibex Hill', lat: -15.423, lng: 28.351 },
-    { name: 'Woodlands Extension / Chalala', lat: -15.445, lng: 28.335 },
-    { name: 'Avondale / Chelstone', lat: -15.375, lng: 28.385 },
-    { name: 'Roma / Kalundu / Foxdale', lat: -15.388, lng: 28.308 },
-    { name: 'Olympia Park / Northmead', lat: -15.395, lng: 28.302 },
-    { name: 'Nyumba Yanga / State Lodge', lat: -15.448, lng: 28.352 },
-    { name: 'Chamba Valley / Meanwood', lat: -15.355, lng: 28.365 },
+    { name: 'Mushitala / Kansanshi Mine Road', lat: -12.1642, lng: 26.3951 },
+    { name: 'Kansanshi Golf Estate / Senior Staff Mess', lat: -12.1550, lng: 26.4020 },
+    { name: 'Solwezi Town Centre / Independence Ave', lat: -12.1812, lng: 26.3884 },
+    { name: 'Kyawama Residential / Market Area', lat: -12.1930, lng: 26.3780 },
+    { name: 'Kazomba Feeder Zone', lat: -12.1720, lng: 26.3760 },
+    { name: 'Kimasala Feeder Area', lat: -12.1890, lng: 26.4010 },
+    { name: 'Airport Area / Mipundu Corridor', lat: -12.1700, lng: 26.4250 },
+    { name: 'College / Totela Suburb', lat: -12.1980, lng: 26.3950 },
   ];
 
   // Fetch GIS Data
@@ -144,7 +145,7 @@ export default function GisCampusesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/gis/campuses?orgCode=EDS-ZM-001');
+      const res = await fetch('/api/gis/campuses?orgCode=EDS-ZM-SOL-001');
       const json = await res.json();
       if (json.success) {
         setCampuses(json.data.campuses);
@@ -395,10 +396,10 @@ export default function GisCampusesPage() {
                 name: '',
                 code: '',
                 address: '',
-                city: 'Lusaka',
+                city: 'Solwezi',
                 phone: '',
-                latitude: '-15.4200',
-                longitude: '28.3500',
+                latitude: '-12.1750',
+                longitude: '26.3920',
                 catchmentRadiusKm: '6.0',
                 capacity: '500',
                 campusType: 'BRANCH',
@@ -450,8 +451,8 @@ export default function GisCampusesPage() {
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div>
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Catchment Feeder Belt</span>
-            <div className="text-2xl font-black text-slate-900 mt-1">~28.5 km</div>
-            <span className="text-[11px] text-indigo-600 font-medium">Lusaka Urban & Peri-Urban Coverage</span>
+            <div className="text-2xl font-black text-slate-900 mt-1">~21.0 km</div>
+            <span className="text-[11px] text-indigo-600 font-medium">Solwezi Urban & Kansanshi Mine Corridor</span>
           </div>
           <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
             <MapPin className="w-6 h-6" />
@@ -956,7 +957,7 @@ export default function GisCampusesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-base font-bold text-slate-900">Pairwise Inter-Campus Distance Matrix</h2>
-                <p className="text-xs text-slate-500 mt-0.5">Calculated using the Haversine great-circle formula with local urban transit buffer times for Lusaka.</p>
+                <p className="text-xs text-slate-500 mt-0.5">Calculated using the Haversine great-circle formula with local Solwezi terrain buffer times.</p>
               </div>
               <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                 {distanceMatrix.length} Inter-Branch Corridors
@@ -1045,7 +1046,7 @@ export default function GisCampusesPage() {
               Learner Feeder Zone Lookup
             </h3>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Select a residential neighborhood in Lusaka or provide applicant GPS coordinates to determine the nearest school branch and catchment compliance.
+              Select a residential neighborhood in Solwezi or provide applicant GPS coordinates to determine the nearest school branch and catchment compliance.
             </p>
 
             <div className="space-y-3 pt-2 text-xs">
