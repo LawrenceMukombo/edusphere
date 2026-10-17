@@ -28,6 +28,7 @@ import {
   Info,
 } from 'lucide-react';
 import { CampusGisItem } from '@/components/gis/CampusMap';
+import { useCampus } from '@/components/CampusContext';
 
 // Dynamically import Leaflet Map to avoid SSR errors
 const CampusMap = dynamic(() => import('@/components/gis/CampusMap'), {
@@ -52,6 +53,7 @@ interface DistanceMatrixItem {
 }
 
 export default function GisCampusesPage() {
+  const { selectedCampus: globalCampus } = useCampus();
   const [activeTab, setActiveTab] = useState<'MAP' | 'BRANCHES' | 'DISTANCE' | 'CALCULATOR'>('MAP');
   const [campuses, setCampuses] = useState<CampusGisItem[]>([]);
   const [distanceMatrix, setDistanceMatrix] = useState<DistanceMatrixItem[]>([]);
@@ -63,6 +65,19 @@ export default function GisCampusesPage() {
   const [showCatchmentZones, setShowCatchmentZones] = useState(true);
   const [showTransportRoutes, setShowTransportRoutes] = useState(true);
   const [pickedLocation, setPickedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  // Synchronize map selection with top navigation campus switcher
+  useEffect(() => {
+    if (campuses.length > 0) {
+      if (globalCampus === 'MUSHITALA' || globalCampus === 'KANSANSHI') {
+        const found = campuses.find((c) => c.name.includes('Mushitala') || c.code === 'MSC');
+        if (found) setSelectedCampus(found);
+      } else if (globalCampus === 'URBAN') {
+        const found = campuses.find((c) => c.name.includes('Urban') || c.code === 'URB');
+        if (found) setSelectedCampus(found);
+      }
+    }
+  }, [globalCampus, campuses]);
 
   // Nearest Campus Calculator state
   const [calculatorInput, setCalculatorInput] = useState({

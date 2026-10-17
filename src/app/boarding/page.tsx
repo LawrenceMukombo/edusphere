@@ -28,20 +28,23 @@ import {
   Layers,
   ChevronRight,
   Sparkles,
+  Sun,
 } from 'lucide-react';
 import { useCampus } from '@/components/CampusContext';
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { LegacyLogo } from '@/components/LegacyLogo';
 import {
-  LEGACY_SOLWEZI_BALANCES,
+  generateLegacyLearners,
   LegacyLearnerBalance,
   AccommodationHistoryRecord,
   HistoricalFeeRecord,
   HistoricalAcademicRecord,
 } from '@/server/services/legacySchoolData';
 
+const ALL_LEARNERS = generateLegacyLearners(478);
+
 export default function BoardingVillagePage() {
-  const { selectedCampus } = useCampus();
+  const { selectedCampus, setSelectedCampus } = useCampus();
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'MOPANI' | 'MUKWA' | 'ALL_STUDENTS'>('OVERVIEW');
   const [selectedStudent, setSelectedStudent] = useState<LegacyLearnerBalance | null>(null);
   const [dossierTab, setDossierTab] = useState<'ACCOMMODATION' | 'FEES' | 'ACADEMICS' | 'HEALTH' | 'LETTERHEAD'>('ACCOMMODATION');
@@ -50,12 +53,12 @@ export default function BoardingVillagePage() {
 
   // Filter students based on campus selection and filters
   const filteredStudents = useMemo(() => {
-    let list = LEGACY_SOLWEZI_BALANCES;
+    let list = ALL_LEARNERS;
 
-    if (selectedCampus === 'MUSHITALA') {
-      list = list.filter((l) => l.campusName.includes('Mushitala'));
-    } else if (selectedCampus === 'KANSANSHI') {
-      list = list.filter((l) => l.campusName.includes('Kansanshi'));
+    if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
+      list = list.filter((l) => l.campusName.includes('Mushitala') || l.campusName.includes('Kansanshi'));
+    } else if (selectedCampus === 'URBAN') {
+      list = list.filter((l) => l.campusName.includes('Urban'));
     }
 
     if (typeFilter !== 'ALL') {
@@ -251,6 +254,30 @@ export default function BoardingVillagePage() {
           </button>
         </div>
       </div>
+
+      {/* Urban Campus Notice Banner when URBAN is selected */}
+      {selectedCampus === 'URBAN' && (
+        <div className="bg-sky-50 border border-sky-200 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-800 flex items-center justify-center shrink-0">
+              <Sun className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sky-950 text-sm">Urban Campus (Solwezi Central) — ECE & Primary Day School</h3>
+              <p className="text-xs text-sky-800 mt-0.5">
+                Urban Campus operates exclusively as a Day School for Early Childhood and Primary grades. The dedicated Boarding Village facilities (Mopani Boys Hall & Mukwa Girls Hall) are located at <strong>Mushitala Campus (Near Kansanshi)</strong>.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedCampus('MUSHITALA')}
+            className="px-4 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-bold text-xs shrink-0 shadow-xs transition"
+          >
+            Switch to Mushitala Boarding Wing
+          </button>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

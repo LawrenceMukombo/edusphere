@@ -41,9 +41,11 @@ export async function GET(req: Request) {
       entries = [];
     }
 
+    const campus = searchParams.get('campus') || 'ALL';
+
     // If database has no entries or failed, supply rich Legacy School Solwezi ledger fixtures
     if (!entries || entries.length === 0) {
-      const mapped = LEGACY_FEE_TRANSACTIONS.map((txn, index) => ({
+      let mapped = LEGACY_FEE_TRANSACTIONS.map((txn, index) => ({
         id: txn.id,
         organisationId: orgId || 'EDS-ZM-SOL-001',
         learnerId: txn.studentNumber,
@@ -68,10 +70,27 @@ export async function GET(req: Request) {
         campusName: txn.campusName,
         gradeName: txn.gradeName,
       }));
-      return NextResponse.json({ success: true, data: mapped });
+
+      if (campus && campus !== 'ALL') {
+        if (campus === 'MUSHITALA' || campus === 'KANSANSHI') {
+          mapped = mapped.filter((t) => t.campusName.includes('Mushitala') || t.campusName.includes('Kansanshi'));
+        } else if (campus === 'URBAN') {
+          mapped = mapped.filter((t) => t.campusName.includes('Urban') || t.campusName.includes('Mushitala Day'));
+        }
+      }
+
+      return NextResponse.json({ success: true, data: mapped, totalCount: mapped.length });
     }
 
-    return NextResponse.json({ success: true, data: entries });
+    if (campus && campus !== 'ALL') {
+      if (campus === 'MUSHITALA' || campus === 'KANSANSHI') {
+        entries = entries.filter((e) => e.campusName?.includes('Mushitala') || e.campusName?.includes('Kansanshi'));
+      } else if (campus === 'URBAN') {
+        entries = entries.filter((e) => e.campusName?.includes('Urban'));
+      }
+    }
+
+    return NextResponse.json({ success: true, data: entries, totalCount: entries.length });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }

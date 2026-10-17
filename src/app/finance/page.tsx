@@ -1,7 +1,9 @@
 // src/app/finance/page.tsx — Transparent Financial Inflows, Ledger & Operational Expenditures
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+
+// ... other imports ...
 import {
   CreditCard,
   Receipt as ReceiptIcon,
@@ -30,6 +32,7 @@ import {
   Bus,
   Layers,
   Check,
+  RotateCcw,
 } from 'lucide-react';
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { InteractiveChart } from '@/components/InteractiveChart';
@@ -118,14 +121,18 @@ export default function FinancePage() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
+  // Drilldown & Interactive Cross-Filtering State
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'CLEARED' | 'PARTIAL' | 'ARREARS' | 'CHRONIC_ARREARS'>('ALL');
+  const [selectedChartClass, setSelectedChartClass] = useState<string | null>(null);
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
       const [balRes, ledRes, expRes, repRes] = await Promise.all([
         fetch(`/api/finance/balances?campus=${selectedCampus}`),
-        fetch('/api/finance/ledger'),
+        fetch(`/api/finance/ledger?campus=${selectedCampus}`),
         fetch(`/api/finance/expenditures?campusId=${selectedCampus}`),
-        fetch('/api/finance/reports'),
+        fetch(`/api/finance/reports?campus=${selectedCampus}`),
       ]);
 
       const [balJson, ledJson, expJson, repJson] = await Promise.all([
@@ -147,8 +154,52 @@ export default function FinancePage() {
   };
 
   useEffect(() => {
+    // Reset any local chart filter when campus changes so clean campus overview is presented
+    setSelectedChartClass(null);
     fetchData();
   }, [selectedCampus]);
+
+  // Dynamic Financial Calculations from current campus data
+  const totalBilled = useMemo(() => learnerBalances.reduce((sum, b) => sum + b.totalBilled, 0), [learnerBalances]);
+  const totalCollected = useMemo(() => learnerBalances.reduce((sum, b) => sum + b.totalPaid, 0), [learnerBalances]);
+  const totalArrears = useMemo(() => learnerBalances.reduce((sum, b) => sum + b.balance, 0), [learnerBalances]);
+  const recoveryRate = totalBilled > 0 ? ((totalCollected / totalBilled) * 100).toFixed(1) : '0';
+  const totalDisbursed = useMemo(() => expenditures.filter((e) => e.status === 'DISBURSED').reduce((sum, e) => sum + e.amountZMW, 0), [expenditures]);
+  const netSurplus = totalCollected - totalDisbursed;
+
+  const clearedCount = useMemo(() => learnerBalances.filter((b) => b.financialStatus === 'CLEARED').length, [learnerBalances]);
+  const partialCount = useMemo(() => learnerBalances.filter((b) => b.financialStatus === 'PARTIAL').length, [learnerBalances]);
+  const arrearsCount = useMemo(() => learnerBalances.filter((b) => b.financialStatus === 'ARREARS' || b.financialStatus === 'CHRONIC_ARREARS').length, [learnerBalances]);
+
+  // Filtered balances by drilldown status or chart click
+  const displayedBalances = useMemo(() => {
+    let list = learnerBalances;
+    if (statusFilter !== 'ALL') {
+      list = list.filter((b) => b.financialStatus === statusFilter);
+    }
+    if (selectedChartClass) {
+      list = list.filter((b) => b.className.toLowerCase().includes(selectedChartClass.toLowerCase()) || b.stage.toLowerCase().includes(selectedChartClass.toLowerCase()));
+    }
+    return list;
+  }, [learnerBalances, statusFilter, selectedChartClass]);
+
+  // Collections vs Billed by Class for Interactive Chart
+  const collectionsChartData = useMemo(() => {
+    const byClass: Record<string, { billed: number; collected: number; stage: string }> = {};
+    for (const b of learnerBalances) {
+      if (!byClass[b.className]) {
+        byClass[b.className] = { billed: 0, collected: 0, stage: b.stage };
+      }
+      byClass[b.className].billed += b.totalBilled;
+      byClass[b.className].collected += b.totalPaid;
+    }
+    return Object.entries(byClass).map(([cls, data]) => ({
+      label: cls.replace(' (Candidates)', '').replace(' (Senior Candidates)', '').replace(' (ECZ Candidates)', ''),
+      value: data.collected,
+      secondaryValue: data.billed,
+      category: data.stage.replace(/_/g, ' '),
+    })).slice(0, 10);
+  }, [learnerBalances]);
 
   const openLearnerPaymentHistory = (learner: LearnerBalanceRecord) => {
     setSelectedLearnerHistory({
@@ -446,9 +497,6 @@ export default function FinancePage() {
     },
   ];
 
-  const totalDisbursed = expenditures
-    .filter((e) => e.status === 'DISBURSED')
-    .reduce((sum, e) => sum + e.amountZMW, 0);
 
   return (
     <div className="space-y-6">
@@ -497,6 +545,199 @@ export default function FinancePage() {
         </div>
       </div>
 
+      {/* Interactive 6-Card Financial KPI Command Deck */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter('ALL');
+            setSelectedChartClass(null);
+            setActiveTab('balances');
+          }}
+          className={`p-3.5 rounded-2xl border text-left transition transform hover:-translate-y-0.5 ${
+            statusFilter === 'ALL' && !selectedChartClass
+              ? 'bg-blue-900 text-white border-blue-950 shadow-md ring-2 ring-blue-300'
+              : 'bg-white text-slate-900 border-slate-200 hover:border-blue-400 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between text-[11px] font-bold opacity-80 mb-1">
+            <span>Total Invoiced</span>
+            <FileText className="w-3.5 h-3.5" />
+          </div>
+          <p className="text-lg font-black tracking-tight leading-none">
+            K{(totalBilled / 1000).toFixed(0)}k
+          </p>
+          <span className="text-[10px] opacity-75 mt-1 block">
+            {learnerBalances.length} active accounts
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter('CLEARED');
+            setActiveTab('balances');
+          }}
+          className={`p-3.5 rounded-2xl border text-left transition transform hover:-translate-y-0.5 ${
+            statusFilter === 'CLEARED'
+              ? 'bg-emerald-700 text-white border-emerald-800 shadow-md ring-2 ring-emerald-300'
+              : 'bg-white text-slate-900 border-slate-200 hover:border-emerald-400 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between text-[11px] font-bold opacity-80 mb-1">
+            <span>Collected Inflows</span>
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+          </div>
+          <p className="text-lg font-black tracking-tight leading-none text-emerald-600 group-hover:text-white">
+            K{(totalCollected / 1000).toFixed(0)}k
+          </p>
+          <span className="text-[10px] opacity-75 mt-1 block font-semibold">
+            {clearedCount} fully cleared
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter(statusFilter === 'ARREARS' ? 'ALL' : 'ARREARS');
+            setActiveTab('balances');
+          }}
+          className={`p-3.5 rounded-2xl border text-left transition transform hover:-translate-y-0.5 ${
+            statusFilter === 'ARREARS'
+              ? 'bg-rose-700 text-white border-rose-800 shadow-md ring-2 ring-rose-300'
+              : 'bg-white text-slate-900 border-slate-200 hover:border-rose-400 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between text-[11px] font-bold opacity-80 mb-1">
+            <span>Debtors Arrears</span>
+            <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+          </div>
+          <p className="text-lg font-black tracking-tight leading-none text-rose-600">
+            K{(totalArrears / 1000).toFixed(0)}k
+          </p>
+          <span className="text-[10px] opacity-75 mt-1 block font-semibold">
+            {arrearsCount + partialCount} pending balance
+          </span>
+        </button>
+
+        <div className="p-3.5 rounded-2xl border border-slate-200 bg-white shadow-xs">
+          <div className="flex items-center justify-between text-[11px] font-bold text-slate-500 mb-1">
+            <span>Recovery Rate</span>
+            <TrendingUp className="w-3.5 h-3.5 text-blue-600" />
+          </div>
+          <p className="text-lg font-black text-slate-900 tracking-tight leading-none">
+            {recoveryRate}%
+          </p>
+          <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2 overflow-hidden">
+            <div
+              className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
+              style={{ width: `${Math.min(100, Number(recoveryRate))}%` }}
+            />
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab('expenditures')}
+          className={`p-3.5 rounded-2xl border text-left transition transform hover:-translate-y-0.5 ${
+            activeTab === 'expenditures'
+              ? 'bg-amber-600 text-white border-amber-700 shadow-md ring-2 ring-amber-300'
+              : 'bg-white text-slate-900 border-slate-200 hover:border-amber-400 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between text-[11px] font-bold opacity-80 mb-1">
+            <span>Total Outflows</span>
+            <DollarSign className="w-3.5 h-3.5" />
+          </div>
+          <p className="text-lg font-black tracking-tight leading-none text-amber-600">
+            K{(totalDisbursed / 1000).toFixed(0)}k
+          </p>
+          <span className="text-[10px] opacity-75 mt-1 block font-semibold">
+            {expenditures.length} audited vouchers
+          </span>
+        </button>
+
+        <div className="p-3.5 rounded-2xl border border-slate-200 bg-linear-to-br from-blue-50 to-indigo-50 shadow-xs">
+          <div className="flex items-center justify-between text-[11px] font-bold text-blue-800 mb-1">
+            <span>Net Operating Margin</span>
+            <Building2 className="w-3.5 h-3.5 text-blue-600" />
+          </div>
+          <p className="text-lg font-black text-blue-950 tracking-tight leading-none">
+            K{(netSurplus / 1000).toFixed(0)}k
+          </p>
+          <span className="text-[10px] text-emerald-700 font-bold mt-1 block flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+            Audited Surplus
+          </span>
+        </div>
+      </div>
+
+      {/* Interactive Drilldown Collections Chart */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+          <div>
+            <h3 className="text-sm font-bold text-slate-900">
+              Interactive Revenue Collections & Billing Breakdown by Class
+            </h3>
+            <p className="text-xs text-slate-500">
+              Click any class bar or category segment below to drill down and filter learner accounts instantly.
+            </p>
+          </div>
+
+          {(statusFilter !== 'ALL' || selectedChartClass !== null) && (
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter('ALL');
+                setSelectedChartClass(null);
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset Drilldowns</span>
+            </button>
+          )}
+        </div>
+
+        <InteractiveChart
+          title=""
+          data={collectionsChartData}
+          type="bar"
+          valuePrefix="K"
+          primaryLabel="Collected (ZMW)"
+          secondaryLabel="Billed (ZMW)"
+          onItemClick={(item) => {
+            setSelectedChartClass(item.label === selectedChartClass ? null : item.label);
+            setActiveTab('balances');
+            showToast(`Drilling down into ${item.label} accounts.`);
+          }}
+        />
+
+        {/* Active Filter Chips */}
+        {(statusFilter !== 'ALL' || selectedChartClass !== null) && (
+          <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap text-xs">
+            <span className="font-bold text-slate-500">Active Drilldowns:</span>
+            {statusFilter !== 'ALL' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-900 font-bold border border-blue-200">
+                Status: {statusFilter}
+                <button type="button" onClick={() => setStatusFilter('ALL')} className="hover:text-rose-600">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            {selectedChartClass !== null && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-900 font-bold border border-indigo-200">
+                Class: {selectedChartClass}
+                <button type="button" onClick={() => setSelectedChartClass(null)} className="hover:text-rose-600">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            )}
+            <span className="text-slate-400 font-medium">({displayedBalances.length} learners matching)</span>
+          </div>
+        )}
+      </div>
+
       {/* Tabs Navigation */}
       <div className="flex items-center border-b border-slate-200 gap-6 text-xs font-bold">
         <button
@@ -511,7 +752,7 @@ export default function FinancePage() {
           <CreditCard className="w-4 h-4" />
           <span>Learner Fee Balances</span>
           <span className="px-1.5 py-0.2 bg-blue-100 text-blue-800 rounded text-[10px]">
-            {learnerBalances.length} Accounts
+            {displayedBalances.length} Accounts
           </span>
         </button>
 
@@ -565,9 +806,9 @@ export default function FinancePage() {
       {activeTab === 'balances' && (
         <div className="space-y-4">
           <EnterpriseTable
-            data={learnerBalances}
+            data={displayedBalances}
             columns={balanceColumns}
-            title="Student Fee Ledger & Debtors Ageing"
+            title={`Student Fee Ledger & Debtors Ageing — ${campusInfo.name}`}
             description="Billing, recovery, and ageing breakdown across Day and Boarding programs."
             searchPlaceholder="Search by student name, ID, or class..."
             exportFilename="legacy-school-balances"

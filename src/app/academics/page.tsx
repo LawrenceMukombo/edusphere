@@ -15,16 +15,18 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
+import { useCampus } from '@/components/CampusContext';
 
 export default function AcademicsPage() {
+  const { selectedCampus, campusInfo } = useCampus();
   const [reportCards, setReportCards] = useState<any[]>([]);
   const [selectedReport, setSelectedReport] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Load sample report cards from database or state
   useEffect(() => {
-    // Fetch students to display report card options
-    fetch('/api/students')
+    setIsLoading(true);
+    fetch(`/api/students?campusId=${selectedCampus}`)
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.data.length > 0) {
@@ -42,10 +44,12 @@ export default function AcademicsPage() {
             principalRemarks: 'Approved for progression with honours.',
           }));
           setReportCards(sampleReports);
+        } else {
+          setReportCards([]);
         }
       })
       .finally(() => setIsLoading(false));
-  }, []);
+  }, [selectedCampus]);
 
   const handlePublish = (id: string) => {
     setReportCards((prev) =>

@@ -15,7 +15,13 @@ export async function GET(req: Request) {
     let list = expendituresStore;
 
     if (campusId && campusId !== 'ALL') {
-      list = list.filter((e) => e.campusId === campusId || e.campusId === 'CENTRAL');
+      if (campusId === 'MUSHITALA' || campusId === 'KANSANSHI' || campusId === 'LSS-MSC' || campusId === 'LSS-KBC') {
+        list = list.filter((e) => e.campusId === 'LSS-MSC' || e.campusId === 'LSS-KBC' || e.campusId === 'CENTRAL' || e.campusName.includes('Mushitala') || e.campusName.includes('Kansanshi'));
+      } else if (campusId === 'URBAN' || campusId === 'LSS-URB' || campusId === 'LSS-MDC') {
+        list = list.filter((e) => e.campusId === 'LSS-URB' || e.campusId === 'LSS-MDC' || e.campusId === 'CENTRAL' || e.campusName.includes('Urban'));
+      } else {
+        list = list.filter((e) => e.campusId === campusId || e.campusId === 'CENTRAL');
+      }
     }
 
     if (category && category !== 'ALL') {

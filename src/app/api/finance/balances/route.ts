@@ -135,13 +135,24 @@ const LEGACY_SOLWEZI_BALANCES = [
   },
 ];
 
+import { generateLegacyLearners } from '@/server/services/legacySchoolData';
+
+let cachedLearners: any[] | null = null;
+function getLearnersList() {
+  if (!cachedLearners) {
+    cachedLearners = generateLegacyLearners(478);
+  }
+  return cachedLearners;
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const orgCode = searchParams.get('orgCode');
     const classId = searchParams.get('classId') || undefined;
     const search = searchParams.get('search') || undefined;
-    const campus = searchParams.get('campus');
+    const campus = searchParams.get('campus') || 'ALL';
+    const status = searchParams.get('status') || undefined;
 
     const token = extractAuthHeader(req.headers.get('authorization'));
     const session = token ? verifyToken(token) : null;
@@ -166,13 +177,16 @@ export async function GET(req: Request) {
     }
 
     if (!balances || balances.length === 0) {
-      let result = LEGACY_SOLWEZI_BALANCES;
+      let result = [...getLearnersList()];
       if (campus && campus !== 'ALL') {
-        if (campus === 'MUSHITALA') {
-          result = result.filter((b) => b.campusName.includes('Mushitala'));
-        } else if (campus === 'KANSANSHI') {
-          result = result.filter((b) => b.campusName.includes('Kansanshi'));
+        if (campus === 'MUSHITALA' || campus === 'KANSANSHI' || campus === 'LSS-MSC' || campus === 'LSS-KBC') {
+          result = result.filter((b) => b.campusName.includes('Mushitala') || b.campusName.includes('Kansanshi'));
+        } else if (campus === 'URBAN' || campus === 'LSS-URB' || campus === 'LSS-MDC') {
+          result = result.filter((b) => b.campusName.includes('Urban'));
         }
+      }
+      if (status && status !== 'ALL') {
+        result = result.filter((b) => b.financialStatus === status);
       }
       if (search) {
         const q = search.toLowerCase();
@@ -183,10 +197,20 @@ export async function GET(req: Request) {
             b.className.toLowerCase().includes(q)
         );
       }
-      return NextResponse.json({ success: true, data: result });
+      return NextResponse.json({ success: true, data: result, totalCount: result.length });
     }
 
-    return NextResponse.json({ success: true, data: balances });
+    // If database returned records, apply campus filtering
+    let filteredBalances = balances;
+    if (campus && campus !== 'ALL') {
+      if (campus === 'MUSHITALA' || campus === 'KANSANSHI') {
+        filteredBalances = filteredBalances.filter((b) => b.campusName?.includes('Mushitala') || b.campusName?.includes('Kansanshi'));
+      } else if (campus === 'URBAN') {
+        filteredBalances = filteredBalances.filter((b) => b.campusName?.includes('Urban'));
+      }
+    }
+
+    return NextResponse.json({ success: true, data: filteredBalances, totalCount: filteredBalances.length });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }

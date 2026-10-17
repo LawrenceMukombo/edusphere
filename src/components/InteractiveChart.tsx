@@ -15,24 +15,30 @@ interface InteractiveChartProps {
   title: string;
   subtitle?: string;
   data: ChartDataPoint[];
+  type?: string;
   primaryColor?: string;
   secondaryColor?: string;
   primaryLabel?: string;
   secondaryLabel?: string;
   unit?: string;
+  valuePrefix?: string;
   onSelectCategory?: (category: string | null) => void;
+  onItemClick?: (item: ChartDataPoint) => void;
 }
 
 export function InteractiveChart({
   title,
   subtitle,
   data,
+  type,
   primaryColor = '#026fc5',
   secondaryColor = '#eab308',
   primaryLabel = 'Primary',
   secondaryLabel,
   unit = '',
+  valuePrefix = '',
   onSelectCategory,
+  onItemClick,
 }: InteractiveChartProps) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -42,11 +48,20 @@ export function InteractiveChart({
     1
   );
 
-  const handleBarClick = (category?: string) => {
-    if (!category) return;
-    const next = selectedCategory === category ? null : category;
-    setSelectedCategory(next);
-    if (onSelectCategory) onSelectCategory(next);
+  const handleBarClick = (item: ChartDataPoint) => {
+    if (onItemClick) {
+      onItemClick(item);
+    }
+    if (item.category) {
+      const next = selectedCategory === item.category ? null : item.category;
+      setSelectedCategory(next);
+      if (onSelectCategory) onSelectCategory(next);
+    }
+  };
+
+  const clearCategory = () => {
+    setSelectedCategory(null);
+    if (onSelectCategory) onSelectCategory(null);
   };
 
   return (
@@ -82,7 +97,7 @@ export function InteractiveChart({
           <span className="text-[11px] bg-blue-50 text-blue-700 px-2.5 py-0.5 rounded-full font-medium border border-blue-200 flex items-center gap-1">
             Filter: {selectedCategory}
             <button
-              onClick={() => handleBarClick(selectedCategory)}
+              onClick={clearCategory}
               className="text-blue-500 hover:text-blue-800 ml-1 font-bold"
             >
               ×
@@ -109,19 +124,19 @@ export function InteractiveChart({
               }`}
               onMouseEnter={() => setHoveredIdx(idx)}
               onMouseLeave={() => setHoveredIdx(null)}
-              onClick={() => handleBarClick(item.category)}
+              onClick={() => handleBarClick(item)}
             >
               {/* Tooltip */}
               {isHovered && (
                 <div className="absolute -top-12 z-20 bg-slate-900 text-white text-[11px] rounded-md px-2.5 py-1.5 shadow-lg whitespace-nowrap pointer-events-none">
                   <div className="font-semibold">{item.label}</div>
                   <div>
-                    {primaryLabel}: {unit}
+                    {primaryLabel}: {valuePrefix}{unit}
                     {item.value.toLocaleString()}
                   </div>
                   {item.secondaryValue !== undefined && (
                     <div>
-                      {secondaryLabel}: {unit}
+                      {secondaryLabel}: {valuePrefix}{unit}
                       {item.secondaryValue.toLocaleString()}
                     </div>
                   )}

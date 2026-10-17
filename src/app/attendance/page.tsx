@@ -32,6 +32,7 @@ import {
   LEGACY_BOARDING_EXEATS,
   BoardingRollCall,
   BoardingExeatRecord,
+  generateLegacyLearners,
 } from '@/server/services/legacySchoolData';
 
 interface StudentRosterItem {
@@ -48,6 +49,26 @@ interface StudentRosterItem {
   guardianPhone: string;
   alertSent: boolean;
 }
+
+const GENERATED_ROSTER: StudentRosterItem[] = generateLegacyLearners(478).map((l) => ({
+  id: l.id,
+  studentNumber: l.studentNumber,
+  learnerName: l.learnerName,
+  className: l.className,
+  campusName: l.campusName,
+  studentType: l.studentType,
+  hallName:
+    l.currentAccommodation?.boardingHouseLabel ||
+    (l.studentType === 'BOARDER'
+      ? l.gender === 'MALE'
+        ? 'Mopani Boys Hall'
+        : 'Mukwa Girls Hall'
+      : undefined),
+  status: l.todayAttendance,
+  guardianName: l.guardian.name,
+  guardianPhone: l.guardian.phone,
+  alertSent: l.todayAttendance === 'ABSENT',
+}));
 
 const INITIAL_ROSTER: StudentRosterItem[] = [
   {
@@ -159,7 +180,7 @@ export default function AttendancePage() {
   const [activeTab, setActiveTab] = useState<'REGISTER' | 'BOARDING_ROLLCALL' | 'EXEATS' | 'ANALYTICS'>('REGISTER');
 
   // Roster state
-  const [roster, setRoster] = useState<StudentRosterItem[]>(INITIAL_ROSTER);
+  const [roster, setRoster] = useState<StudentRosterItem[]>(GENERATED_ROSTER);
   const [selectedClass, setSelectedClass] = useState('ALL');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -203,8 +224,8 @@ export default function AttendancePage() {
 
   // Filter roster by selected campus
   const filteredRoster = roster.filter((r) => {
-    if (selectedCampus === 'MUSHITALA' && !r.campusName.includes('Mushitala')) return false;
-    if (selectedCampus === 'KANSANSHI' && !r.campusName.includes('Kansanshi')) return false;
+    if ((selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') && !r.campusName.includes('Mushitala') && !r.campusName.includes('Kansanshi')) return false;
+    if (selectedCampus === 'URBAN' && !r.campusName.includes('Urban')) return false;
     if (selectedClass !== 'ALL' && r.className !== selectedClass) return false;
     return true;
   });
@@ -218,8 +239,8 @@ export default function AttendancePage() {
   const markAllPresent = () => {
     setRoster((prev) =>
       prev.map((s) => {
-        if (selectedCampus === 'MUSHITALA' && !s.campusName.includes('Mushitala')) return s;
-        if (selectedCampus === 'KANSANSHI' && !s.campusName.includes('Kansanshi')) return s;
+        if ((selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') && !s.campusName.includes('Mushitala') && !s.campusName.includes('Kansanshi')) return s;
+        if (selectedCampus === 'URBAN' && !s.campusName.includes('Urban')) return s;
         return { ...s, status: 'PRESENT' };
       })
     );

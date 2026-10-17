@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
+import { useCampus } from '@/components/CampusContext';
 import {
   UserPlus,
   Eye,
@@ -35,6 +36,7 @@ interface LearnerRecord {
 }
 
 export default function AdmissionsPage() {
+  const { selectedCampus, campusInfo } = useCampus();
   const [learners, setLearners] = useState<LearnerRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +65,7 @@ export default function AdmissionsPage() {
   const fetchLearners = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/students');
+      const res = await fetch(`/api/students?campusId=${selectedCampus}`);
       const json = await res.json();
       if (json.success) {
         setLearners(json.data);
@@ -79,7 +81,7 @@ export default function AdmissionsPage() {
 
   useEffect(() => {
     fetchLearners();
-  }, []);
+  }, [selectedCampus]);
 
   const openLearnerProfile = async (id: string) => {
     setProfileLoading(true);
