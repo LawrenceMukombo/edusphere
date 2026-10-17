@@ -61,8 +61,8 @@ const GENERATED_ROSTER: StudentRosterItem[] = generateLegacyLearners(478).map((l
     l.currentAccommodation?.boardingHouseLabel ||
     (l.studentType === 'BOARDER'
       ? l.gender === 'MALE'
-        ? 'Mopani Boys Hall'
-        : 'Mukwa Girls Hall'
+        ? 'Kansanshi Boys Boarding Hall'
+        : 'Kalumbila Girls Boarding Hall'
       : undefined),
   status: l.todayAttendance,
   guardianName: l.guardian.name,
@@ -78,7 +78,7 @@ const INITIAL_ROSTER: StudentRosterItem[] = [
     className: 'Form 4 Green',
     campusName: 'Kansanshi Boarding Campus',
     studentType: 'BOARDER',
-    hallName: 'Mopani Boys Hall',
+    hallName: 'Kansanshi Boys Boarding Hall',
     status: 'PRESENT',
     guardianName: 'Eng. Chileshe Mulenga',
     guardianPhone: '+260 977 401928',
@@ -91,7 +91,7 @@ const INITIAL_ROSTER: StudentRosterItem[] = [
     className: 'Form 3 Blue',
     campusName: 'Kansanshi Boarding Campus',
     studentType: 'BOARDER',
-    hallName: 'Mukwa Girls Hall',
+    hallName: 'Kalumbila Girls Boarding Hall',
     status: 'PRESENT',
     guardianName: 'Mrs. Joyce Mwape',
     guardianPhone: '+260 966 883910',
@@ -116,7 +116,7 @@ const INITIAL_ROSTER: StudentRosterItem[] = [
     className: 'Form 2 Gold',
     campusName: 'Kansanshi Boarding Campus',
     studentType: 'BOARDER',
-    hallName: 'Mukwa Girls Hall',
+    hallName: 'Kalumbila Girls Boarding Hall',
     status: 'ABSENT',
     guardianName: 'Dr. Frank Kasonde',
     guardianPhone: '+260 971 223940',
@@ -141,7 +141,7 @@ const INITIAL_ROSTER: StudentRosterItem[] = [
     className: 'Form 5 Sciences',
     campusName: 'Kansanshi Boarding Campus',
     studentType: 'BOARDER',
-    hallName: 'Mopani Boys Hall',
+    hallName: 'Kansanshi Boys Boarding Hall',
     status: 'LATE',
     arrivalMinutesLate: 15,
     guardianName: 'Mr. Kennedy Chiluba',
@@ -167,7 +167,7 @@ const INITIAL_ROSTER: StudentRosterItem[] = [
     className: 'Form 1 Alpha',
     campusName: 'Kansanshi Boarding Campus',
     studentType: 'BOARDER',
-    hallName: 'Mopani Boys Hall',
+    hallName: 'Kansanshi Boys Boarding Hall',
     status: 'EXCUSED',
     guardianName: 'Mr. Peter Musonda',
     guardianPhone: '+260 968 114920',
@@ -194,7 +194,7 @@ export default function AttendancePage() {
   const [exeatForm, setExeatForm] = useState({
     studentName: '',
     studentNumber: '',
-    hallName: 'Mopani Boys Hall',
+    hallName: 'Kansanshi Boys Boarding Hall',
     grade: 'Form 3 Blue',
     reason: 'Family weekend in Solwezi Mess area',
     destination: 'Solwezi Town',
@@ -206,7 +206,7 @@ export default function AttendancePage() {
   // Roll-Call modal state
   const [showRollCallModal, setShowRollCallModal] = useState(false);
   const [rollCallForm, setRollCallForm] = useState({
-    hallName: 'Mopani Boys Boarding Hall',
+    hallName: 'Kansanshi Boys Boarding Hall',
     callType: 'EVENING_PREP' as const,
     scheduledTime: '18:30',
     totalBoarders: 162,
@@ -712,7 +712,7 @@ export default function AttendancePage() {
               <div className="flex justify-between items-start">
                 <div>
                   <span className="text-indigo-200 text-xs font-bold uppercase tracking-wider">Boys Dormitory Wing</span>
-                  <h3 className="text-xl font-black mt-1">Mopani Boys Boarding Hall</h3>
+                  <h3 className="text-xl font-black mt-1">Kansanshi Boys Boarding Hall</h3>
                   <span className="text-xs text-indigo-300">Warden: Mr. Kelvin Phiri (+260 967 288578)</span>
                 </div>
                 <span className="px-2.5 py-1 rounded-lg bg-indigo-700 text-amber-300 font-bold text-xs">
@@ -739,7 +739,7 @@ export default function AttendancePage() {
               <div className="flex justify-between items-start">
                 <div>
                   <span className="text-indigo-200 text-xs font-bold uppercase tracking-wider">Girls Dormitory Wing</span>
-                  <h3 className="text-xl font-black mt-1">Mukwa Girls Boarding Hall</h3>
+                  <h3 className="text-xl font-black mt-1">Kalumbila Girls Boarding Hall</h3>
                   <span className="text-xs text-indigo-300">Senior Matron: Mrs. Beatrice Kalenga (+260 978 440192)</span>
                 </div>
                 <span className="px-2.5 py-1 rounded-lg bg-indigo-800 text-amber-300 font-bold text-xs">
@@ -896,8 +896,8 @@ export default function AttendancePage() {
                     onChange={(e) => setExeatForm({ ...exeatForm, hallName: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-bold"
                   >
-                    <option value="Mopani Boys Hall">Mopani Boys Hall</option>
-                    <option value="Mukwa Girls Hall">Mukwa Girls Hall</option>
+                    <option value="Kansanshi Boys Boarding Hall">Kansanshi Boys Boarding Hall</option>
+                    <option value="Kalumbila Girls Boarding Hall">Kalumbila Girls Boarding Hall</option>
                   </select>
                 </div>
               </div>
@@ -994,8 +994,8 @@ export default function AttendancePage() {
                     onChange={(e) => setRollCallForm({ ...rollCallForm, hallName: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-bold"
                   >
-                    <option value="Mopani Boys Boarding Hall">Mopani Boys Hall</option>
-                    <option value="Mukwa Girls Boarding Hall">Mukwa Girls Hall</option>
+                    <option value="Kansanshi Boys Boarding Hall">Kansanshi Boys Boarding Hall</option>
+                    <option value="Kalumbila Girls Boarding Hall">Kalumbila Girls Boarding Hall</option>
                   </select>
                 </div>
                 <div>

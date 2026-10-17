@@ -23,8 +23,8 @@ const SOLWEZI_CAMPUSES_GIS = [
     campusType: 'SECONDARY_BOARDING_WING',
     landAreaHectares: 5.4,
     facilities: [
-      'Mopani Boys Boarding Hall (180 Beds)',
-      'Mukwa Girls Boarding Hall (170 Beds)',
+      'Kansanshi Boys Boarding Hall (180 Beds)',
+      'Kalumbila Girls Boarding Hall (170 Beds)',
       'Central Dining Hall & Industrial Kitchen',
       '250kVA Standby Low-Emission Diesel Generator',
       'Advanced STEM Physics, Chemistry & Biology Labs',

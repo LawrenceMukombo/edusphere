@@ -448,12 +448,12 @@ export default function HomePage() {
 
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <span className="text-slate-500 block text-[10px] uppercase font-bold">Mopani Boys Hall</span>
+                <span className="text-slate-500 block text-[10px] uppercase font-bold">Kansanshi Boys Hall</span>
                 <span className="text-base font-black text-slate-900 mt-0.5 block">162 / 180 Beds</span>
                 <span className="text-[10px] text-emerald-600 font-semibold">90% Occupied • Warden: K. Phiri</span>
               </div>
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <span className="text-slate-500 block text-[10px] uppercase font-bold">Mukwa Girls Hall</span>
+                <span className="text-slate-500 block text-[10px] uppercase font-bold">Kalumbila Girls Hall</span>
                 <span className="text-base font-black text-slate-900 mt-0.5 block">156 / 170 Beds</span>
                 <span className="text-[10px] text-emerald-600 font-semibold">91.7% Occupied • Matron: B. Kalenga</span>
               </div>

@@ -44,7 +44,7 @@ export async function POST(req: Request) {
         passNumber: `EXT-2026-${String(exeatsStore.length + 84).padStart(3, '0')}`,
         studentNumber: body.studentNumber || 'LSS-2026-0000',
         studentName: body.studentName,
-        hallName: body.hallName || 'Mopani Boys Hall',
+        hallName: body.hallName || 'Kansanshi Boys Boarding Hall',
         grade: body.grade || 'Form 3',
         reason: body.reason || 'Medical / Family visit',
         destination: body.destination || 'Solwezi Town',
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     if (body.action === 'RECORD_ROLLCALL') {
       const newRollCall: BoardingRollCall = {
         id: `rc-${Date.now()}`,
-        hallName: body.hallName || 'Mopani Boys Boarding Hall',
+        hallName: body.hallName || 'Kansanshi Boys Boarding Hall',
         callType: body.callType || 'EVENING_PREP',
         callTypeLabel: body.callTypeLabel || 'Evening Prep Study Check',
         scheduledTime: body.scheduledTime || '18:30',

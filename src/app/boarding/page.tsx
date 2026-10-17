@@ -45,7 +45,7 @@ const ALL_LEARNERS = generateLegacyLearners(478);
 
 export default function BoardingVillagePage() {
   const { selectedCampus, setSelectedCampus } = useCampus();
-  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'MOPANI' | 'MUKWA' | 'ALL_STUDENTS'>('OVERVIEW');
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'KANSANSHI' | 'KALUMBILA' | 'MOPANI' | 'MUKWA' | 'ALL_STUDENTS'>('OVERVIEW');
   const [selectedStudent, setSelectedStudent] = useState<LegacyLearnerBalance | null>(null);
   const [dossierTab, setDossierTab] = useState<'ACCOMMODATION' | 'FEES' | 'ACADEMICS' | 'HEALTH' | 'LETTERHEAD'>('ACCOMMODATION');
   const [houseFilter, setHouseFilter] = useState<'ALL' | 'MOPANI_BOYS_HALL' | 'MUKWA_GIRLS_HALL'>('ALL');
@@ -229,20 +229,26 @@ export default function BoardingVillagePage() {
             Village Overview
           </button>
           <button
-            onClick={() => setActiveTab('MOPANI')}
+            onClick={() => {
+              setActiveTab('KANSANSHI');
+              setHouseFilter('MOPANI_BOYS_HALL');
+            }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-              activeTab === 'MOPANI' ? 'bg-blue-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              activeTab === 'KANSANSHI' || activeTab === 'MOPANI' ? 'bg-blue-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Mopani Boys Hall
+            Kansanshi Boys Hall
           </button>
           <button
-            onClick={() => setActiveTab('MUKWA')}
+            onClick={() => {
+              setActiveTab('KALUMBILA');
+              setHouseFilter('MUKWA_GIRLS_HALL');
+            }}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-              activeTab === 'MUKWA' ? 'bg-blue-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              activeTab === 'KALUMBILA' || activeTab === 'MUKWA' ? 'bg-blue-900 text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            Mukwa Girls Hall
+            Kalumbila Girls Hall
           </button>
           <button
             onClick={() => setActiveTab('ALL_STUDENTS')}
@@ -265,7 +271,7 @@ export default function BoardingVillagePage() {
             <div>
               <h3 className="font-bold text-sky-950 text-sm">Urban Campus (Solwezi Central) — ECE & Primary Day School</h3>
               <p className="text-xs text-sky-800 mt-0.5">
-                Urban Campus operates exclusively as a Day School for Early Childhood and Primary grades. The dedicated Boarding Village facilities (Mopani Boys Hall & Mukwa Girls Hall) are located at <strong>Mushitala Campus (Near Kansanshi)</strong>.
+                Urban Campus operates exclusively as a Day School for Early Childhood and Primary grades. The dedicated Boarding Village facilities (Kansanshi Boys Hall & Kalumbila Girls Hall) are located at <strong>Mushitala Campus (Near Kansanshi)</strong>.
               </p>
             </div>
           </div>
@@ -297,10 +303,10 @@ export default function BoardingVillagePage() {
           </div>
         </div>
 
-        {/* Mopani Boys Hall */}
+        {/* Kansanshi Boys Boarding Hall */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Mopani Boys Hall</span>
+            <span>Kansanshi Boys Boarding Hall</span>
             <Building2 className="w-4 h-4 text-blue-600" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
@@ -312,10 +318,10 @@ export default function BoardingVillagePage() {
           </p>
         </div>
 
-        {/* Mukwa Girls Hall */}
+        {/* Kalumbila Girls Boarding Hall */}
         <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs">
           <div className="flex items-center justify-between text-slate-500 text-xs font-semibold">
-            <span>Mukwa Girls Hall</span>
+            <span>Kalumbila Girls Boarding Hall</span>
             <Building2 className="w-4 h-4 text-pink-600" />
           </div>
           <div className="mt-2 flex items-baseline gap-2">
@@ -346,7 +352,7 @@ export default function BoardingVillagePage() {
       {/* Main Content Area */}
       {activeTab === 'OVERVIEW' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Mopani Hall Card */}
+          {/* Kansanshi Hall Card */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
@@ -354,8 +360,8 @@ export default function BoardingVillagePage() {
                   <Building2 className="w-5 h-5" />
                 </span>
                 <div>
-                  <h3 className="font-black text-slate-900 text-base">Mopani Boys Boarding Hall</h3>
-                  <p className="text-xs text-slate-500">Kansanshi Campus • 180 Bed Capacity</p>
+                  <h3 className="font-black text-slate-900 text-base">Kansanshi Boys Boarding Hall</h3>
+                  <p className="text-xs text-slate-500">Mushitala Campus (Near Kansanshi) • 180 Bed Capacity</p>
                 </div>
               </div>
               <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-800 border border-blue-200">
@@ -390,12 +396,12 @@ export default function BoardingVillagePage() {
               }}
               className="w-full py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white text-xs font-bold transition flex items-center justify-center gap-1.5"
             >
-              <span>View All Mopani Resident Boarders</span>
+              <span>View All Kansanshi Resident Boarders</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
 
-          {/* Mukwa Hall Card */}
+          {/* Kalumbila Hall Card */}
           <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
@@ -403,8 +409,8 @@ export default function BoardingVillagePage() {
                   <Building2 className="w-5 h-5" />
                 </span>
                 <div>
-                  <h3 className="font-black text-slate-900 text-base">Mukwa Girls Boarding Hall</h3>
-                  <p className="text-xs text-slate-500">Kansanshi Campus • 170 Bed Capacity</p>
+                  <h3 className="font-black text-slate-900 text-base">Kalumbila Girls Boarding Hall</h3>
+                  <p className="text-xs text-slate-500">Mushitala Campus (Near Kansanshi) • 170 Bed Capacity</p>
                 </div>
               </div>
               <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-pink-50 text-pink-800 border border-pink-200">
@@ -439,7 +445,7 @@ export default function BoardingVillagePage() {
               }}
               className="w-full py-2.5 rounded-xl bg-pink-900 hover:bg-pink-800 text-white text-xs font-bold transition flex items-center justify-center gap-1.5"
             >
-              <span>View All Mukwa Resident Boarders</span>
+              <span>View All Kalumbila Resident Boarders</span>
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -447,7 +453,7 @@ export default function BoardingVillagePage() {
       )}
 
       {/* Directory Table Tab */}
-      {(activeTab === 'ALL_STUDENTS' || activeTab === 'MOPANI' || activeTab === 'MUKWA') && (
+      {(activeTab === 'ALL_STUDENTS' || activeTab === 'KANSANSHI' || activeTab === 'KALUMBILA' || activeTab === 'MOPANI' || activeTab === 'MUKWA') && (
         <div className="space-y-4">
           {/* Quick Filters */}
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
@@ -487,8 +493,8 @@ export default function BoardingVillagePage() {
                 className="px-2.5 py-1 rounded-lg border border-slate-300 text-xs font-bold text-slate-800 bg-white"
               >
                 <option value="ALL">All Houses & Day</option>
-                <option value="MOPANI_BOYS_HALL">Mopani Boys Hall</option>
-                <option value="MUKWA_GIRLS_HALL">Mukwa Girls Hall</option>
+                <option value="MOPANI_BOYS_HALL">Kansanshi Boys Boarding Hall</option>
+                <option value="MUKWA_GIRLS_HALL">Kalumbila Girls Boarding Hall</option>
               </select>
             </div>
           </div>
@@ -500,6 +506,7 @@ export default function BoardingVillagePage() {
             title="Legacy School Solwezi — Student Registry & Dossiers"
             description="Displaying all grades, boarders, and dayscholars with verified histories."
             exportFilename="legacy-school-student-dossiers"
+            onRowClick={(row) => setSelectedStudent(row)}
           />
         </div>
       )}

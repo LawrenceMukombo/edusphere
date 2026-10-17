@@ -55,8 +55,8 @@ export const LEGACY_SCHOOL_PROFILE: LegacySchoolInfo = {
       enrolled: 420,
       hasBoarding: true,
       facilities: [
-        'Mopani Boys Boarding Hall (180 beds)',
-        'Mukwa Girls Boarding Hall (170 beds)',
+        'Kansanshi Boys Boarding Hall (180 beds)',
+        'Kalumbila Girls Boarding Hall (170 beds)',
         'Central Dining Hall & Industrial Kitchen',
         '250kVA Standby Diesel Generator',
         'Advanced STEM Physics, Chemistry & Biology Labs',
@@ -859,11 +859,11 @@ export const LEGACY_STAFF_MEMBERS: LegacyStaffMember[] = [
     firstName: 'Victor',
     lastName: 'Chinyama',
     gender: 'MALE',
-    jobTitle: 'Assistant Housemaster (Mopani Boys Hall)',
+    jobTitle: 'Assistant Housemaster (Kansanshi Boys Hall)',
     department: 'BOARDING_ADMIN',
     departmentLabel: 'Boarding Staff',
     campusId: 'LSS-KBC',
-    campusName: 'Kansanshi Boarding Campus',
+    campusName: 'Mushitala Campus (Near Kansanshi)',
     qualification: 'Certificate in Youth Welfare & Pastoral Care',
     tczNumber: 'TCZ/2021/SEC/52910',
     tczExpiry: '2028-04-30',
@@ -881,7 +881,7 @@ export const LEGACY_STAFF_MEMBERS: LegacyStaffMember[] = [
     firstName: 'Given',
     lastName: 'Musonda',
     gender: 'MALE',
-    jobTitle: 'Assistant Housemaster (Mopani East Wing)',
+    jobTitle: 'Assistant Housemaster (Kansanshi East Wing)',
     department: 'BOARDING_ADMIN',
     departmentLabel: 'Boarding Staff',
     campusId: 'LSS-KBC',
@@ -903,11 +903,11 @@ export const LEGACY_STAFF_MEMBERS: LegacyStaffMember[] = [
     firstName: 'Constance',
     lastName: 'Kangwa',
     gender: 'FEMALE',
-    jobTitle: 'Assistant Boarding Matron (Mukwa Girls Hall)',
+    jobTitle: 'Assistant Boarding Matron (Kalumbila Girls Hall)',
     department: 'BOARDING_ADMIN',
     departmentLabel: 'Boarding Staff',
     campusId: 'LSS-KBC',
-    campusName: 'Kansanshi Boarding Campus',
+    campusName: 'Mushitala Campus (Near Kansanshi)',
     qualification: 'Certificate in Psychosocial Counseling & Child Safeguarding',
     tczNumber: 'NMCZ/EN/2016/4019',
     tczExpiry: '2027-07-31',
@@ -925,7 +925,7 @@ export const LEGACY_STAFF_MEMBERS: LegacyStaffMember[] = [
     firstName: 'Eneless',
     lastName: 'Tembo',
     gender: 'FEMALE',
-    jobTitle: 'Assistant Boarding Matron (Mukwa South Wing)',
+    jobTitle: 'Assistant Boarding Matron (Kalumbila South Wing)',
     department: 'BOARDING_ADMIN',
     departmentLabel: 'Boarding Staff',
     campusId: 'LSS-KBC',
@@ -1380,7 +1380,7 @@ export function generateLegacyLearners(totalCount = 478): LegacyLearnerBalance[]
         const isBoarder = (studentIndex + i) % 10 < 7; // 70% Boarders
         if (isBoarder) {
           studentType = 'BOARDER';
-          hallName = isMale ? 'Mopani Boys Hall' : 'Mukwa Girls Hall';
+          hallName = isMale ? 'Kansanshi Boys Boarding Hall' : 'Kalumbila Girls Boarding Hall';
         }
       }
 
@@ -1448,13 +1448,13 @@ export function generateLegacyLearners(totalCount = 478): LegacyLearnerBalance[]
           : isJunior ? dormsFemaleJunior : dormsFemaleSenior;
         const room = dormList[(studentIndex + i) % dormList.length];
         const bedNum = `Bed-${String((studentIndex % 30) + 1).padStart(2, '0')} (${(studentIndex % 2 === 0 ? 'Lower' : 'Upper')} Bunk)`;
-        const locker = `LCK-${isMale ? 'MOP' : 'MUK'}-${String((studentIndex % 30) + 1).padStart(2, '0')}`;
+        const locker = `LCK-${isMale ? 'KBH' : 'KGH'}-${String((studentIndex % 30) + 1).padStart(2, '0')}`;
         const supervisor = isMale ? 'Mr. Kelvin Phiri (Housemaster)' : 'Mrs. Constance Kangwa (Senior Matron)';
 
         currentAccommodation = {
           isBoarder: true,
           boardingHouse: bHouse,
-          boardingHouseLabel: isMale ? 'Mopani Boys Boarding Hall' : 'Mukwa Girls Boarding Hall',
+          boardingHouseLabel: isMale ? 'Kansanshi Boys Boarding Hall' : 'Kalumbila Girls Boarding Hall',
           wing,
           dormRoom: room,
           bedNumber: bedNum,
@@ -1503,7 +1503,7 @@ export function generateLegacyLearners(totalCount = 478): LegacyLearnerBalance[]
             term: h.t,
             termLabel: `${h.yr} ${h.t}`,
             boardingHouse: isMale ? 'MOPANI_BOYS_HALL' : 'MUKWA_GIRLS_HALL',
-            boardingHouseLabel: isMale ? 'Mopani Boys Boarding Hall' : 'Mukwa Girls Boarding Hall',
+            boardingHouseLabel: isMale ? 'Kansanshi Boys Boarding Hall' : 'Kalumbila Girls Boarding Hall',
             wing: isMale ? (c.yearLevel <= 9 ? 'Junior Wing' : 'Senior Wing') : (c.yearLevel <= 9 ? 'North Wing' : 'South Wing'),
             dormRoom: h.dorm,
             bedNumber: h.bed,
@@ -1693,7 +1693,7 @@ export const LEGACY_EXPENDITURES: ExpenditureRecord[] = [
     category: 'FOOD_BOARDING_RATIONS',
     categoryLabel: 'Food & Boarding Dining Provisions',
     title: 'Fortnightly Beef, Chicken & Dairy Supply for Dining Hall',
-    description: 'Bulk delivery of 450kg prime beef, 300 broiler chickens, 80 crates eggs, 120L pasteurized milk for Mopani & Mukwa boarding halls.',
+    description: 'Bulk delivery of 450kg prime beef, 300 broiler chickens, 80 crates eggs, 120L pasteurized milk for Kansanshi & Kalumbila boarding halls.',
     vendorName: 'Kansanshi Fresh Meat & Agri Supplies',
     vendorTpin: '1002391024',
     amountZMW: 48600.0,
@@ -1948,7 +1948,7 @@ export const LEGACY_STAFF_EVALUATIONS: LegacyEvaluationRecord[] = [
     professionalismScore: 4.8,
     studentOutcomesScore: 4.7,
     overallRating: 'OUTSTANDING',
-    keyStrengths: 'Impeccable hygiene standards in Mukwa Girls Hall; compassionate handling of student sickbay consultations.',
+    keyStrengths: 'Impeccable hygiene standards in Kalumbila Girls Boarding Hall; compassionate handling of student sickbay consultations.',
     developmentAreas: 'Coordination of weekend life-skills and peer mentoring workshops.',
     signedOff: true,
     conductedDate: '2026-10-12',
@@ -1993,7 +1993,7 @@ export const LEGACY_JOB_POSTINGS: LegacyJobPosting[] = [
     id: 'job-001',
     title: 'Senior A-Level Physics & Additional Maths Teacher',
     department: 'Academic Secondary',
-    campusName: 'Kansanshi Boarding Campus',
+    campusName: 'Mushitala Campus (Near Kansanshi)',
     employmentType: 'Full-Time Permanent',
     vacancies: 1,
     closingDate: '2026-11-15',
@@ -2005,19 +2005,19 @@ export const LEGACY_JOB_POSTINGS: LegacyJobPosting[] = [
     id: 'job-002',
     title: 'Assistant Boarding Matron (Night Supervisor)',
     department: 'Boarding Operations',
-    campusName: 'Kansanshi Boarding Campus',
+    campusName: 'Mushitala Campus (Near Kansanshi)',
     employmentType: 'Full-Time Shift',
     vacancies: 1,
     closingDate: '2026-11-20',
     status: 'ACTIVE',
-    description: 'Support Mukwa Girls Hall welfare, nightly roll-call supervision, and medical escort assistance.',
+    description: 'Support Kalumbila Girls Boarding Hall welfare, nightly roll-call supervision, and medical escort assistance.',
     applicantsCount: 9,
   },
   {
     id: 'job-003',
     title: 'Primary Computer Studies & Robotics Instructor',
     department: 'Academic Primary',
-    campusName: 'Mushitala Day Campus',
+    campusName: 'Urban Campus (Solwezi Central)',
     employmentType: 'Full-Time Permanent',
     vacancies: 1,
     closingDate: '2026-11-30',
@@ -2111,7 +2111,7 @@ export interface BoardingRollCall {
 export const LEGACY_BOARDING_ROLLCALLS: BoardingRollCall[] = [
   {
     id: 'rc-001',
-    hallName: 'Mopani Boys Boarding Hall',
+    hallName: 'Kansanshi Boys Boarding Hall',
     callType: 'EVENING_PREP',
     callTypeLabel: 'Evening Prep Roll-Call (18:30 - 20:30)',
     scheduledTime: '18:35',
@@ -2126,7 +2126,7 @@ export const LEGACY_BOARDING_ROLLCALLS: BoardingRollCall[] = [
   },
   {
     id: 'rc-002',
-    hallName: 'Mukwa Girls Boarding Hall',
+    hallName: 'Kalumbila Girls Boarding Hall',
     callType: 'EVENING_PREP',
     callTypeLabel: 'Evening Prep Roll-Call (18:30 - 20:30)',
     scheduledTime: '18:35',
@@ -2141,7 +2141,7 @@ export const LEGACY_BOARDING_ROLLCALLS: BoardingRollCall[] = [
   },
   {
     id: 'rc-003',
-    hallName: 'Mopani Boys Boarding Hall',
+    hallName: 'Kansanshi Boys Boarding Hall',
     callType: 'NIGHT_CURFEW',
     callTypeLabel: 'Night Bed-Check & Lights Out (21:30)',
     scheduledTime: '21:30',
@@ -2156,7 +2156,7 @@ export const LEGACY_BOARDING_ROLLCALLS: BoardingRollCall[] = [
   },
   {
     id: 'rc-004',
-    hallName: 'Mukwa Girls Boarding Hall',
+    hallName: 'Kalumbila Girls Boarding Hall',
     callType: 'NIGHT_CURFEW',
     callTypeLabel: 'Night Bed-Check & Lights Out (21:30)',
     scheduledTime: '21:30',
@@ -2194,7 +2194,7 @@ export const LEGACY_BOARDING_EXEATS: BoardingExeatRecord[] = [
     passNumber: 'EXT-2026-081',
     studentNumber: 'LSS-2026-0142',
     studentName: 'Chileshe Mulenga Jr.',
-    hallName: 'Mopani Boys Hall',
+    hallName: 'Kansanshi Boys Boarding Hall',
     grade: 'Form 4 Green',
     reason: 'Dental appointment & family weekend in Kansanshi Golf Estate',
     destination: 'Plot 14, Golf Estate, Solwezi',
@@ -2210,7 +2210,7 @@ export const LEGACY_BOARDING_EXEATS: BoardingExeatRecord[] = [
     passNumber: 'EXT-2026-082',
     studentNumber: 'LSS-2026-0189',
     studentName: 'Natasha Mwape',
-    hallName: 'Mukwa Girls Hall',
+    hallName: 'Kalumbila Girls Boarding Hall',
     grade: 'Form 3 Blue',
     reason: 'National Junior Chess Championship in Chingola',
     destination: 'Chingola Town Centre',
@@ -2226,7 +2226,7 @@ export const LEGACY_BOARDING_EXEATS: BoardingExeatRecord[] = [
     passNumber: 'EXT-2026-083',
     studentNumber: 'LSS-2026-0205',
     studentName: 'Blessing Kasonde',
-    hallName: 'Mukwa Girls Hall',
+    hallName: 'Kalumbila Girls Boarding Hall',
     grade: 'Form 2 Gold',
     reason: 'Family wedding anniversary in Solwezi Mess area',
     destination: 'Mess Residential, Solwezi',
