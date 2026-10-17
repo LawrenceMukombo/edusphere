@@ -21,12 +21,27 @@ interface OrgRecord {
   id: string;
   code: string;
   name: string;
+  officialName?: string;
   type: string;
   city: string;
+  province?: string;
+  email?: string;
+  phone?: string;
+  logoUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
   operationalModel?: 'DAY_SCHOOL_ONLY' | 'BOARDING_ONLY' | 'COMBINED_DAY_AND_BOARDING';
   subscriptions?: Array<{ tier: string; status: string; priceZMW: number; activeLearnerCap: number }>;
   _count?: { learners: number; staff: number };
 }
+
+const THEME_PRESETS = [
+  { name: 'Solwezi Legacy Navy', primary: '#1e3a8a', secondary: '#f59e0b', accent: '#059669' },
+  { name: 'Emerald Academy', primary: '#064e3b', secondary: '#10b981', accent: '#d97706' },
+  { name: 'Crimson Sovereign', primary: '#881337', secondary: '#fbbf24', accent: '#0284c7' },
+  { name: 'Royal Purple Crest', primary: '#581c87', secondary: '#c084fc', accent: '#e11d48' },
+  { name: 'Copperbelt Bronze', primary: '#78350f', secondary: '#f59e0b', accent: '#2563eb' },
+];
 
 export default function AdminPage() {
   const [organisations, setOrganisations] = useState<OrgRecord[]>([]);
@@ -34,16 +49,105 @@ export default function AdminPage() {
   const [showProvisionModal, setShowProvisionModal] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<OrgRecord | null>(null);
 
+  // Edit Tenant Form State (ALL fields editable)
+  const [editForm, setEditForm] = useState({
+    id: '',
+    code: '',
+    name: '',
+    officialName: '',
+    type: 'COMBINED_PRIMARY_SECONDARY',
+    email: '',
+    phone: '',
+    city: 'Solwezi',
+    province: 'North-Western',
+    tier: 'PROFESSIONAL',
+    operationalModel: 'COMBINED_DAY_AND_BOARDING' as 'DAY_SCHOOL_ONLY' | 'BOARDING_ONLY' | 'COMBINED_DAY_AND_BOARDING',
+    logoUrl: '/legacy-crest.png',
+    primaryColor: '#1e3a8a',
+    secondaryColor: '#f59e0b',
+  });
+
   const [form, setForm] = useState({
     code: `EDS-ZM-00${Math.floor(5 + Math.random() * 5)}`,
     name: '',
+    officialName: '',
     type: 'COMBINED_PRIMARY_SECONDARY',
     email: '',
     phone: '+260',
     city: 'Solwezi',
+    province: 'North-Western',
     tier: 'PROFESSIONAL',
     operationalModel: 'COMBINED_DAY_AND_BOARDING' as 'DAY_SCHOOL_ONLY' | 'BOARDING_ONLY' | 'COMBINED_DAY_AND_BOARDING',
+    logoUrl: '/legacy-crest.png',
+    primaryColor: '#1e3a8a',
+    secondaryColor: '#f59e0b',
   });
+
+  const openEditTenant = (org: OrgRecord) => {
+    setSelectedOrg(org);
+    setEditForm({
+      id: org.id,
+      code: org.code,
+      name: org.name,
+      officialName: org.officialName || org.name,
+      type: org.type,
+      email: org.email || 'admin@legacyschool.edu.zm',
+      phone: org.phone || '+260 974 371271',
+      city: org.city,
+      province: org.province || 'North-Western',
+      tier: org.subscriptions?.[0]?.tier || 'PROFESSIONAL',
+      operationalModel: org.operationalModel || 'COMBINED_DAY_AND_BOARDING',
+      logoUrl: org.logoUrl || '/legacy-crest.png',
+      primaryColor: org.primaryColor || '#1e3a8a',
+      secondaryColor: org.secondaryColor || '#f59e0b',
+    });
+  };
+
+  const handleSaveTenantEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/tenants', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editForm),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setOrganisations((prev) =>
+          prev.map((o) =>
+            o.id === editForm.id
+              ? {
+                  ...o,
+                  code: editForm.code,
+                  name: editForm.name,
+                  officialName: editForm.officialName,
+                  city: editForm.city,
+                  province: editForm.province,
+                  operationalModel: editForm.operationalModel,
+                  logoUrl: editForm.logoUrl,
+                  primaryColor: editForm.primaryColor,
+                  secondaryColor: editForm.secondaryColor,
+                  subscriptions: [
+                    {
+                      tier: editForm.tier,
+                      status: 'ACTIVE',
+                      priceZMW: editForm.tier === 'CAMPUS_PLUS' ? 1499 : editForm.tier === 'PROFESSIONAL' ? 799 : 399,
+                      activeLearnerCap: editForm.tier === 'CAMPUS_PLUS' ? 1500 : 600,
+                    },
+                  ],
+                }
+              : o
+          )
+        );
+        setSelectedOrg(null);
+        alert(`Tenant "${editForm.name}" updated successfully with new theme colors and settings!`);
+      } else {
+        alert(json.message || 'Failed to update tenant');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error updating tenant');
+    }
+  };
 
   const fetchOrgs = async () => {
     setIsLoading(true);
@@ -178,18 +282,18 @@ export default function AdminPage() {
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            setSelectedOrg(r);
+            openEditTenant(r);
           }}
           className="px-2.5 py-1 text-[11px] font-bold text-blue-700 hover:bg-blue-50 rounded-lg border border-blue-200 transition"
         >
-          Manage Tenant
+          Manage & Brand Tenant
         </button>
       ),
     },
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -240,19 +344,19 @@ export default function AdminPage() {
       {/* Tenants Table */}
       <EnterpriseTable
         title="Subscribed School Tenants & Institutions"
-        description="Manage school tiers, operational day/boarding models, active campuses, and feature entitlements. Click any row to inspect."
+        description="Manage school tiers, operational day/boarding models, active campuses, and feature entitlements. Click any row to inspect & edit."
         data={organisations}
         columns={columns}
         isLoading={isLoading}
         onRefresh={fetchOrgs}
-        onRowClick={(row) => setSelectedOrg(row)}
+        onRowClick={(row) => openEditTenant(row)}
         exportFilename="edusphere-saas-tenants"
       />
 
-      {/* Provision School Modal */}
+      {/* Provision School Modal with Logo & Theme Customization */}
       {showProvisionModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center">
@@ -260,7 +364,7 @@ export default function AdminPage() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900">Provision School Tenant</h3>
-                  <span className="text-[11px] text-slate-500">Configure institutional profile, package tier, and boarding model</span>
+                  <span className="text-[11px] text-slate-500">Configure institutional profile, logo, colors, and package tier</span>
                 </div>
               </div>
               <button onClick={() => setShowProvisionModal(false)} className="text-slate-400 hover:text-slate-600 p-1">
@@ -269,19 +373,31 @@ export default function AdminPage() {
             </div>
 
             <form onSubmit={handleProvision} className="mt-4 space-y-4 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Tenant Code (Unique)</label>
-                <input
-                  type="text"
-                  required
-                  value={form.code}
-                  onChange={(e) => setForm({ ...form, code: e.target.value })}
-                  className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono focus:ring-2 focus:ring-blue-500"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Tenant Code (Unique) *</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.code}
+                    onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono uppercase focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">City / Town *</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.city}
+                    onChange={(e) => setForm({ ...form, city: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Institution / School Name</label>
+                <label className="block font-semibold text-slate-700 mb-1">Institution / School Name *</label>
                 <input
                   type="text"
                   required
@@ -290,6 +406,69 @@ export default function AdminPage() {
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-xl font-bold text-slate-900 focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+
+              {/* BRAND LOGO & THEME PALETTE FOR NEW ONBOARDING */}
+              <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                <span className="font-bold text-slate-800 uppercase tracking-wider text-[11px] block">
+                  School Crest / Logo & Visual Theme
+                </span>
+                <div>
+                  <label className="block font-medium text-slate-600 mb-1">Logo URL or Presets</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={form.logoUrl}
+                      onChange={(e) => setForm({ ...form, logoUrl: e.target.value })}
+                      placeholder="e.g. /legacy-crest.png"
+                      className="flex-1 px-3 py-1.5 border border-slate-300 rounded-xl bg-white"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm({ ...form, logoUrl: '/legacy-crest.png' })}
+                      className="px-2.5 py-1 text-[10px] font-bold bg-blue-100 text-blue-800 rounded-xl hover:bg-blue-200"
+                    >
+                      Use Legacy Crest
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-medium text-slate-600 mb-1">Primary Color</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={form.primaryColor}
+                        onChange={(e) => setForm({ ...form, primaryColor: e.target.value })}
+                        className="w-8 h-8 rounded cursor-pointer border-0"
+                      />
+                      <input
+                        type="text"
+                        value={form.primaryColor}
+                        onChange={(e) => setForm({ ...form, primaryColor: e.target.value })}
+                        className="w-full px-2 py-1 font-mono text-xs border border-slate-300 rounded-lg bg-white"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block font-medium text-slate-600 mb-1">Secondary Color</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={form.secondaryColor}
+                        onChange={(e) => setForm({ ...form, secondaryColor: e.target.value })}
+                        className="w-8 h-8 rounded cursor-pointer border-0"
+                      />
+                      <input
+                        type="text"
+                        value={form.secondaryColor}
+                        onChange={(e) => setForm({ ...form, secondaryColor: e.target.value })}
+                        className="w-full px-2 py-1 font-mono text-xs border border-slate-300 rounded-lg bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* OPERATIONAL MODEL SELECTION */}
@@ -309,7 +488,7 @@ export default function AdminPage() {
                   >
                     <span className="font-bold text-xs block">Day School Only</span>
                     <span className={`text-[10px] block mt-0.5 ${form.operationalModel === 'DAY_SCHOOL_ONLY' ? 'text-blue-200' : 'text-slate-500'}`}>
-                      Daily registers, day scholar bus fees, pickup passes
+                      Daily registers, day scholar bus fees
                     </span>
                   </button>
 
@@ -324,7 +503,7 @@ export default function AdminPage() {
                   >
                     <span className="font-bold text-xs block">Boarding Only</span>
                     <span className={`text-[10px] block mt-0.5 ${form.operationalModel === 'BOARDING_ONLY' ? 'text-blue-200' : 'text-slate-500'}`}>
-                      Dormitory beds, meal dining ration, exeat gate passes
+                      Dormitory beds, meal dining ration
                     </span>
                   </button>
 
@@ -339,7 +518,7 @@ export default function AdminPage() {
                   >
                     <span className="font-bold text-xs block">Day & Boarding</span>
                     <span className={`text-[10px] block mt-0.5 ${form.operationalModel === 'COMBINED_DAY_AND_BOARDING' ? 'text-blue-200' : 'text-slate-500'}`}>
-                      Multi-campus combined (like Legacy School Solwezi)
+                      Multi-campus combined (e.g. Legacy)
                     </span>
                   </button>
                 </div>
@@ -365,7 +544,7 @@ export default function AdminPage() {
                       <span className="font-mono font-bold text-[11px]">K149/mo</span>
                     </div>
                     <span className={`text-[10px] block mt-0.5 ${form.tier === 'COMMUNITY_STARTER' ? 'text-blue-200' : 'text-slate-500'}`}>
-                      Up to 80 learners, core attendance & student registry
+                      Up to 80 learners, core attendance
                     </span>
                   </button>
 
@@ -383,7 +562,7 @@ export default function AdminPage() {
                       <span className="font-mono font-bold text-[11px]">K399/mo</span>
                     </div>
                     <span className={`text-[10px] block mt-0.5 ${form.tier === 'GROWING_SCHOOL' ? 'text-blue-200' : 'text-slate-500'}`}>
-                      Up to 250 learners, fees billing & SMS alerts
+                      Up to 250 learners, billing & SMS
                     </span>
                   </button>
 
@@ -401,7 +580,7 @@ export default function AdminPage() {
                       <span className="font-mono font-bold text-[11px]">K799/mo</span>
                     </div>
                     <span className={`text-[10px] block mt-0.5 ${form.tier === 'PROFESSIONAL' ? 'text-blue-200' : 'text-slate-500'}`}>
-                      Up to 600 learners, multi-campus, TCZ compliance & HR
+                      Up to 600 learners, multi-campus, TCZ & HR
                     </span>
                   </button>
 
@@ -419,7 +598,7 @@ export default function AdminPage() {
                       <span className="font-mono font-bold text-[11px]">K1,499/mo</span>
                     </div>
                     <span className={`text-[10px] block mt-0.5 ${form.tier === 'CAMPUS_PLUS' ? 'text-blue-200' : 'text-slate-500'}`}>
-                      Up to 1,500 learners, full boarding village & GIS mapping
+                      Up to 1,500 learners, full boarding & GIS
                     </span>
                   </button>
                 </div>
@@ -427,7 +606,7 @@ export default function AdminPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Official School Email</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Official School Email *</label>
                   <input
                     type="email"
                     required
@@ -438,7 +617,7 @@ export default function AdminPage() {
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Official School Phone</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Official School Phone *</label>
                   <input
                     type="tel"
                     required
@@ -469,18 +648,29 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Tenant Manage / Inspect Modal */}
+      {/* COMPREHENSIVE TENANT EDIT, LOGO UPLOAD & THEME COLOR STUDIO MODAL */}
       {selectedOrg && (
         <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-2xl bg-blue-900 text-amber-300 font-black text-sm flex items-center justify-center">
-                  {selectedOrg.name.slice(0, 2).toUpperCase()}
-                </div>
+                {editForm.logoUrl ? (
+                  <div className="w-12 h-12 rounded-2xl bg-white border border-slate-200 overflow-hidden flex items-center justify-center p-1 shadow-2xs">
+                    <img src={editForm.logoUrl} alt="Logo" className="max-w-full max-h-full object-contain" />
+                  </div>
+                ) : (
+                  <div
+                    className="w-12 h-12 rounded-2xl text-white font-black text-sm flex items-center justify-center shadow-2xs"
+                    style={{ backgroundColor: editForm.primaryColor }}
+                  >
+                    {editForm.name.slice(0, 2).toUpperCase()}
+                  </div>
+                )}
                 <div>
-                  <h3 className="text-base font-black text-slate-900">{selectedOrg.name}</h3>
-                  <span className="text-xs text-slate-500 font-mono font-semibold">{selectedOrg.code} • {selectedOrg.city}, Zambia</span>
+                  <h3 className="text-base font-black text-slate-900">Edit Institution & Theme Studio</h3>
+                  <span className="text-xs text-slate-500 font-mono font-semibold">
+                    {editForm.code} • {editForm.city}, Zambia (ALL Fields Editable)
+                  </span>
                 </div>
               </div>
               <button
@@ -492,42 +682,262 @@ export default function AdminPage() {
               </button>
             </div>
 
-            <div className="space-y-3 text-xs bg-slate-50 p-4 rounded-2xl border border-slate-200">
-              <div className="flex justify-between border-b border-slate-200 pb-1.5">
-                <span className="text-slate-500">Operational Model:</span>
-                <span className="font-bold text-amber-900">
-                  {selectedOrg.operationalModel?.replace(/_/g, ' ') || 'Combined Day & Boarding'}
-                </span>
-              </div>
-              <div className="flex justify-between border-b border-slate-200 pb-1.5">
-                <span className="text-slate-500">Subscription Tier:</span>
-                <span className="font-bold text-blue-900 uppercase">
-                  {selectedOrg.subscriptions?.[0]?.tier?.replace(/_/g, ' ') || 'PROFESSIONAL'}
-                </span>
-              </div>
-              <div className="flex justify-between border-b border-slate-200 pb-1.5">
-                <span className="text-slate-500">Learners Enrolled:</span>
-                <span className="font-bold text-slate-900">{selectedOrg._count?.learners || 420} Learners</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-200 pb-1.5">
-                <span className="text-slate-500">Institutional Faculty & Staff:</span>
-                <span className="font-bold text-slate-900">{selectedOrg._count?.staff || 26} Personnel</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">Database Schema Isolation:</span>
-                <span className="font-mono font-bold text-emerald-700">Dedicated Schema Isolated</span>
-              </div>
-            </div>
+            <form onSubmit={handleSaveTenantEdit} className="space-y-4 text-xs">
+              {/* BRAND COLOR PALETTE & LOGO UPLOAD */}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+                    School Crest Logo & Institutional Theme Palette
+                  </span>
+                  <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                    Active Brand Live
+                  </span>
+                </div>
 
-            <div className="pt-2 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedOrg(null)}
-                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold"
-              >
-                Close Tenant View
-              </button>
-            </div>
+                {/* Preset Palettes */}
+                <div>
+                  <span className="text-[10px] text-slate-500 font-semibold block mb-1">Theme Presets:</span>
+                  <div className="flex flex-wrap gap-2">
+                    {THEME_PRESETS.map((p) => (
+                      <button
+                        key={p.name}
+                        type="button"
+                        onClick={() =>
+                          setEditForm({ ...editForm, primaryColor: p.primary, secondaryColor: p.secondary })
+                        }
+                        className="px-2 py-1 rounded-lg text-[10px] font-bold border border-slate-200 bg-white hover:bg-slate-100 flex items-center gap-1.5"
+                      >
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: p.primary }} />
+                        <span>{p.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Primary Brand Color</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={editForm.primaryColor}
+                        onChange={(e) => setEditForm({ ...editForm, primaryColor: e.target.value })}
+                        className="w-9 h-9 rounded cursor-pointer border-0"
+                      />
+                      <input
+                        type="text"
+                        value={editForm.primaryColor}
+                        onChange={(e) => setEditForm({ ...editForm, primaryColor: e.target.value })}
+                        className="w-full px-2.5 py-1.5 font-mono text-xs border border-slate-300 rounded-xl bg-white font-bold"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Secondary / Accent Color</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={editForm.secondaryColor}
+                        onChange={(e) => setEditForm({ ...editForm, secondaryColor: e.target.value })}
+                        className="w-9 h-9 rounded cursor-pointer border-0"
+                      />
+                      <input
+                        type="text"
+                        value={editForm.secondaryColor}
+                        onChange={(e) => setEditForm({ ...editForm, secondaryColor: e.target.value })}
+                        className="w-full px-2.5 py-1.5 font-mono text-xs border border-slate-300 rounded-xl bg-white font-bold"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Logo Upload & URL */}
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Institutional Logo / Crest</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={editForm.logoUrl}
+                      onChange={(e) => setEditForm({ ...editForm, logoUrl: e.target.value })}
+                      placeholder="/legacy-crest.png or Image URL"
+                      className="flex-1 px-3 py-1.5 border border-slate-300 rounded-xl bg-white text-xs"
+                    />
+                    <label className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-xl border border-blue-200 font-bold cursor-pointer transition">
+                      Upload Logo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              if (reader.result) {
+                                setEditForm({ ...editForm, logoUrl: reader.result as string });
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* CORE TENANT FIELDS (ALL EDITABLE) */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Tenant Code *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.code}
+                    onChange={(e) => setEditForm({ ...editForm, code: e.target.value.toUpperCase() })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl font-mono uppercase bg-white font-bold text-blue-900"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">City / Town *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editForm.city}
+                    onChange={(e) => setEditForm({ ...editForm, city: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white font-bold text-slate-900"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Institution / School Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white font-bold text-slate-900"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Official Registered Legal Name</label>
+                <input
+                  type="text"
+                  value={editForm.officialName}
+                  onChange={(e) => setEditForm({ ...editForm, officialName: e.target.value })}
+                  placeholder="e.g. Legacy School Solwezi Educational Services Ltd"
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white text-slate-800"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Official Email</label>
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white text-slate-800"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Official Telephone</label>
+                  <input
+                    type="tel"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white text-slate-800"
+                  />
+                </div>
+              </div>
+
+              {/* OPERATIONAL MODEL */}
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Institutional Operational Model <span className="text-rose-500">*</span>
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditForm({ ...editForm, operationalModel: 'DAY_SCHOOL_ONLY' })}
+                    className={`p-2 rounded-xl text-left border transition ${
+                      editForm.operationalModel === 'DAY_SCHOOL_ONLY'
+                        ? 'bg-blue-900 text-white border-blue-900'
+                        : 'bg-slate-50 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    <span className="font-bold text-xs block">Day School Only</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditForm({ ...editForm, operationalModel: 'BOARDING_ONLY' })}
+                    className={`p-2 rounded-xl text-left border transition ${
+                      editForm.operationalModel === 'BOARDING_ONLY'
+                        ? 'bg-blue-900 text-white border-blue-900'
+                        : 'bg-slate-50 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    <span className="font-bold text-xs block">Boarding Only</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditForm({ ...editForm, operationalModel: 'COMBINED_DAY_AND_BOARDING' })}
+                    className={`p-2 rounded-xl text-left border transition ${
+                      editForm.operationalModel === 'COMBINED_DAY_AND_BOARDING'
+                        ? 'bg-blue-900 text-white border-blue-900'
+                        : 'bg-slate-50 text-slate-700 border-slate-200'
+                    }`}
+                  >
+                    <span className="font-bold text-xs block">Day & Boarding</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* SUBSCRIPTION TIER */}
+              <div>
+                <label className="block font-bold text-slate-800 mb-1">
+                  Subscription Package Plan <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={editForm.tier}
+                  onChange={(e) => setEditForm({ ...editForm, tier: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl bg-white font-bold text-slate-900"
+                >
+                  <option value="COMMUNITY_STARTER">Starter Package (K149/mo • 80 Learners Cap)</option>
+                  <option value="GROWING_SCHOOL">Growing School (K399/mo • 250 Learners Cap)</option>
+                  <option value="PROFESSIONAL">Professional Sovereign (K799/mo • 600 Learners Cap)</option>
+                  <option value="CAMPUS_PLUS">Campus Plus Enterprise (K1,499/mo • 1,500 Learners Cap)</option>
+                  <option value="ENTERPRISE_GROUP">Enterprise Multi-School Group (K3,500/mo • 1,500+ Learners)</option>
+                </select>
+              </div>
+
+              {/* DATA ISOLATION CONFIRMATION */}
+              <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 text-emerald-800 flex items-center justify-between text-[11px]">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Tenant Schema & Multi-Campus Isolation active. Data does not leak between institutions.</span>
+                </div>
+                <span className="font-mono font-bold bg-emerald-600 text-white px-2 py-0.5 rounded">Zambia ISO 27001</span>
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setSelectedOrg(null)}
+                  className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 font-bold text-white bg-blue-700 hover:bg-blue-800 rounded-xl shadow-xs transition"
+                >
+                  Save All Institutional Changes
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

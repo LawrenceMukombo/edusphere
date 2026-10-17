@@ -369,7 +369,7 @@ export default function GisCampusesPage() {
   const totalRoutes = campuses.reduce((sum, c) => sum + (c.transportRoutes?.length || 0), 0);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+    <div className="space-y-6 w-full pb-12">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
         <div>
@@ -1199,12 +1199,12 @@ export default function GisCampusesPage() {
                   <input
                     type="text"
                     required
-                    disabled={Boolean(editingCampus)}
                     value={formData.code}
                     onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
                     placeholder="e.g. CB"
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs disabled:bg-slate-50"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono font-bold bg-white text-blue-900"
                   />
+                  <span className="text-[10px] text-slate-400">All fields fully editable per Enterprise Multi-Tenant policy</span>
                 </div>
               </div>
 

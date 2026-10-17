@@ -68,7 +68,33 @@ export default function CampusMap({
   const catchmentLayerRef = useRef<any>(null);
   const routesLayerRef = useRef<any>(null);
   const pickedMarkerRef = useRef<any>(null);
+  const tileLayerRef = useRef<any>(null);
+  const [basemapStyle, setBasemapStyle] = useState<'street' | 'osm' | 'satellite' | 'topo'>('street');
   const [mapLoaded, setMapLoaded] = useState(false);
+
+  // Basemap tile definitions (100% watermark-free, enterprise high-res)
+  const basemaps: Record<string, { url: string; attribution: string; maxZoom: number }> = {
+    street: {
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+      attribution: '&copy; Esri &mdash; National Geographic, DeLorme, HERE, USGS, OpenStreetMap contributors | EduSphere Sovereign GIS',
+      maxZoom: 19,
+    },
+    osm: {
+      url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | EduSphere Sovereign GIS',
+      maxZoom: 19,
+    },
+    satellite: {
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+      attribution: '&copy; Esri &mdash; Maxar, Earthstar Geographics, CNES/Airbus DS | EduSphere High-Res Satellite',
+      maxZoom: 19,
+    },
+    topo: {
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+      attribution: '&copy; Esri &mdash; USGS, FAO, NPS, NRCAN, GeoBase, IGN | EduSphere Topographic',
+      maxZoom: 19,
+    },
+  };
 
   // Initialize Leaflet map
   useEffect(() => {
@@ -86,17 +112,12 @@ export default function CampusMap({
         zoomControl: true,
       });
 
-      // High-performance CARTO Voyager basemap using authenticated API key
-      const cartoApiKey = 'cb1_2wxx_1_19a2e48a7de2e23331436131';
-      L.tileLayer(
-        `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?api_key=${cartoApiKey}`,
-        {
-          subdomains: 'abcd',
-          maxZoom: 20,
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a> | EduSphere Sovereign GIS Engine',
-        }
-      ).addTo(map);
+      // Enterprise Unwatermarked Basemap
+      const initialStyle = basemaps[basemapStyle];
+      tileLayerRef.current = L.tileLayer(initialStyle.url, {
+        maxZoom: initialStyle.maxZoom,
+        attribution: initialStyle.attribution,
+      }).addTo(map);
 
       // Map click handler for picking location
       map.on('click', (e: any) => {
@@ -347,9 +368,81 @@ export default function CampusMap({
     renderLayers();
   }, [campuses, selectedCampusId, pickedLocation, showCatchmentZones, showTransportRoutes, mapLoaded]);
 
+  // Effect to switch basemap tile layer dynamically
+  useEffect(() => {
+    if (!mapLoaded || !mapInstanceRef.current) return;
+
+    async function changeBasemap() {
+      const L = (await import('leaflet')).default;
+      const map = mapInstanceRef.current;
+
+      if (tileLayerRef.current) {
+        map.removeLayer(tileLayerRef.current);
+      }
+
+      const style = basemaps[basemapStyle];
+      tileLayerRef.current = L.tileLayer(style.url, {
+        maxZoom: style.maxZoom,
+        attribution: style.attribution,
+      }).addTo(map);
+      tileLayerRef.current.bringToBack();
+    }
+
+    changeBasemap();
+  }, [basemapStyle, mapLoaded]);
+
   return (
     <div className="relative w-full h-[520px] rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-100">
       <div ref={mapContainerRef} className="w-full h-full z-0" />
+
+      {/* Basemap Style Switcher Control (Watermark-Free) */}
+      <div className="absolute top-4 right-4 z-[400] bg-white/95 backdrop-blur-md p-1.5 rounded-xl border border-slate-200/90 shadow-md flex items-center gap-1 text-xs">
+        <span className="text-[10px] font-bold text-slate-500 uppercase px-2">Basemap:</span>
+        <button
+          type="button"
+          onClick={() => setBasemapStyle('street')}
+          className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition ${
+            basemapStyle === 'street'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          Street Map
+        </button>
+        <button
+          type="button"
+          onClick={() => setBasemapStyle('osm')}
+          className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition ${
+            basemapStyle === 'osm'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          OpenStreetMap
+        </button>
+        <button
+          type="button"
+          onClick={() => setBasemapStyle('satellite')}
+          className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition ${
+            basemapStyle === 'satellite'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          Satellite
+        </button>
+        <button
+          type="button"
+          onClick={() => setBasemapStyle('topo')}
+          className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition ${
+            basemapStyle === 'topo'
+              ? 'bg-blue-600 text-white shadow-xs'
+              : 'text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          Topographic
+        </button>
+      </div>
 
       {/* Map Legend Overlay */}
       <div className="absolute bottom-4 left-4 z-[400] bg-white/95 backdrop-blur-md p-3 rounded-xl border border-slate-200/80 shadow-md text-xs space-y-2 pointer-events-auto max-w-xs">
