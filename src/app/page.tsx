@@ -1,7 +1,7 @@
 // src/app/page.tsx — Executive Management Dashboard for Legacy School Solwezi
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   Users,
@@ -27,6 +27,7 @@ import {
   Droplets,
   Award,
   Layers,
+  Sparkles,
 } from 'lucide-react';
 import { InteractiveChart } from '@/components/InteractiveChart';
 import { useCampus } from '@/components/CampusContext';
@@ -119,26 +120,98 @@ export default function HomePage() {
   };
 
   const stats = statsMap[selectedCampus] || statsMap.ALL;
+  const isUrban = selectedCampus === 'URBAN';
 
-  const attendanceChartData = [
-    { label: 'ECE Reception', value: 50, secondaryValue: 48, category: 'Urban Campus (Solwezi Central)' },
-    { label: 'Grade 1 Gold', value: 42, secondaryValue: 41, category: 'Urban Campus (Solwezi Central)' },
-    { label: 'Grade 5 Blue', value: 38, secondaryValue: 37, category: 'Urban Campus (Solwezi Central)' },
-    { label: 'Grade 7 Top', value: 45, secondaryValue: 43, category: 'Urban Campus (Solwezi Central)' },
-    { label: 'Form 1 Alpha', value: 48, secondaryValue: 47, category: 'Mushitala Campus (Near Kansanshi)' },
-    { label: 'Form 3 Blue', value: 44, secondaryValue: 44, category: 'Mushitala Campus (Near Kansanshi)' },
-    { label: 'Form 4 Green', value: 42, secondaryValue: 42, category: 'Mushitala Campus (Near Kansanshi)' },
-    { label: 'Form 5 Sciences', value: 39, secondaryValue: 38, category: 'Mushitala Campus (Near Kansanshi)' },
-  ];
+  // Dynamic class attendance breakdown per campus
+  const attendanceChartData = useMemo(() => {
+    if (selectedCampus === 'URBAN') {
+      return [
+        { label: 'ECE Baby', value: 32, secondaryValue: 31, category: 'Early Childhood' },
+        { label: 'ECE Reception', value: 45, secondaryValue: 44, category: 'Early Childhood' },
+        { label: 'Grade 1 Gold', value: 42, secondaryValue: 41, category: 'Lower Primary' },
+        { label: 'Grade 2 Silver', value: 40, secondaryValue: 39, category: 'Lower Primary' },
+        { label: 'Grade 3 Emerald', value: 41, secondaryValue: 40, category: 'Middle Primary' },
+        { label: 'Grade 4 Copper', value: 44, secondaryValue: 42, category: 'Middle Primary' },
+        { label: 'Grade 5 Blue', value: 38, secondaryValue: 37, category: 'Upper Primary' },
+        { label: 'Grade 6 Red', value: 37, secondaryValue: 35, category: 'Upper Primary' },
+        { label: 'Grade 7 Top', value: 45, secondaryValue: 43, category: 'Primary Candidates' },
+      ];
+    } else if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
+      return [
+        { label: 'Grade 8 Alpha', value: 46, secondaryValue: 45, category: 'Junior Secondary' },
+        { label: 'Grade 9 Top', value: 48, secondaryValue: 47, category: 'Junior Candidates' },
+        { label: 'Form 1 Alpha', value: 48, secondaryValue: 47, category: 'Senior Secondary' },
+        { label: 'Form 2 Beta', value: 45, secondaryValue: 44, category: 'Senior Secondary' },
+        { label: 'Form 3 Blue', value: 44, secondaryValue: 44, category: 'Senior Secondary' },
+        { label: 'Form 4 Green', value: 42, secondaryValue: 42, category: 'Senior Secondary' },
+        { label: 'Form 5 Sciences', value: 39, secondaryValue: 38, category: 'Senior Candidates' },
+        { label: 'Form 5 Arts', value: 38, secondaryValue: 37, category: 'Senior Candidates' },
+        { label: 'A-Level Senior', value: 35, secondaryValue: 34, category: 'Advanced Level' },
+      ];
+    } else {
+      return [
+        { label: 'ECE Reception', value: 45, secondaryValue: 44, category: 'Urban Day' },
+        { label: 'Grade 1 Gold', value: 42, secondaryValue: 41, category: 'Urban Day' },
+        { label: 'Grade 5 Blue', value: 38, secondaryValue: 37, category: 'Urban Day' },
+        { label: 'Grade 7 Top', value: 45, secondaryValue: 43, category: 'Urban Day' },
+        { label: 'Grade 8 Alpha', value: 46, secondaryValue: 45, category: 'Mushitala Boarding' },
+        { label: 'Form 1 Alpha', value: 48, secondaryValue: 47, category: 'Mushitala Boarding' },
+        { label: 'Form 3 Blue', value: 44, secondaryValue: 44, category: 'Mushitala Boarding' },
+        { label: 'Form 5 Sciences', value: 39, secondaryValue: 38, category: 'Mushitala Boarding' },
+      ];
+    }
+  }, [selectedCampus]);
 
-  const expenseBreakdown = [
-    { category: 'Food & Boarding Provisions', amount: 384500, pct: 33.6, color: 'bg-amber-500' },
-    { category: 'Staff Salaries & Remittances', amount: 342000, pct: 29.9, color: 'bg-blue-600' },
-    { category: 'Generator Diesel & Power (SGC)', amount: 168400, pct: 14.7, color: 'bg-emerald-600' },
-    { category: 'STEM Laboratories & Exams', amount: 98200, pct: 8.6, color: 'bg-indigo-600' },
-    { category: 'Transport & Fleet Logistics', amount: 78500, pct: 6.9, color: 'bg-purple-600' },
-    { category: 'Maintenance & Operations', amount: 71200, pct: 6.3, color: 'bg-slate-500' },
-  ];
+  const attendanceSubtitle = useMemo(() => {
+    if (selectedCampus === 'URBAN') {
+      return 'Real-time roll-call across Urban Day School (Early Childhood & Primary Wings, Solwezi Central)';
+    } else if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
+      return 'Real-time roll-call across Mushitala Boarding & Day Campus (Near Kansanshi Mining Corridor)';
+    } else {
+      return 'Consolidated roll-call across Mushitala Boarding Wing and Urban Day Scholar Campus';
+    }
+  }, [selectedCampus]);
+
+  // Dynamic expenditure allocations strictly matching campus operations
+  const expenseBreakdown = useMemo(() => {
+    if (selectedCampus === 'URBAN') {
+      return [
+        { category: 'Staff Salaries & Remittances', amount: 168000, pct: 53.8, color: 'bg-blue-600' },
+        { category: 'Maintenance & Campus Consumables', amount: 46200, pct: 14.8, color: 'bg-slate-500' },
+        { category: 'Standby Generator Diesel (ZESCO Backup)', amount: 38400, pct: 12.3, color: 'bg-emerald-600' },
+        { category: 'STEM Curriculum & Learning Kits', amount: 32800, pct: 10.5, color: 'bg-indigo-600' },
+        { category: 'Transport & Inter-Campus Shuttle', amount: 27000, pct: 8.6, color: 'bg-purple-600' },
+      ];
+    } else if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
+      return [
+        { category: 'Food & Boarding Kitchen Provisions', amount: 384500, pct: 46.3, color: 'bg-amber-500' },
+        { category: 'Staff Salaries & Remittances', amount: 174000, pct: 21.0, color: 'bg-blue-600' },
+        { category: '250kVA Generator Diesel (SGC Solwezi)', amount: 130000, pct: 15.7, color: 'bg-emerald-600' },
+        { category: 'STEM Science Labs & ECZ Exams', amount: 65400, pct: 7.9, color: 'bg-indigo-600' },
+        { category: 'Transport & Fleet Logistics', amount: 42000, pct: 5.1, color: 'bg-purple-600' },
+        { category: 'Boarding Facilities & Water Systems', amount: 34500, pct: 4.2, color: 'bg-slate-500' },
+      ];
+    } else {
+      return [
+        { category: 'Food & Boarding Provisions', amount: 384500, pct: 33.6, color: 'bg-amber-500' },
+        { category: 'Staff Salaries & Remittances', amount: 342000, pct: 29.9, color: 'bg-blue-600' },
+        { category: 'Generator Diesel & Power (SGC)', amount: 168400, pct: 14.7, color: 'bg-emerald-600' },
+        { category: 'STEM Laboratories & Exams', amount: 98200, pct: 8.6, color: 'bg-indigo-600' },
+        { category: 'Transport & Fleet Logistics', amount: 78500, pct: 6.9, color: 'bg-purple-600' },
+        { category: 'Maintenance & Operations', amount: 71200, pct: 6.3, color: 'bg-slate-500' },
+      ];
+    }
+  }, [selectedCampus]);
+
+  const expenseSubtitle = useMemo(() => {
+    if (selectedCampus === 'URBAN') {
+      return 'Audited outflows supporting Urban Day School teachers, solar power, shuttle buses, and classroom consumables.';
+    } else if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
+      return 'Transparent outflows supporting boarding dining kitchen, mining corridor 250kVA generator backup, and STEM laboratories.';
+    } else {
+      return 'Transparent, audited outflows supporting boarding kitchen provisions, mining corridor power backup, teacher remuneration, and labs.';
+    }
+  }, [selectedCampus]);
 
   return (
     <div className="space-y-8">
@@ -194,12 +267,17 @@ export default function HomePage() {
         <div className="absolute right-0 top-0 bottom-0 w-96 bg-gradient-to-l from-indigo-500/10 to-transparent pointer-events-none" />
       </div>
 
-      {/* KPI Cards Row — Operational Heartbeat */}
+      {/* KPI Cards Row — Operational Heartbeat (Clickable Drilldowns) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: Enrollment & Capacity */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between hover:shadow-md transition">
+        <Link
+          href="/admissions"
+          className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between hover:shadow-md hover:border-blue-300 transition group cursor-pointer"
+        >
           <div>
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Active Enrollment</span>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-blue-700 transition">
+              Active Enrollment
+            </span>
             <div className="text-2xl font-black text-slate-900 mt-1">
               {stats.enrolled} <span className="text-xs font-semibold text-slate-400">/ {stats.capacity}</span>
             </div>
@@ -208,15 +286,20 @@ export default function HomePage() {
               {Math.round((stats.enrolled / stats.capacity) * 100)}% Campus Capacity
             </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-800 flex items-center justify-center ring-1 ring-blue-100">
+          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-800 flex items-center justify-center ring-1 ring-blue-100 group-hover:bg-blue-600 group-hover:text-white transition">
             <Users className="w-6 h-6" />
           </div>
-        </div>
+        </Link>
 
         {/* KPI 2: Today's Attendance Rate */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between hover:shadow-md transition">
+        <Link
+          href="/attendance"
+          className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between hover:shadow-md hover:border-emerald-300 transition group cursor-pointer"
+        >
           <div>
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Today&apos;s Attendance</span>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-emerald-700 transition">
+              Today&apos;s Attendance
+            </span>
             <div className="text-2xl font-black text-slate-900 mt-1">
               {stats.todayAttendanceRate}%
             </div>
@@ -225,15 +308,20 @@ export default function HomePage() {
               {stats.absentCount} absentees logged today
             </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center ring-1 ring-emerald-100">
+          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center ring-1 ring-emerald-100 group-hover:bg-emerald-600 group-hover:text-white transition">
             <CalendarCheck className="w-6 h-6" />
           </div>
-        </div>
+        </Link>
 
         {/* KPI 3: Fee Collections Rate */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between hover:shadow-md transition">
+        <Link
+          href="/finance"
+          className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between hover:shadow-md hover:border-amber-300 transition group cursor-pointer"
+        >
           <div>
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Term 1 Fees Recovery</span>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-amber-700 transition">
+              Term 1 Fees Recovery
+            </span>
             <div className="text-2xl font-black text-slate-900 mt-1">
               {stats.feeCollectionRate}%
             </div>
@@ -241,15 +329,20 @@ export default function HomePage() {
               ZMW {stats.totalCollectedZMW} collected
             </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center ring-1 ring-amber-100">
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center ring-1 ring-amber-100 group-hover:bg-amber-500 group-hover:text-white transition">
             <CreditCard className="w-6 h-6" />
           </div>
-        </div>
+        </Link>
 
         {/* KPI 4: Monthly Disbursed Expenses */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between hover:shadow-md transition">
+        <Link
+          href="/finance?tab=expenditures"
+          className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between hover:shadow-md hover:border-rose-300 transition group cursor-pointer"
+        >
           <div>
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Operational Outflows</span>
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-rose-700 transition">
+              Operational Outflows
+            </span>
             <div className="text-2xl font-black text-rose-700 mt-1">
               ZMW {stats.totalExpensesZMW}
             </div>
@@ -257,75 +350,147 @@ export default function HomePage() {
               Net Surplus: {stats.netCashflowZMW}
             </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-700 flex items-center justify-center ring-1 ring-rose-100">
+          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-700 flex items-center justify-center ring-1 ring-rose-100 group-hover:bg-rose-600 group-hover:text-white transition">
             <DollarSign className="w-6 h-6" />
           </div>
-        </div>
+        </Link>
       </div>
 
-      {/* Boarding Village & Mining Corridor Operations Banner */}
+      {/* Boarding Village vs Day-Scholar Operations & Solwezi Corridor Infrastructure */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Boarding Village Status */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold">
-                <Bed className="w-4 h-4" />
+        {/* Card 1: Boarding Village (Mushitala) OR Day-Scholar Services (Urban) */}
+        {isUrban ? (
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
+                  <Sun className="w-4 h-4 text-amber-500" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Urban Day-Scholar Services</h3>
+                  <span className="text-[10px] text-slate-500">Solwezi Central Day Operations</span>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Boarding Village Operations</h3>
-                <span className="text-[10px] text-slate-500">Kansanshi Boarding Wing</span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                360 Day Scholars
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span className="text-slate-500 block text-[10px] uppercase font-bold">Day Catering Hall</span>
+                <span className="text-base font-black text-slate-900 mt-0.5 block">360 / 360 Lunches</span>
+                <span className="text-[10px] text-emerald-600 font-semibold">100% Accounted • Head: M. Bwalya</span>
+              </div>
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span className="text-slate-500 block text-[10px] uppercase font-bold">Central Shuttle Fleet</span>
+                <span className="text-base font-black text-slate-900 mt-0.5 block">4 Buses Active</span>
+                <span className="text-[10px] text-emerald-600 font-semibold">99.4% On-Time Morning Arrival</span>
               </div>
             </div>
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-              318 Boarders
-            </span>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3 text-xs">
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-              <span className="text-slate-500 block text-[10px] uppercase font-bold">Mopani Boys Hall</span>
-              <span className="text-base font-black text-slate-900 mt-0.5 block">162 / 180 Beds</span>
-              <span className="text-[10px] text-emerald-600 font-semibold">90% Occupied • Warden: K. Phiri</span>
+            <div className="space-y-2 pt-1 border-t border-slate-100 text-xs">
+              <div className="flex items-center justify-between text-slate-700">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  Morning Assembly Registration:
+                </span>
+                <span className="font-bold text-emerald-700">96.6% (346 / 360 Present)</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-700">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  Afternoon Prep & Activities:
+                </span>
+                <span className="font-bold text-amber-700">100% Supervised</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-700">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-500" />
+                  Sickbay / First Aid Station:
+                </span>
+                <span className="font-bold text-blue-700">{stats.sickbayCount} Minor Consultation</span>
+              </div>
             </div>
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-              <span className="text-slate-500 block text-[10px] uppercase font-bold">Mukwa Girls Hall</span>
-              <span className="text-base font-black text-slate-900 mt-0.5 block">156 / 170 Beds</span>
-              <span className="text-[10px] text-emerald-600 font-semibold">91.7% Occupied • Matron: B. Kalenga</span>
+
+            <div className="space-y-2">
+              <Link
+                href="/attendance"
+                className="block text-center w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs rounded-xl transition"
+              >
+                Manage Day Attendance & Bus Routes &rarr;
+              </Link>
+              <button
+                type="button"
+                onClick={() => setSelectedCampus('MUSHITALA')}
+                className="w-full text-center py-1 text-slate-500 hover:text-indigo-700 text-[11px] font-semibold transition"
+              >
+                Switch to Mushitala Boarding Wing &rarr;
+              </button>
             </div>
           </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold">
+                  <Bed className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Boarding Village Operations</h3>
+                  <span className="text-[10px] text-slate-500">Kansanshi Boarding Wing (Mushitala)</span>
+                </div>
+              </div>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                318 Boarders
+              </span>
+            </div>
 
-          <div className="space-y-2 pt-1 border-t border-slate-100 text-xs">
-            <div className="flex items-center justify-between text-slate-700">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                Evening Prep Roll-Call Status:
-              </span>
-              <span className="font-bold text-emerald-700">99.1% Accounted</span>
+            <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span className="text-slate-500 block text-[10px] uppercase font-bold">Mopani Boys Hall</span>
+                <span className="text-base font-black text-slate-900 mt-0.5 block">162 / 180 Beds</span>
+                <span className="text-[10px] text-emerald-600 font-semibold">90% Occupied • Warden: K. Phiri</span>
+              </div>
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                <span className="text-slate-500 block text-[10px] uppercase font-bold">Mukwa Girls Hall</span>
+                <span className="text-base font-black text-slate-900 mt-0.5 block">156 / 170 Beds</span>
+                <span className="text-[10px] text-emerald-600 font-semibold">91.7% Occupied • Matron: B. Kalenga</span>
+              </div>
             </div>
-            <div className="flex items-center justify-between text-slate-700">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                Active Authorized Exeats:
-              </span>
-              <span className="font-bold text-amber-700">{stats.activeExeats} Students</span>
+
+            <div className="space-y-2 pt-1 border-t border-slate-100 text-xs">
+              <div className="flex items-center justify-between text-slate-700">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  Evening Prep Roll-Call Status:
+                </span>
+                <span className="font-bold text-emerald-700">99.1% Accounted</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-700">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" />
+                  Active Authorized Exeats:
+                </span>
+                <span className="font-bold text-amber-700">{stats.activeExeats} Students</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-700">
+                <span className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-blue-500" />
+                  Sickbay In-Patients:
+                </span>
+                <span className="font-bold text-blue-700">{stats.sickbayCount} In-Patients Monitored</span>
+              </div>
             </div>
-            <div className="flex items-center justify-between text-slate-700">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-blue-500" />
-                Sickbay In-Patients:
-              </span>
-              <span className="font-bold text-blue-700">{stats.sickbayCount} Minor Consultations</span>
-            </div>
+
+            <Link
+              href="/boarding"
+              className="block text-center w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-xs rounded-xl transition"
+            >
+              Manage Boarding Roll-Calls & Exeats &rarr;
+            </Link>
           </div>
-
-          <Link
-            href="/attendance"
-            className="block text-center w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-xs rounded-xl transition"
-          >
-            Manage Boarding Roll-Calls & Exeats &rarr;
-          </Link>
-        </div>
+        )}
 
         {/* Solwezi Mining Corridor Utility & Power Monitor */}
         <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
@@ -336,7 +501,9 @@ export default function HomePage() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-slate-900">Solwezi Utilities & Infrastructure</h3>
-                <span className="text-[10px] text-slate-500">Kansanshi & Mushitala Resiliency</span>
+                <span className="text-[10px] text-slate-500">
+                  {isUrban ? 'Solwezi Central Campus Resiliency' : 'Kansanshi & Mushitala Resiliency'}
+                </span>
               </div>
             </div>
             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
@@ -350,14 +517,18 @@ export default function HomePage() {
               <div className="flex justify-between font-bold text-slate-800 mb-1">
                 <span className="flex items-center gap-1.5">
                   <Fuel className="w-3.5 h-3.5 text-amber-600" />
-                  250kVA Standby Generator Fuel (SGC Solwezi)
+                  {isUrban ? 'Standby Generator Fuel (SGC Solwezi Central)' : '250kVA Standby Generator Fuel (SGC Solwezi)'}
                 </span>
-                <span className="text-emerald-700">{stats.generatorFuelPct}% (1,640 Litres)</span>
+                <span className="text-emerald-700">{stats.generatorFuelPct}% ({isUrban ? '1,640' : '2,450'} Litres)</span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2">
-                <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${stats.generatorFuelPct}%` }} />
+                <div className="bg-amber-500 h-2 rounded-full transition-all duration-500" style={{ width: `${stats.generatorFuelPct}%` }} />
               </div>
-              <span className="text-[10px] text-slate-500 block mt-0.5">Approx 68 hours uninterrupted continuous full-campus load.</span>
+              <span className="text-[10px] text-slate-500 block mt-0.5">
+                {isUrban
+                  ? 'Approx 72 hours continuous automated switchover runtime.'
+                  : 'Approx 68 hours uninterrupted continuous full-campus load.'}
+              </span>
             </div>
 
             <div className="pt-2 border-t border-slate-100 space-y-2">
@@ -373,14 +544,18 @@ export default function HomePage() {
                   <Activity className="w-3.5 h-3.5 text-emerald-600" />
                   High-Speed Starlink / Liquid Mesh:
                 </span>
-                <span className="font-bold text-emerald-700">184 Mbps Low Latency</span>
+                <span className="font-bold text-emerald-700">
+                  {isUrban ? '184 Mbps Low Latency' : '220 Mbps Dedicated Mining Corridor'}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-slate-600">
                   <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                  Inter-Campus Shuttle (BAX 3192 ZM):
+                  Campus Transit Fleet:
                 </span>
-                <span className="font-bold text-slate-900">En Route (Kyawama pickup)</span>
+                <span className="font-bold text-slate-900">
+                  {isUrban ? '4 Urban Day Shuttles Active' : 'Mushitala Shuttle (BAX 3192 ZM)'}
+                </span>
               </div>
             </div>
           </div>
@@ -450,14 +625,17 @@ export default function HomePage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Attendance Rates by Cohort */}
         <InteractiveChart
-          title="Class Attendance Breakdown (Today vs Average)"
-          subtitle="Real-time register submissions across Mushitala Day Campus and Kansanshi Boarding Campus"
+          title={`Class Attendance Breakdown — ${campusInfo.name}`}
+          subtitle={attendanceSubtitle}
           data={attendanceChartData}
           primaryColor="#03589f"
           secondaryColor="#eab308"
-          primaryLabel="Today Present"
-          secondaryLabel="Cohort Enrolled"
+          primaryLabel="Cohort Enrolled"
+          secondaryLabel="Today Present"
           unit="Learners"
+          onItemClick={(item) => {
+            window.location.href = `/attendance?class=${encodeURIComponent(item.label)}`;
+          }}
         />
 
         {/* Expenditure Outflow Allocation */}
@@ -468,25 +646,35 @@ export default function HomePage() {
                 <DollarSign className="w-5 h-5 text-rose-600" />
                 <h3 className="text-sm font-bold text-slate-900">Term 1 Expenditure Allocations (ZMW)</h3>
               </div>
-              <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+              <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
                 Total: ZMW {stats.totalExpensesZMW}
               </span>
             </div>
-            <p className="text-xs text-slate-500 mb-4">
-              Transparent, audited outflows supporting boarding kitchen provisions, mining corridor power backup, teacher remuneration, and labs.
+            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+              {expenseSubtitle}
             </p>
 
             <div className="space-y-3">
               {expenseBreakdown.map((item, idx) => (
-                <div key={idx} className="space-y-1">
-                  <div className="flex justify-between text-xs font-bold text-slate-800">
-                    <span>{item.category}</span>
-                    <span>ZMW {item.amount.toLocaleString()} ({item.pct}%)</span>
+                <Link
+                  key={idx}
+                  href={`/finance?tab=expenditures`}
+                  className="block p-2 rounded-xl hover:bg-slate-50 transition group"
+                >
+                  <div className="flex justify-between text-xs font-bold text-slate-800 mb-1 group-hover:text-blue-700">
+                    <span className="flex items-center gap-1.5">
+                      <span className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
+                      {item.category}
+                    </span>
+                    <span className="font-mono">ZMW {item.amount.toLocaleString()} ({item.pct}%)</span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2">
-                    <div className={`${item.color} h-2 rounded-full`} style={{ width: `${item.pct * 2.2}%` }} />
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className={`${item.color} h-2 rounded-full transition-all duration-500`}
+                      style={{ width: `${Math.min(item.pct * 1.8, 100)}%` }}
+                    />
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
@@ -503,6 +691,7 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
     </div>
   );
 }
