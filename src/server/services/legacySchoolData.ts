@@ -45,27 +45,14 @@ export const LEGACY_SCHOOL_PROFILE: LegacySchoolInfo = {
   taxNumber: '1008492019',
   campuses: [
     {
-      id: 'LSS-MDC',
-      code: 'MDC',
-      name: 'Mushitala Day Campus',
-      type: 'Early Childhood Education (ECE) & Primary Day School',
-      address: 'Stand # S/SOLWE/3177178, Kansanshi Mine Road, Mushitala',
+      id: 'LSS-MSC',
+      code: 'MSC',
+      name: 'Mushitala Campus (Near Kansanshi)',
+      type: 'Secondary & Boarding Wing (Forms 1 to 5)',
+      address: 'Stand # S/SOLWE/3177178, Plot 889, 890 Kansanshi Mine Road (opp. SGC Filling Station), Mushitala',
       coordinates: { lat: -12.1642, lng: 26.3951 },
-      capacity: 450,
-      enrolled: 410,
-      hasBoarding: false,
-      facilities: ['ECE Play Park', 'Junior Computer Lab', 'Primary Classrooms (Grades 1-7)', 'Tuckshop', 'Minibus Terminal'],
-      headTeacher: 'Mrs. Grace Tembo (MEd)',
-    },
-    {
-      id: 'LSS-KBC',
-      code: 'KBC',
-      name: 'Kansanshi Boarding Campus',
-      type: 'Secondary Boarding Wing & Senior School',
-      address: 'Kansanshi Mine Road Educational Corridor, Solwezi',
-      coordinates: { lat: -12.1528, lng: 26.4085 },
       capacity: 650,
-      enrolled: 370,
+      enrolled: 420,
       hasBoarding: true,
       facilities: [
         'Mopani Boys Boarding Hall (180 beds)',
@@ -76,7 +63,26 @@ export const LEGACY_SCHOOL_PROFILE: LegacySchoolInfo = {
         'Full Sports Oval & Netball Courts',
         '24/7 Sickbay with Resident Nurse',
       ],
-      headTeacher: 'Mr. Emmanuel Mwansa (BEd Natural Sciences)',
+      headTeacher: 'Mr. Emmanuel Mwansa (Director & Principal)',
+    },
+    {
+      id: 'LSS-URB',
+      code: 'URB',
+      name: 'Urban Campus (Solwezi Central)',
+      type: 'Early Childhood Education (ECE) & Primary Day School',
+      address: 'Solwezi Urban Educational Corridor, Solwezi Town Center',
+      coordinates: { lat: -12.1812, lng: 26.3884 },
+      capacity: 450,
+      enrolled: 360,
+      hasBoarding: false,
+      facilities: [
+        'ECE Nursery & Reception Play Park',
+        'Junior Computer Laboratory',
+        'Primary Classrooms (Grades 1-7)',
+        'School Tuckshop & Dining Pavilion',
+        'Urban Minibus Shuttle Terminal',
+      ],
+      headTeacher: 'Mrs. Grace Tembo (MEd Early Childhood & Primary)',
     },
   ],
 };
@@ -99,7 +105,7 @@ export interface LegacyStaffMember {
     | 'HEALTHCARE_WELFARE'
     | 'SUPPORT_OPERATIONS';
   departmentLabel: string;
-  campusId: 'LSS-MDC' | 'LSS-KBC' | 'CENTRAL';
+  campusId: 'LSS-MSC' | 'LSS-URB' | 'LSS-MDC' | 'LSS-KBC' | 'CENTRAL';
   campusName: string;
   qualification: string;
   tczNumber: string;
@@ -1329,30 +1335,30 @@ export function generateLegacyLearners(totalCount = 478): LegacyLearnerBalance[]
 
   // Complete spectrum of all grades across both campuses
   const classesConfig = [
-    // --- Mushitala Day Campus (ECE & Primary Day School) ---
-    { name: 'Baby Class (Little Stars)', stage: 'EARLY_CHILDHOOD', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2400, count: 18, yearLevel: 0 },
-    { name: 'Middle Class', stage: 'EARLY_CHILDHOOD', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2400, count: 20, yearLevel: 0 },
-    { name: 'Reception Stars', stage: 'EARLY_CHILDHOOD', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2600, count: 24, yearLevel: 0 },
-    { name: 'Grade 1 Gold', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2800, count: 22, yearLevel: 1 },
-    { name: 'Grade 1 Blue', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2800, count: 22, yearLevel: 1 },
-    { name: 'Grade 2 Emerald', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2800, count: 22, yearLevel: 2 },
-    { name: 'Grade 3 Diamond', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2800, count: 22, yearLevel: 3 },
-    { name: 'Grade 4 Ruby', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2800, count: 22, yearLevel: 4 },
-    { name: 'Grade 5 Blue', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2800, count: 22, yearLevel: 5 },
-    { name: 'Grade 6 Silver', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2900, count: 22, yearLevel: 6 },
-    { name: 'Grade 7 Top (Candidates)', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isSecondary: false, fee: 3100, count: 24, yearLevel: 7 },
+    // --- Urban Campus (ECE & Primary Day School — Solwezi Central) ---
+    { name: 'Baby Class (Little Stars)', stage: 'EARLY_CHILDHOOD', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2400, count: 18, yearLevel: 0 },
+    { name: 'Middle Class', stage: 'EARLY_CHILDHOOD', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2400, count: 20, yearLevel: 0 },
+    { name: 'Reception Stars', stage: 'EARLY_CHILDHOOD', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2600, count: 24, yearLevel: 0 },
+    { name: 'Grade 1 Gold', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 22, yearLevel: 1 },
+    { name: 'Grade 1 Blue', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 22, yearLevel: 1 },
+    { name: 'Grade 2 Emerald', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 22, yearLevel: 2 },
+    { name: 'Grade 3 Diamond', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 22, yearLevel: 3 },
+    { name: 'Grade 4 Ruby', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 22, yearLevel: 4 },
+    { name: 'Grade 5 Blue', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 22, yearLevel: 5 },
+    { name: 'Grade 6 Silver', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2900, count: 22, yearLevel: 6 },
+    { name: 'Grade 7 Top (Candidates)', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 3100, count: 24, yearLevel: 7 },
 
-    // --- Kansanshi Boarding Campus (Secondary Wing with Boarders & Day Scholars) ---
-    { name: 'Form 1 Alpha', stage: 'JUNIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 28, yearLevel: 8 },
-    { name: 'Form 1 Beta', stage: 'JUNIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 26, yearLevel: 8 },
-    { name: 'Form 2 Gold (ECZ Candidates)', stage: 'JUNIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 28, yearLevel: 9 },
-    { name: 'Form 2 Green', stage: 'JUNIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 26, yearLevel: 9 },
-    { name: 'Form 3 Blue', stage: 'SENIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 26, yearLevel: 10 },
-    { name: 'Form 3 Red', stage: 'SENIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 24, yearLevel: 10 },
-    { name: 'Form 4 Green', stage: 'SENIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 26, yearLevel: 11 },
-    { name: 'Form 4 Gold', stage: 'SENIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 24, yearLevel: 11 },
-    { name: 'Form 5 Sciences (Senior Candidates)', stage: 'SENIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 26, yearLevel: 12 },
-    { name: 'Form 5 Arts & Commerce', stage: 'SENIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 24, yearLevel: 12 },
+    // --- Mushitala Campus (Secondary & Boarding Wing — Near Kansanshi Mine) ---
+    { name: 'Form 1 Alpha', stage: 'JUNIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 28, yearLevel: 8 },
+    { name: 'Form 1 Beta', stage: 'JUNIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 26, yearLevel: 8 },
+    { name: 'Form 2 Gold (ECZ Candidates)', stage: 'JUNIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 28, yearLevel: 9 },
+    { name: 'Form 2 Green', stage: 'JUNIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 26, yearLevel: 9 },
+    { name: 'Form 3 Blue', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 26, yearLevel: 10 },
+    { name: 'Form 3 Red', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 24, yearLevel: 10 },
+    { name: 'Form 4 Green', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 26, yearLevel: 11 },
+    { name: 'Form 4 Gold', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 24, yearLevel: 11 },
+    { name: 'Form 5 Sciences (Senior Candidates)', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 26, yearLevel: 12 },
+    { name: 'Form 5 Arts & Commerce', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 24, yearLevel: 12 },
   ];
 
   let studentIndex = 1;
@@ -1651,7 +1657,7 @@ export interface ExpenditureRecord {
   expenseNumber: string;
   expenseDate: string;
   fiscalPeriod: string;
-  campusId: 'LSS-MDC' | 'LSS-KBC' | 'CENTRAL';
+  campusId: 'LSS-MSC' | 'LSS-URB' | 'LSS-MDC' | 'LSS-KBC' | 'CENTRAL';
   campusName: string;
   category:
     | 'FOOD_BOARDING_RATIONS'

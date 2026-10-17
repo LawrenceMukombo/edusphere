@@ -51,26 +51,26 @@ export function Navbar() {
               type="button"
               onClick={() => setSelectedCampus('MUSHITALA')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                selectedCampus === 'MUSHITALA'
-                  ? 'bg-sky-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Sun className="w-3.5 h-3.5" />
-              <span>Mushitala Day Campus</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSelectedCampus('KANSANSHI')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
-                selectedCampus === 'KANSANSHI'
+                selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI'
                   ? 'bg-indigo-700 text-white shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               <Bed className="w-3.5 h-3.5" />
-              <span>Kansanshi Boarding Campus</span>
+              <span>Mushitala Campus (Near Kansanshi)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedCampus('URBAN')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+                selectedCampus === 'URBAN'
+                  ? 'bg-sky-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Sun className="w-3.5 h-3.5" />
+              <span>Urban Campus (Solwezi Central)</span>
             </button>
           </div>
 
@@ -107,8 +107,8 @@ export function Navbar() {
             className="text-xs font-bold bg-slate-100 border border-slate-300 rounded-lg px-2.5 py-1 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600"
           >
             <option value="ALL">All Campuses (Consolidated)</option>
-            <option value="MUSHITALA">Mushitala Day Campus (ECE & Primary)</option>
-            <option value="KANSANSHI">Kansanshi Boarding Campus (Secondary & Boarding)</option>
+            <option value="MUSHITALA">Mushitala Campus (Near Kansanshi - Boarding)</option>
+            <option value="URBAN">Urban Campus (Solwezi Central - ECE & Primary)</option>
           </select>
         </div>
       </div>

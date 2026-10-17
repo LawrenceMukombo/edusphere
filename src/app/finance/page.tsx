@@ -103,8 +103,8 @@ export default function FinancePage() {
     title: '',
     category: 'FOOD_BOARDING_RATIONS' as const,
     categoryLabel: 'Food & Boarding Dining Provisions',
-    campusId: 'LSS-KBC' as const,
-    campusName: 'Kansanshi Boarding Campus',
+    campusId: 'LSS-MSC' as const,
+    campusName: 'Mushitala Campus (Near Kansanshi)',
     amountZMW: 12500,
     vendorName: '',
     vendorTpin: '',
@@ -927,8 +927,8 @@ export default function FinancePage() {
                     value={expenseForm.campusId}
                     onChange={(e: any) => {
                       const names: Record<string, string> = {
-                        'LSS-KBC': 'Kansanshi Boarding Campus',
-                        'LSS-MDC': 'Mushitala Day Campus',
+                        'LSS-MSC': 'Mushitala Campus (Near Kansanshi)',
+                        'LSS-URB': 'Urban Campus (Solwezi Central)',
                         'CENTRAL': 'All Campuses (Consolidated)',
                       };
                       setExpenseForm({
@@ -939,8 +939,8 @@ export default function FinancePage() {
                     }}
                     className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-bold"
                   >
-                    <option value="LSS-KBC">Kansanshi Boarding Campus</option>
-                    <option value="LSS-MDC">Mushitala Day Campus</option>
+                    <option value="LSS-MSC">Mushitala Campus (Near Kansanshi)</option>
+                    <option value="LSS-URB">Urban Campus (Solwezi Central)</option>
                     <option value="CENTRAL">Central / Shared Facility</option>
                   </select>
                 </div>

@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-export type CampusId = 'ALL' | 'MUSHITALA' | 'KANSANSHI';
+export type CampusId = 'ALL' | 'MUSHITALA' | 'URBAN' | 'KANSANSHI';
 
 export interface CampusMetadata {
   id: CampusId;
@@ -25,7 +25,7 @@ export const LEGACY_CAMPUSES: Record<CampusId, CampusMetadata> = {
     name: 'All Campuses (Consolidated)',
     code: 'LSS-ALL',
     type: 'Multi-Campus Institutional Overview',
-    address: 'Kansanshi Mine Road Corridor, Solwezi',
+    address: 'Kansanshi Mine Road & Urban Corridor, Solwezi',
     city: 'Solwezi, North-Western Province',
     capacity: 1100,
     enrolled: 780,
@@ -36,30 +36,45 @@ export const LEGACY_CAMPUSES: Record<CampusId, CampusMetadata> = {
   },
   MUSHITALA: {
     id: 'MUSHITALA',
-    name: 'Mushitala Day Campus',
-    code: 'LSS-MDC',
-    type: 'ECE & Primary Day School (Baby Class to Grade 7)',
-    address: 'Stand # S/SOLWE/3177178, Kansanshi Mine Rd (opp. SGC)',
+    name: 'Mushitala Campus (Near Kansanshi)',
+    code: 'LSS-MSC',
+    type: 'Secondary & Boarding Wing (Forms 1 to 5)',
+    address: 'Stand # S/SOLWE/3177178, Kansanshi Mine Rd (opp. SGC Filling Station), Mushitala',
     city: 'Mushitala, Solwezi',
-    capacity: 450,
-    enrolled: 410,
-    hasBoarding: false,
-    color: '#0284c7',
-    badge: 'Day Campus',
-  },
-  KANSANSHI: {
-    id: 'KANSANSHI',
-    name: 'Kansanshi Boarding Campus',
-    code: 'LSS-KBC',
-    type: 'Secondary & Boarding Wing (Grade 8 to 12)',
-    address: 'Kansanshi Mine Road Educational Corridor',
-    city: 'Solwezi, North-Western Province',
     capacity: 650,
-    enrolled: 370,
+    enrolled: 420,
     hasBoarding: true,
     dormitories: ['Mopani Boys Hall (180 beds)', 'Mukwa Girls Hall (170 beds)'],
     color: '#4338ca',
-    badge: 'Secondary & Boarding',
+    badge: 'Near Kansanshi / Boarding',
+  },
+  URBAN: {
+    id: 'URBAN',
+    name: 'Urban Campus (Solwezi Central)',
+    code: 'LSS-URB',
+    type: 'Early Childhood Education (ECE) & Primary Day School',
+    address: 'Urban Educational Zone, Solwezi Town Center',
+    city: 'Solwezi Urban, North-Western Province',
+    capacity: 450,
+    enrolled: 360,
+    hasBoarding: false,
+    color: '#0284c7',
+    badge: 'ECE & Primary Day',
+  },
+  // Alias for backward compatibility
+  KANSANSHI: {
+    id: 'KANSANSHI',
+    name: 'Mushitala Campus (Near Kansanshi)',
+    code: 'LSS-MSC',
+    type: 'Secondary & Boarding Wing (Forms 1 to 5)',
+    address: 'Stand # S/SOLWE/3177178, Kansanshi Mine Rd (opp. SGC Filling Station), Mushitala',
+    city: 'Mushitala, Solwezi',
+    capacity: 650,
+    enrolled: 420,
+    hasBoarding: true,
+    dormitories: ['Mopani Boys Hall (180 beds)', 'Mukwa Girls Hall (170 beds)'],
+    color: '#4338ca',
+    badge: 'Near Kansanshi / Boarding',
   },
 };
 
@@ -77,7 +92,7 @@ export function CampusProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const saved = localStorage.getItem('edusphere_selected_campus') as CampusId;
-    if (saved && (saved === 'ALL' || saved === 'MUSHITALA' || saved === 'KANSANSHI')) {
+    if (saved && (saved === 'ALL' || saved === 'MUSHITALA' || saved === 'URBAN' || saved === 'KANSANSHI')) {
       setSelectedCampusState(saved);
     }
   }, []);
@@ -87,11 +102,11 @@ export function CampusProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('edusphere_selected_campus', campus);
   };
 
-  const campusInfo = LEGACY_CAMPUSES[selectedCampus];
+  const campusInfo = LEGACY_CAMPUSES[selectedCampus] || LEGACY_CAMPUSES.ALL;
   const allCampuses = [
     LEGACY_CAMPUSES.ALL,
     LEGACY_CAMPUSES.MUSHITALA,
-    LEGACY_CAMPUSES.KANSANSHI,
+    LEGACY_CAMPUSES.URBAN,
   ];
 
   return (

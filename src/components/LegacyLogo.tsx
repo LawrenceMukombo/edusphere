@@ -15,60 +15,18 @@ export function LegacyLogo({
   size = 'md',
   showAddress = true,
 }: LegacyLogoProps) {
-  // Emblem Only (The flying peace dove with olive branch and arched text)
+  // Emblem Only (The authentic flying parent & fledgling dove with arched LEGACY SCHOOL)
   if (variant === 'emblem') {
-    const dim = size === 'sm' ? 40 : size === 'md' ? 56 : size === 'lg' ? 72 : 96;
+    const dim = size === 'sm' ? 44 : size === 'md' ? 58 : size === 'lg' ? 76 : 104;
     return (
       <div className={`relative inline-flex items-center justify-center shrink-0 ${className}`}>
-        <svg
-          viewBox="0 0 160 160"
+        <img
+          src="/legacy-logo.png"
+          alt="Legacy School Solwezi Logo"
           width={dim}
           height={dim}
-          className="drop-shadow-sm select-none"
-        >
-          <defs>
-            <path id="archPathEmblem" d="M 22,108 A 62,62 0 0,1 138,108" fill="none" />
-            <linearGradient id="emblemBg" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#f0f9ff" />
-              <stop offset="100%" stopColor="#e0f2fe" />
-            </linearGradient>
-          </defs>
-          <circle cx="80" cy="80" r="76" fill="url(#emblemBg)" stroke="#1e3a8a" strokeWidth="2.5" />
-          <circle cx="80" cy="80" r="71" fill="none" stroke="#93c5fd" strokeWidth="1" strokeDasharray="3,2" />
-
-          {/* Arched Text */}
-          <text
-            fontFamily="'Arial Black', 'Montserrat', sans-serif"
-            fontSize="12.5"
-            fontWeight="900"
-            fill="#1e3a8a"
-            letterSpacing="3"
-          >
-            <textPath href="#archPathEmblem" startOffset="50%" textAnchor="middle">
-              LEGACY SCHOOL
-            </textPath>
-          </text>
-
-          {/* Flying Dove with Olive Branch */}
-          <g transform="translate(44, 46) scale(0.65)">
-            <path d="M 88,68 Q 98,62 108,66 Q 118,72 125,70" fill="none" stroke="#16a34a" strokeWidth="3" strokeLinecap="round" />
-            <path d="M 98,63 Q 102,56 106,62 C 103,66 99,66 98,63 Z" fill="#16a34a" />
-            <path d="M 108,65 Q 114,58 117,64 C 114,68 109,68 108,65 Z" fill="#22c55e" />
-            <path d="M 118,70 Q 124,65 127,71 C 123,74 119,74 118,70 Z" fill="#16a34a" />
-
-            <path d="M 72,55 C 76,46 84,46 88,52 C 92,58 90,66 82,70 C 76,73 70,70 68,64 Z" fill="#ffffff" stroke="#1e3a8a" strokeWidth="2.5" />
-            <path d="M 88,57 L 96,62 L 87,65 Z" fill="#f59e0b" stroke="#d97706" strokeWidth="1" />
-            <circle cx="82" cy="55" r="2.2" fill="#1e3a8a" />
-
-            <path d="M 64,62 C 58,40 54,20 38,10 C 35,26 40,42 46,55 C 38,42 32,32 20,24 C 22,38 28,52 36,63 C 28,52 20,44 10,40 C 14,55 24,66 34,74 C 44,82 58,82 64,74 Z"
-                  fill="#ffffff" stroke="#1e3a8a" strokeWidth="2.5" strokeLinejoin="round" />
-            <path d="M 68,64 C 62,75 52,86 38,92 C 48,96 60,94 72,86 C 80,78 84,70 82,66 Z" fill="#ffffff" stroke="#1e3a8a" strokeWidth="2.5" />
-            <path d="M 38,92 C 26,96 12,98 2,100 C 12,104 26,102 36,98 C 24,106 14,110 4,114 C 18,114 32,108 42,100 Z"
-                  fill="#ffffff" stroke="#1e3a8a" strokeWidth="2.5" strokeLinejoin="round" />
-            <path d="M 44,30 Q 50,45 52,58" fill="none" stroke="#94a3b8" strokeWidth="1.2" />
-            <path d="M 30,42 Q 38,55 42,66" fill="none" stroke="#94a3b8" strokeWidth="1.2" />
-          </g>
-        </svg>
+          className="object-contain drop-shadow-xs select-none max-w-full"
+        />
       </div>
     );
   }
@@ -76,7 +34,7 @@ export function LegacyLogo({
   // Compact Header / Navbar Format
   if (variant === 'compact') {
     return (
-      <div className={`flex items-center gap-3 ${className}`}>
+      <div className={`flex items-center gap-3.5 ${className}`}>
         <LegacyLogo variant="emblem" size={size} />
         <div className="flex flex-col">
           <div className="flex items-center gap-1.5">
@@ -89,6 +47,9 @@ export function LegacyLogo({
           </div>
           <span className="text-xs font-serif italic text-blue-700 tracking-wide mt-0.5 leading-tight">
             We Strive for Your Academic and Moral Excellence
+          </span>
+          <span className="text-[10px] text-slate-500 font-medium">
+            Mushitala Campus (Near Kansanshi) • Urban Campus
           </span>
         </div>
       </div>
@@ -114,10 +75,13 @@ export function LegacyLogo({
             {showAddress && (
               <div className="mt-2 text-xs text-slate-700 space-y-0.5 font-sans">
                 <p className="font-semibold text-slate-800">
+                  Mushitala Campus (Near Kansanshi Mine, Stand # S/SOLWE/3177178) • Urban Campus (Solwezi Central)
+                </p>
+                <p className="text-slate-600">
                   Plot No. 889, 890 Kansanshi Road, Mushitala • P.O Box 110558, Solwezi – Zambia
                 </p>
                 <p className="font-bold text-blue-900">
-                  Cell: 0968/0955 441 441 • Email: legacyschool208@gmail.com
+                  Cell: 0968/0955 441 441 / 0974 371271 • Email: legacyschool208@gmail.com
                 </p>
               </div>
             )}

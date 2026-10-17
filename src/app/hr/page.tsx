@@ -181,8 +181,9 @@ export default function HRPage() {
 
   // Filter staff by campus
   const filteredStaff = staffList.filter((s) => {
-    if (selectedCampus === 'MUSHITALA' && s.campusId === 'LSS-KBC') return false;
-    if (selectedCampus === 'KANSANSHI' && s.campusId === 'LSS-MDC') return false;
+    if (selectedCampus === 'MUSHITALA' && (s.campusId === 'LSS-URB' || s.campusId === 'LSS-MDC')) return false;
+    if (selectedCampus === 'URBAN' && (s.campusId === 'LSS-MSC' || s.campusId === 'LSS-KBC')) return false;
+    if (selectedCampus === 'KANSANSHI' && (s.campusId === 'LSS-URB' || s.campusId === 'LSS-MDC')) return false;
     return true;
   });
 

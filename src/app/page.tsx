@@ -35,7 +35,7 @@ export default function HomePage() {
   const { selectedCampus, setSelectedCampus, campusInfo } = useCampus();
 
   // Dynamic statistics adjusted per campus
-  const stats = {
+  const statsMap = {
     ALL: {
       enrolled: 780,
       capacity: 1100,
@@ -57,7 +57,27 @@ export default function HomePage() {
       sickbayCount: 3,
     },
     MUSHITALA: {
-      enrolled: 410,
+      enrolled: 420,
+      capacity: 650,
+      todayAttendanceRate: 98.4,
+      absentCount: 6,
+      boardersPresent: 315,
+      boardersTotal: 318,
+      feeCollectionRate: 83.8,
+      totalBilledZMW: '3,239,000',
+      totalCollectedZMW: '2,714,600',
+      totalExpensesZMW: '830,400',
+      netCashflowZMW: '+1,884,200',
+      staffOnDuty: 19,
+      staffTotal: 21,
+      tczComplianceRate: 95.2,
+      generatorFuelPct: 82,
+      boreholeStatus: 'Dual-Tank Storage Full',
+      activeExeats: 14,
+      sickbayCount: 2,
+    },
+    URBAN: {
+      enrolled: 360,
       capacity: 450,
       todayAttendanceRate: 96.6,
       absentCount: 14,
@@ -77,7 +97,7 @@ export default function HomePage() {
       sickbayCount: 1,
     },
     KANSANSHI: {
-      enrolled: 370,
+      enrolled: 420,
       capacity: 650,
       todayAttendanceRate: 98.4,
       absentCount: 6,
@@ -96,17 +116,19 @@ export default function HomePage() {
       activeExeats: 14,
       sickbayCount: 2,
     },
-  }[selectedCampus];
+  };
+
+  const stats = statsMap[selectedCampus] || statsMap.ALL;
 
   const attendanceChartData = [
-    { label: 'ECE Reception', value: 50, secondaryValue: 48, category: 'Mushitala Day' },
-    { label: 'Grade 1 Gold', value: 42, secondaryValue: 41, category: 'Mushitala Day' },
-    { label: 'Grade 5 Blue', value: 38, secondaryValue: 37, category: 'Mushitala Day' },
-    { label: 'Grade 7 Stars', value: 45, secondaryValue: 43, category: 'Mushitala Day' },
-    { label: 'Form 1 Alpha', value: 48, secondaryValue: 47, category: 'Kansanshi Boarding' },
-    { label: 'Form 3 Blue', value: 44, secondaryValue: 44, category: 'Kansanshi Boarding' },
-    { label: 'Form 4 Green', value: 42, secondaryValue: 42, category: 'Kansanshi Boarding' },
-    { label: 'Form 5 Sciences', value: 39, secondaryValue: 38, category: 'Kansanshi Boarding' },
+    { label: 'ECE Reception', value: 50, secondaryValue: 48, category: 'Urban Campus (Solwezi Central)' },
+    { label: 'Grade 1 Gold', value: 42, secondaryValue: 41, category: 'Urban Campus (Solwezi Central)' },
+    { label: 'Grade 5 Blue', value: 38, secondaryValue: 37, category: 'Urban Campus (Solwezi Central)' },
+    { label: 'Grade 7 Top', value: 45, secondaryValue: 43, category: 'Urban Campus (Solwezi Central)' },
+    { label: 'Form 1 Alpha', value: 48, secondaryValue: 47, category: 'Mushitala Campus (Near Kansanshi)' },
+    { label: 'Form 3 Blue', value: 44, secondaryValue: 44, category: 'Mushitala Campus (Near Kansanshi)' },
+    { label: 'Form 4 Green', value: 42, secondaryValue: 42, category: 'Mushitala Campus (Near Kansanshi)' },
+    { label: 'Form 5 Sciences', value: 39, secondaryValue: 38, category: 'Mushitala Campus (Near Kansanshi)' },
   ];
 
   const expenseBreakdown = [
