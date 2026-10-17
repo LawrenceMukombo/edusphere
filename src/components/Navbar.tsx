@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { useCampus, CampusId } from './CampusContext';
 
+import { LegacyLogo } from './LegacyLogo';
+
 export function Navbar() {
   const { selectedCampus, setSelectedCampus, campusInfo } = useCampus();
 
@@ -23,25 +25,10 @@ export function Navbar() {
     <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-xs">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
-          {/* Logo & School Identity */}
+          {/* Logo & School Identity from Official Emblem */}
           <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-900 via-blue-800 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-900/20 ring-2 ring-blue-100">
-                <GraduationCap className="w-6 h-6 text-amber-300" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-                    Legacy School <span className="text-blue-700">Solwezi</span>
-                  </span>
-                  <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                    Solwezi, Zambia
-                  </span>
-                </div>
-                <span className="block text-[11px] font-medium text-slate-500 italic">
-                  &ldquo;We strive for your academic and moral excellence&rdquo;
-                </span>
-              </div>
+            <Link href="/" className="flex items-center hover:opacity-95 transition">
+              <LegacyLogo variant="compact" size="md" />
             </Link>
           </div>
 

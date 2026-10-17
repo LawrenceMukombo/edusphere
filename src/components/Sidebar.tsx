@@ -17,12 +17,14 @@ import {
   CalendarCheck,
   Building2,
   DollarSign,
+  Bed,
 } from 'lucide-react';
 import { useCampus } from './CampusContext';
 
 const NAV_ITEMS = [
   { href: '/', label: 'Executive Dashboard', icon: LayoutDashboard },
   { href: '/attendance', label: 'Operations & Attendance', icon: CalendarCheck, badge: 'Live' },
+  { href: '/boarding', label: 'Boarding Houses & Village', icon: Bed, badge: 'Village' },
   { href: '/finance', label: 'Fees & Expenditures', icon: DollarSign, badge: 'Ledger' },
   { href: '/hr', label: 'Staff & HR Suite', icon: Briefcase, badge: 'TCZ' },
   { href: '/gis', label: 'Solwezi Campuses & GIS', icon: Compass },

@@ -1184,8 +1184,88 @@ export const LEGACY_STAFF_MEMBERS: LegacyStaffMember[] = [
 ];
 
 // ----------------------------------------------------------------------------
-// GENERATE 320 REALISTIC LEARNERS ACROSS BOTH CAMPUSES
+// FULL SPECTRUM OF ALL GRADES & HISTORICAL PROFILES
 // ----------------------------------------------------------------------------
+
+export interface AccommodationHistoryRecord {
+  id: string;
+  academicYear: string;
+  term: string;
+  termLabel: string;
+  boardingHouse: 'MOPANI_BOYS_HALL' | 'MUKWA_GIRLS_HALL';
+  boardingHouseLabel: string;
+  wing: 'Junior Wing' | 'Senior Wing' | 'North Wing' | 'South Wing';
+  dormRoom: string;
+  bedNumber: string;
+  lockerNumber: string;
+  housemasterOrMatron: string;
+  inspectionScore: string;
+  exeatsCount: number;
+  status: 'CHECKED_IN' | 'COMPLETED' | 'VACATED';
+  curfewComplianceRate: string;
+  remarks: string;
+}
+
+export interface HistoricalFeeRecord {
+  id: string;
+  academicYear: string;
+  term: string;
+  termLabel: string;
+  category: 'BOARDING_AND_TUITION' | 'DAY_TUITION';
+  amountBilled: number;
+  amountPaid: number;
+  balanceRemaining: number;
+  status: 'CLEARED' | 'PARTIAL' | 'ARREARS';
+  receiptNumber: string;
+  paymentDate: string;
+  paymentMethod: 'Zanaco Billmaster' | 'Stanbic Bank Deposit' | 'Airtel Money Merchant' | 'MTN Mobile Money' | 'Absa Bank Transfer';
+  referenceNumber: string;
+}
+
+export interface HistoricalAcademicSubject {
+  subjectName: string;
+  code: string;
+  score: number;
+  eczGrade: string; // "1 (Distinction)", "2", "3 (Merit)", etc.
+  teacherRemark: string;
+}
+
+export interface HistoricalAcademicRecord {
+  academicYear: string;
+  term: string;
+  termLabel: string;
+  className: string;
+  averageScore: number;
+  positionInClass: string;
+  eczDivision: 'Division 1' | 'Division 2' | 'Division 3';
+  conductGrade: 'A (Exemplary)' | 'B (Good)' | 'C (Satisfactory)';
+  principalRemarks: string;
+  subjects: HistoricalAcademicSubject[];
+}
+
+export interface MedicalWelfareProfile {
+  bloodGroup: 'O+' | 'A+' | 'B+' | 'AB+' | 'O-';
+  allergies: string;
+  chronicConditions: string;
+  sickbayVisitsCount: number;
+  lastNurseCheckup: string;
+  nurseNotes: string;
+  dietaryRequirements: string;
+}
+
+export interface CurrentAccommodation {
+  isBoarder: boolean;
+  boardingHouse?: 'MOPANI_BOYS_HALL' | 'MUKWA_GIRLS_HALL';
+  boardingHouseLabel?: string;
+  wing?: string;
+  dormRoom?: string;
+  bedNumber?: string;
+  lockerNumber?: string;
+  supervisorName?: string;
+  cleanlinessScore?: string;
+  todayStatus?: 'IN_DORM' | 'IN_CLASSES' | 'PREP_ROOM' | 'SICKBAY' | 'APPROVED_EXEAT';
+}
+
 export interface LegacyLearnerBalance {
   id: string;
   studentNumber: string;
@@ -1214,6 +1294,11 @@ export interface LegacyLearnerBalance {
   todayAttendance: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
   invoiceCount: number;
   paymentCount: number;
+  currentAccommodation: CurrentAccommodation;
+  accommodationHistory: AccommodationHistoryRecord[];
+  feeHistory: HistoricalFeeRecord[];
+  performanceHistory: HistoricalAcademicRecord[];
+  medicalProfile: MedicalWelfareProfile;
 }
 
 const FIRST_NAMES_MALE = [
@@ -1239,25 +1324,35 @@ const LAST_NAMES = [
 
 const GUARDIAN_TITLES = ['Eng.', 'Dr.', 'Mr.', 'Mrs.', 'Capt.', 'Rev.', 'Prof.', 'Director'];
 
-export function generateLegacyLearners(totalCount = 320): LegacyLearnerBalance[] {
+export function generateLegacyLearners(totalCount = 478): LegacyLearnerBalance[] {
   const learners: LegacyLearnerBalance[] = [];
 
+  // Complete spectrum of all grades across both campuses
   const classesConfig = [
-    // Mushitala Day Campus (Grades ECE to 7) - 170 Students
-    { name: 'Reception Stars', stage: 'EARLY_CHILDHOOD', campus: 'Mushitala Day Campus', isBoarding: false, fee: 2600, count: 24 },
-    { name: 'Grade 1 Gold', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isBoarding: false, fee: 2800, count: 25 },
-    { name: 'Grade 1 Blue', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isBoarding: false, fee: 2800, count: 24 },
-    { name: 'Grade 2 Emerald', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isBoarding: false, fee: 2800, count: 24 },
-    { name: 'Grade 3 Diamond', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isBoarding: false, fee: 2800, count: 24 },
-    { name: 'Grade 4 Ruby', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isBoarding: false, fee: 2800, count: 24 },
-    { name: 'Grade 5 Blue', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isBoarding: false, fee: 2800, count: 25 },
+    // --- Mushitala Day Campus (ECE & Primary Day School) ---
+    { name: 'Baby Class (Little Stars)', stage: 'EARLY_CHILDHOOD', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2400, count: 18, yearLevel: 0 },
+    { name: 'Middle Class', stage: 'EARLY_CHILDHOOD', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2400, count: 20, yearLevel: 0 },
+    { name: 'Reception Stars', stage: 'EARLY_CHILDHOOD', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2600, count: 24, yearLevel: 0 },
+    { name: 'Grade 1 Gold', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2800, count: 22, yearLevel: 1 },
+    { name: 'Grade 1 Blue', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2800, count: 22, yearLevel: 1 },
+    { name: 'Grade 2 Emerald', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2800, count: 22, yearLevel: 2 },
+    { name: 'Grade 3 Diamond', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2800, count: 22, yearLevel: 3 },
+    { name: 'Grade 4 Ruby', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2800, count: 22, yearLevel: 4 },
+    { name: 'Grade 5 Blue', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2800, count: 22, yearLevel: 5 },
+    { name: 'Grade 6 Silver', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isSecondary: false, fee: 2900, count: 22, yearLevel: 6 },
+    { name: 'Grade 7 Top (Candidates)', stage: 'PRIMARY', campus: 'Mushitala Day Campus', isSecondary: false, fee: 3100, count: 24, yearLevel: 7 },
 
-    // Kansanshi Boarding Campus (Grades 8 to 12) - 150 Students (110 Boarders + 40 Day)
-    { name: 'Form 1 Alpha', stage: 'JUNIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isBoarding: true, fee: 10400, count: 30 },
-    { name: 'Form 2 Gold', stage: 'JUNIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isBoarding: true, fee: 10400, count: 30 },
-    { name: 'Form 3 Blue', stage: 'JUNIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isBoarding: true, fee: 10400, count: 30 },
-    { name: 'Form 4 Green', stage: 'SENIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isBoarding: true, fee: 10400, count: 30 },
-    { name: 'Form 5 Sciences', stage: 'SENIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isBoarding: true, fee: 10400, count: 30 },
+    // --- Kansanshi Boarding Campus (Secondary Wing with Boarders & Day Scholars) ---
+    { name: 'Form 1 Alpha', stage: 'JUNIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 28, yearLevel: 8 },
+    { name: 'Form 1 Beta', stage: 'JUNIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 26, yearLevel: 8 },
+    { name: 'Form 2 Gold (ECZ Candidates)', stage: 'JUNIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 28, yearLevel: 9 },
+    { name: 'Form 2 Green', stage: 'JUNIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 26, yearLevel: 9 },
+    { name: 'Form 3 Blue', stage: 'SENIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 26, yearLevel: 10 },
+    { name: 'Form 3 Red', stage: 'SENIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 24, yearLevel: 10 },
+    { name: 'Form 4 Green', stage: 'SENIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 26, yearLevel: 11 },
+    { name: 'Form 4 Gold', stage: 'SENIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 24, yearLevel: 11 },
+    { name: 'Form 5 Sciences (Senior Candidates)', stage: 'SENIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 26, yearLevel: 12 },
+    { name: 'Form 5 Arts & Commerce', stage: 'SENIOR_SECONDARY', campus: 'Kansanshi Boarding Campus', isSecondary: true, fee: 10400, count: 24, yearLevel: 12 },
   ];
 
   let studentIndex = 1;
@@ -1271,44 +1366,40 @@ export function generateLegacyLearners(totalCount = 320): LegacyLearnerBalance[]
       const lastName = LAST_NAMES[(studentIndex * 7 + i) % LAST_NAMES.length];
       const studentNumber = `LSS-2026-${String(studentIndex).padStart(4, '0')}`;
 
-      // Boarding assignment
+      // Boarding designation: 70% of secondary students are boarders; 30% are day scholars
       let studentType: 'DAY_SCHOLAR' | 'BOARDER' = 'DAY_SCHOLAR';
       let hallName: string | undefined = undefined;
 
-      if (c.isBoarding) {
-        // 75% are boarders in Kansanshi campus, 25% are day scholars
-        const isBoarder = (studentIndex + i) % 4 !== 0;
+      if (c.isSecondary) {
+        const isBoarder = (studentIndex + i) % 10 < 7; // 70% Boarders
         if (isBoarder) {
           studentType = 'BOARDER';
           hallName = isMale ? 'Mopani Boys Hall' : 'Mukwa Girls Hall';
         }
       }
 
-      // Financial balance calculation
-      const totalBilled = studentType === 'BOARDER' ? 10400 : c.fee;
+      // Financial status & balances
+      const dayFee = c.isSecondary ? 3800 : c.fee;
+      const totalBilled = studentType === 'BOARDER' ? 10400 : dayFee;
       let totalPaid = 0;
       let balance = 0;
       let financialStatus: 'CLEARED' | 'PARTIAL' | 'ARREARS' | 'CHRONIC_ARREARS' = 'CLEARED';
 
       const paymentRoll = (studentIndex * 11 + i) % 10;
       if (paymentRoll < 7) {
-        // 70% Cleared in full
         totalPaid = totalBilled;
         balance = 0;
         financialStatus = 'CLEARED';
       } else if (paymentRoll < 9) {
-        // 20% Partial instalment
         totalPaid = Math.round(totalBilled * 0.6);
         balance = totalBilled - totalPaid;
         financialStatus = 'PARTIAL';
       } else {
-        // 10% Arrears
         totalPaid = 0;
         balance = totalBilled;
         financialStatus = paymentRoll === 9 ? 'ARREARS' : 'CHRONIC_ARREARS';
       }
 
-      // Ageing breakdown
       const ageing = {
         current: financialStatus === 'PARTIAL' || financialStatus === 'ARREARS' ? balance : 0,
         days31to60: financialStatus === 'CHRONIC_ARREARS' ? Math.round(balance * 0.5) : 0,
@@ -1331,6 +1422,188 @@ export function generateLegacyLearners(totalCount = 320): LegacyLearnerBalance[]
         email: `${firstName.toLowerCase()}.${lastName.toLowerCase()}@kansanshigroup.zm`,
       };
 
+      // ----------------------------------------------------------------------
+      // 1. Current Accommodation Details
+      // ----------------------------------------------------------------------
+      let currentAccommodation: CurrentAccommodation;
+      const dormsMaleJunior = ['Dorm A (Chambishi)', 'Dorm B (Lumwana)'];
+      const dormsMaleSenior = ['Dorm C (Kalumbila)', 'Dorm D (Kansanshi)', 'Senior Cubicle 04'];
+      const dormsFemaleJunior = ['Dorm 1 (Jacaranda)', 'Dorm 2 (Baobab)'];
+      const dormsFemaleSenior = ['Dorm 3 (Acacia)', 'Dorm 4 (Flame Tree)', 'Senior Cubicle 06'];
+
+      if (studentType === 'BOARDER') {
+        const isJunior = c.yearLevel <= 9;
+        const bHouse: 'MOPANI_BOYS_HALL' | 'MUKWA_GIRLS_HALL' = isMale ? 'MOPANI_BOYS_HALL' : 'MUKWA_GIRLS_HALL';
+        const wing = isMale
+          ? isJunior ? 'Junior Wing' : 'Senior Wing'
+          : isJunior ? 'North Wing' : 'South Wing';
+        const dormList = isMale
+          ? isJunior ? dormsMaleJunior : dormsMaleSenior
+          : isJunior ? dormsFemaleJunior : dormsFemaleSenior;
+        const room = dormList[(studentIndex + i) % dormList.length];
+        const bedNum = `Bed-${String((studentIndex % 30) + 1).padStart(2, '0')} (${(studentIndex % 2 === 0 ? 'Lower' : 'Upper')} Bunk)`;
+        const locker = `LCK-${isMale ? 'MOP' : 'MUK'}-${String((studentIndex % 30) + 1).padStart(2, '0')}`;
+        const supervisor = isMale ? 'Mr. Kelvin Phiri (Housemaster)' : 'Mrs. Constance Kangwa (Senior Matron)';
+
+        currentAccommodation = {
+          isBoarder: true,
+          boardingHouse: bHouse,
+          boardingHouseLabel: isMale ? 'Mopani Boys Boarding Hall' : 'Mukwa Girls Boarding Hall',
+          wing,
+          dormRoom: room,
+          bedNumber: bedNum,
+          lockerNumber: locker,
+          supervisorName: supervisor,
+          cleanlinessScore: '5/5 Star Cleanliness Verified',
+          todayStatus: todayAttendance === 'EXCUSED' ? 'APPROVED_EXEAT' : todayAttendance === 'ABSENT' ? 'SICKBAY' : 'IN_CLASSES',
+        };
+      } else {
+        currentAccommodation = {
+          isBoarder: false,
+          wing: 'Day Scholar Terminal',
+          dormRoom: 'Locker Cluster B',
+          bedNumber: 'N/A (Day Scholar)',
+          lockerNumber: `DAY-LCK-${String(studentIndex).padStart(3, '0')}`,
+          supervisorName: 'Mr. Patrick Zulu (Transport Marshall)',
+          cleanlinessScore: 'Compliant',
+          todayStatus: 'IN_CLASSES',
+        };
+      }
+
+      // ----------------------------------------------------------------------
+      // 2. Multi-Year Accommodation History
+      // ----------------------------------------------------------------------
+      const accommodationHistory: AccommodationHistoryRecord[] = [];
+      if (studentType === 'BOARDER') {
+        // Generate past terms based on yearLevel
+        // e.g. Form 5 has 2024 (Form 3), 2025 (Form 4), 2026 (Form 5)
+        const pastTerms = [
+          { yr: '2024', t: 'Term 1', dorm: isMale ? 'Dorm A (Chambishi)' : 'Dorm 1 (Jacaranda)', bed: 'Bed-12', exeat: 1, score: '4.8/5.0' },
+          { yr: '2024', t: 'Term 2', dorm: isMale ? 'Dorm A (Chambishi)' : 'Dorm 1 (Jacaranda)', bed: 'Bed-12', exeat: 0, score: '4.9/5.0' },
+          { yr: '2024', t: 'Term 3', dorm: isMale ? 'Dorm B (Lumwana)' : 'Dorm 2 (Baobab)', bed: 'Bed-08', exeat: 2, score: '5.0/5.0' },
+          { yr: '2025', t: 'Term 1', dorm: isMale ? 'Dorm C (Kalumbila)' : 'Dorm 3 (Acacia)', bed: 'Bed-04', exeat: 1, score: '5.0/5.0' },
+          { yr: '2025', t: 'Term 2', dorm: isMale ? 'Dorm C (Kalumbila)' : 'Dorm 3 (Acacia)', bed: 'Bed-04', exeat: 0, score: '4.7/5.0' },
+          { yr: '2025', t: 'Term 3', dorm: isMale ? 'Dorm D (Kansanshi)' : 'Dorm 4 (Flame Tree)', bed: 'Bed-15', exeat: 1, score: '5.0/5.0' },
+          { yr: '2026', t: 'Term 1', dorm: currentAccommodation.dormRoom || '', bed: currentAccommodation.bedNumber || '', exeat: 1, score: '5.0/5.0' },
+        ];
+
+        // Slice history matching their years at school
+        const termsToInclude = c.yearLevel >= 11 ? pastTerms : c.yearLevel >= 9 ? pastTerms.slice(3) : pastTerms.slice(6);
+
+        termsToInclude.forEach((h, hIdx) => {
+          accommodationHistory.push({
+            id: `acc-hist-${studentIndex}-${hIdx}`,
+            academicYear: h.yr,
+            term: h.t,
+            termLabel: `${h.yr} ${h.t}`,
+            boardingHouse: isMale ? 'MOPANI_BOYS_HALL' : 'MUKWA_GIRLS_HALL',
+            boardingHouseLabel: isMale ? 'Mopani Boys Boarding Hall' : 'Mukwa Girls Boarding Hall',
+            wing: isMale ? (c.yearLevel <= 9 ? 'Junior Wing' : 'Senior Wing') : (c.yearLevel <= 9 ? 'North Wing' : 'South Wing'),
+            dormRoom: h.dorm,
+            bedNumber: h.bed,
+            lockerNumber: `LCK-${h.yr}-${String((studentIndex % 20) + 1).padStart(2, '0')}`,
+            housemasterOrMatron: isMale ? 'Mr. Kelvin Phiri (Housemaster)' : 'Mrs. Constance Kangwa (Senior Matron)',
+            inspectionScore: h.score,
+            exeatsCount: h.exeat,
+            status: h.yr === '2026' ? 'CHECKED_IN' : 'COMPLETED',
+            curfewComplianceRate: '98.5% On-Time',
+            remarks: 'Polite conduct, active in dorm study circles, prefect endorsed.',
+          });
+        });
+      }
+
+      // ----------------------------------------------------------------------
+      // 3. Multi-Year Fee Payment History (2024, 2025, 2026)
+      // ----------------------------------------------------------------------
+      const feeHistory: HistoricalFeeRecord[] = [];
+      const paymentMethods: Array<HistoricalFeeRecord['paymentMethod']> = [
+        'Zanaco Billmaster',
+        'Stanbic Bank Deposit',
+        'Airtel Money Merchant',
+        'MTN Mobile Money',
+        'Absa Bank Transfer',
+      ];
+
+      const historicalTerms = [
+        { yr: '2024', t: 'Term 1', bill: studentType === 'BOARDER' ? 9800 : 2500, paid: studentType === 'BOARDER' ? 9800 : 2500, date: '2024-01-14' },
+        { yr: '2024', t: 'Term 2', bill: studentType === 'BOARDER' ? 9800 : 2500, paid: studentType === 'BOARDER' ? 9800 : 2500, date: '2024-05-10' },
+        { yr: '2024', t: 'Term 3', bill: studentType === 'BOARDER' ? 9800 : 2500, paid: studentType === 'BOARDER' ? 9800 : 2500, date: '2024-09-08' },
+        { yr: '2025', t: 'Term 1', bill: studentType === 'BOARDER' ? 10200 : 2700, paid: studentType === 'BOARDER' ? 10200 : 2700, date: '2025-01-12' },
+        { yr: '2025', t: 'Term 2', bill: studentType === 'BOARDER' ? 10200 : 2700, paid: studentType === 'BOARDER' ? 10200 : 2700, date: '2025-05-11' },
+        { yr: '2025', t: 'Term 3', bill: studentType === 'BOARDER' ? 10200 : 2700, paid: studentType === 'BOARDER' ? 10200 : 2700, date: '2025-09-07' },
+        { yr: '2026', t: 'Term 1', bill: totalBilled, paid: totalPaid, date: '2026-01-15' },
+      ];
+
+      const feeTermsToInclude = c.yearLevel >= 11 ? historicalTerms : c.yearLevel >= 9 ? historicalTerms.slice(3) : historicalTerms.slice(6);
+
+      feeTermsToInclude.forEach((f, fIdx) => {
+        const bal = f.bill - f.paid;
+        const pMethod = paymentMethods[(studentIndex + fIdx) % paymentMethods.length];
+        feeHistory.push({
+          id: `fee-hist-${studentIndex}-${fIdx}`,
+          academicYear: f.yr,
+          term: f.t,
+          termLabel: `${f.yr} ${f.t}`,
+          category: studentType === 'BOARDER' ? 'BOARDING_AND_TUITION' : 'DAY_TUITION',
+          amountBilled: f.bill,
+          amountPaid: f.paid,
+          balanceRemaining: bal,
+          status: bal === 0 ? 'CLEARED' : f.paid > 0 ? 'PARTIAL' : 'ARREARS',
+          receiptNumber: `REC-SOL-${f.yr}-${String((studentIndex * 7 + fIdx) % 8999 + 1000)}`,
+          paymentDate: f.date,
+          paymentMethod: pMethod,
+          referenceNumber: `TXN-${f.yr}-${String((studentIndex * 31 + fIdx) % 89999 + 10000)}`,
+        });
+      });
+
+      // ----------------------------------------------------------------------
+      // 4. Multi-Year Academic Performance History
+      // ----------------------------------------------------------------------
+      const performanceHistory: HistoricalAcademicRecord[] = [];
+      const baseScore = 65 + ((studentIndex * 17) % 32); // Realistic grades 65% to 97%
+      const acadYears = c.yearLevel >= 11 ? ['2024', '2025', '2026'] : c.yearLevel >= 9 ? ['2025', '2026'] : ['2026'];
+
+      acadYears.forEach((yr, yIdx) => {
+        const avg = Math.min(96, Math.max(58, baseScore + yIdx * 2.5));
+        const div: 'Division 1' | 'Division 2' | 'Division 3' = avg >= 75 ? 'Division 1' : avg >= 60 ? 'Division 2' : 'Division 3';
+        const pos = `${Math.floor(((studentIndex * 3) % 15) + 1)} out of ${c.count}`;
+
+        const subjects: HistoricalAcademicSubject[] = [
+          { subjectName: 'Mathematics', code: 'MATH', score: Math.round(avg + ((studentIndex % 7) - 3)), eczGrade: avg >= 80 ? '1 (Distinction)' : '2 (Distinction)', teacherRemark: 'Superb algebraic problem-solving.' },
+          { subjectName: 'English Language', code: 'ENG', score: Math.round(avg + ((studentIndex % 5) - 2)), eczGrade: avg >= 75 ? '2 (Distinction)' : '3 (Merit)', teacherRemark: 'Articulate essay writing and comprehension.' },
+          { subjectName: c.isSecondary ? 'Integrated Science' : 'Environmental Science', code: 'SCI', score: Math.round(avg + 2), eczGrade: '1 (Distinction)', teacherRemark: 'Inquisitive scientific methodology in lab experiments.' },
+          { subjectName: 'Computer Studies', code: 'CS', score: Math.round(avg + 4), eczGrade: '1 (Distinction)', teacherRemark: 'Advanced practical coding and digital literacy.' },
+          { subjectName: 'Social Studies / History', code: 'SS', score: Math.round(avg - 1), eczGrade: '2 (Distinction)', teacherRemark: 'Deep grasp of Zambian governance and history.' },
+        ];
+
+        performanceHistory.push({
+          academicYear: yr,
+          term: 'Term 1',
+          termLabel: `${yr} Term 1`,
+          className: c.name,
+          averageScore: Number(avg.toFixed(1)),
+          positionInClass: pos,
+          eczDivision: div,
+          conductGrade: 'A (Exemplary)',
+          principalRemarks: 'Approved for commendation. Displays moral and intellectual distinction.',
+          subjects,
+        });
+      });
+
+      // ----------------------------------------------------------------------
+      // 5. Healthcare & Sickbay Profile
+      // ----------------------------------------------------------------------
+      const bloodGroups: Array<MedicalWelfareProfile['bloodGroup']> = ['O+', 'A+', 'B+', 'AB+', 'O-'];
+      const medicalProfile: MedicalWelfareProfile = {
+        bloodGroup: bloodGroups[(studentIndex * 3) % bloodGroups.length],
+        allergies: studentIndex % 8 === 0 ? 'Penicillin allergy (Flagged on Sickbay Card)' : 'None known (Nil allergies)',
+        chronicConditions: studentIndex % 15 === 0 ? 'Mild Exercise-Induced Asthma (Inhaler with Matron)' : 'None',
+        sickbayVisitsCount: studentIndex % 5 === 0 ? 2 : 0,
+        lastNurseCheckup: '2026-09-18 (Routine Term 1 Baseline Health Screen)',
+        nurseNotes: 'Checked by Nurse Mary Mumba (RN). Vitals normal: BP 115/75, Pulse 72bpm, Dental clearance valid.',
+        dietaryRequirements: studentType === 'BOARDER' ? 'Standard Boarding Dining Plan (Balanced Nutrition)' : 'Day Scholar Packed Lunch / Tuckshop',
+      };
+
       learners.push({
         id: `lrn-${studentIndex}`,
         studentNumber,
@@ -1348,8 +1621,13 @@ export function generateLegacyLearners(totalCount = 320): LegacyLearnerBalance[]
         ageing,
         guardian,
         todayAttendance,
-        invoiceCount: 1,
+        invoiceCount: feeHistory.length,
         paymentCount: totalPaid > 0 ? (totalPaid === totalBilled ? 1 : 2) : 0,
+        currentAccommodation,
+        accommodationHistory,
+        feeHistory,
+        performanceHistory,
+        medicalProfile,
       });
 
       studentIndex++;
@@ -1361,8 +1639,9 @@ export function generateLegacyLearners(totalCount = 320): LegacyLearnerBalance[]
   return learners;
 }
 
-// 320 Realistically Seeded Learners
-export const LEGACY_SOLWEZI_BALANCES = generateLegacyLearners(320);
+// Full Spectrum of Seeded Learners across all grades (with Boarding & Day histories)
+export const LEGACY_SOLWEZI_BALANCES = generateLegacyLearners(478);
+
 
 // ----------------------------------------------------------------------------
 // EXPENDITURES DATASET

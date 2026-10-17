@@ -662,20 +662,33 @@ async function main() {
     },
   });
 
-  // Classes for both campuses
+  // Classes for both campuses across all grades
   const classesDef = [
+    // ECE
+    { id: 'lss-cls-baby', campusId: mushitalaCampus.id, name: 'Baby Class (Little Stars)', stage: EducationStage.ECE_NURSERY, stream: 'Stars' },
+    { id: 'lss-cls-middle', campusId: mushitalaCampus.id, name: 'Middle Class', stage: EducationStage.ECE_NURSERY, stream: 'Middle' },
     { id: 'lss-cls-reception', campusId: mushitalaCampus.id, name: 'Reception Stars', stage: EducationStage.ECE_RECEPTION, stream: 'Stars' },
+    // Primary
     { id: 'lss-cls-g1-gold', campusId: mushitalaCampus.id, name: 'Grade 1 Gold', stage: EducationStage.PRIMARY, stream: 'Gold' },
     { id: 'lss-cls-g1-blue', campusId: mushitalaCampus.id, name: 'Grade 1 Blue', stage: EducationStage.PRIMARY, stream: 'Blue' },
     { id: 'lss-cls-g2-emerald', campusId: mushitalaCampus.id, name: 'Grade 2 Emerald', stage: EducationStage.PRIMARY, stream: 'Emerald' },
     { id: 'lss-cls-g3-diamond', campusId: mushitalaCampus.id, name: 'Grade 3 Diamond', stage: EducationStage.PRIMARY, stream: 'Diamond' },
     { id: 'lss-cls-g4-ruby', campusId: mushitalaCampus.id, name: 'Grade 4 Ruby', stage: EducationStage.PRIMARY, stream: 'Ruby' },
     { id: 'lss-cls-g5-blue', campusId: mushitalaCampus.id, name: 'Grade 5 Blue', stage: EducationStage.PRIMARY, stream: 'Blue' },
+    { id: 'lss-cls-g6-silver', campusId: mushitalaCampus.id, name: 'Grade 6 Silver', stage: EducationStage.PRIMARY, stream: 'Silver' },
+    { id: 'lss-cls-g7-top', campusId: mushitalaCampus.id, name: 'Grade 7 Top (Candidates)', stage: EducationStage.PRIMARY, stream: 'Top' },
+    // Junior Secondary
     { id: 'lss-cls-f1-alpha', campusId: kansanshiCampus.id, name: 'Form 1 Alpha', stage: EducationStage.JUNIOR_SECONDARY, stream: 'Alpha' },
-    { id: 'lss-cls-f2-gold', campusId: kansanshiCampus.id, name: 'Form 2 Gold', stage: EducationStage.JUNIOR_SECONDARY, stream: 'Gold' },
-    { id: 'lss-cls-f3-blue', campusId: kansanshiCampus.id, name: 'Form 3 Blue', stage: EducationStage.JUNIOR_SECONDARY, stream: 'Blue' },
+    { id: 'lss-cls-f1-beta', campusId: kansanshiCampus.id, name: 'Form 1 Beta', stage: EducationStage.JUNIOR_SECONDARY, stream: 'Beta' },
+    { id: 'lss-cls-f2-gold', campusId: kansanshiCampus.id, name: 'Form 2 Gold (ECZ Candidates)', stage: EducationStage.JUNIOR_SECONDARY, stream: 'Gold' },
+    { id: 'lss-cls-f2-green', campusId: kansanshiCampus.id, name: 'Form 2 Green', stage: EducationStage.JUNIOR_SECONDARY, stream: 'Green' },
+    // Senior Secondary
+    { id: 'lss-cls-f3-blue', campusId: kansanshiCampus.id, name: 'Form 3 Blue', stage: EducationStage.SENIOR_SECONDARY, stream: 'Blue' },
+    { id: 'lss-cls-f3-red', campusId: kansanshiCampus.id, name: 'Form 3 Red', stage: EducationStage.SENIOR_SECONDARY, stream: 'Red' },
     { id: 'lss-cls-f4-green', campusId: kansanshiCampus.id, name: 'Form 4 Green', stage: EducationStage.SENIOR_SECONDARY, stream: 'Green' },
-    { id: 'lss-cls-f5-sciences', campusId: kansanshiCampus.id, name: 'Form 5 Sciences', stage: EducationStage.SENIOR_SECONDARY, stream: 'Sciences' },
+    { id: 'lss-cls-f4-gold', campusId: kansanshiCampus.id, name: 'Form 4 Gold', stage: EducationStage.SENIOR_SECONDARY, stream: 'Gold' },
+    { id: 'lss-cls-f5-sciences', campusId: kansanshiCampus.id, name: 'Form 5 Sciences (Senior Candidates)', stage: EducationStage.SENIOR_SECONDARY, stream: 'Sciences' },
+    { id: 'lss-cls-f5-arts', campusId: kansanshiCampus.id, name: 'Form 5 Arts & Commerce', stage: EducationStage.SENIOR_SECONDARY, stream: 'Arts' },
   ];
 
   const classLookup: Record<string, string> = {};
@@ -776,8 +789,8 @@ async function main() {
   }
   console.log(`✓ Seeded ${LEGACY_STAFF_MEMBERS.length} staff members across all cadres for Legacy School Solwezi`);
 
-  // Hundreds of Learners (320 learners)
-  const learnersData = generateLegacyLearners(320);
+  // All Grades Spectrum: 478 Learners (Boarders & Day Scholars)
+  const learnersData = generateLegacyLearners(478);
   for (const l of learnersData) {
     const campusId = l.campusName.includes('Mushitala') ? mushitalaCampus.id : kansanshiCampus.id;
     const classId = classLookup[l.className] || classLookup['Grade 1 Gold'];
