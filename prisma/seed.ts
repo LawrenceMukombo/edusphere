@@ -4,6 +4,7 @@
 
 import { PrismaClient, OrgType, SubscriptionTier, SubscriptionStatus, SystemRole, Gender, LearnerStatus, GuardianRelationship, EducationStage, AssessmentType, ResultStatus, AttendanceStatus, FeeCategory, InvoiceStatus, PaymentMethod, LedgerEntryType, EmploymentStatus } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { LEGACY_STAFF_MEMBERS, generateLegacyLearners } from '../src/server/services/legacySchoolData';
 
 const prisma = new PrismaClient({
   datasources: {
@@ -546,17 +547,374 @@ async function main() {
     },
   });
 
-  // Notice for Kabulonga Academy
-  await prisma.notice.create({
-    data: {
-      organisationId: kabulongaOrg.id,
-      title: 'Term 1 Mid-Term Break & Parent-Teacher Consultations',
-      content: 'Please be advised that Mid-Term consultations will be conducted on Friday 20th February. All parents are invited to review student portfolios.',
-      isPinned: true,
+  // 8. SCHOOL 3: LEGACY SCHOOL SOLWEZI (Multi-Campus with Dedicated Boarding Wing)
+  const legacyOrg = await prisma.organisation.upsert({
+    where: { code: 'EDS-ZM-SOL-001' },
+    update: {
+      name: 'Legacy School Solwezi',
+      officialName: 'Legacy School Solwezi Limited',
+      phone: '+260974371271',
+      city: 'Solwezi',
+      province: 'North-Western',
+    },
+    create: {
+      code: 'EDS-ZM-SOL-001',
+      name: 'Legacy School Solwezi',
+      officialName: 'Legacy School Solwezi Limited',
+      type: OrgType.MULTI_CAMPUS_GROUP,
+      registrationNo: 'MOE/NWP/SOL/SEC/2026/044',
+      taxNumber: '1008492019',
+      email: 'legacyschool208@gmail.com',
+      phone: '+260974371271',
+      address: 'Stand # S/SOLWE/3177178, Kansanshi Mine Road (opp. SGC Filling Station), Mushitala',
+      city: 'Solwezi',
+      province: 'North-Western',
+      primaryColor: '#1e3a8a',
     },
   });
 
-  console.log('✓ Successfully seeded Kabulonga Academy and Sunshine ECE Centre fixtures!');
+  await prisma.subscription.upsert({
+    where: { id: 'sub-legacy-solwezi-001' },
+    update: { tier: SubscriptionTier.ENTERPRISE_GROUP },
+    create: {
+      id: 'sub-legacy-solwezi-001',
+      organisationId: legacyOrg.id,
+      tier: SubscriptionTier.ENTERPRISE_GROUP,
+      status: SubscriptionStatus.ACTIVE,
+      activeLearnerCap: 1100,
+      currentActiveLearners: 780,
+      billingCycle: 'TERMLY',
+      priceZMW: 1299.0,
+      startDate: new Date('2026-01-01'),
+      endDate: new Date('2026-12-31'),
+    },
+  });
+
+  // Campuses for Legacy School Solwezi
+  const mushitalaCampus = await prisma.campus.upsert({
+    where: { organisationId_code: { organisationId: legacyOrg.id, code: 'LSS-MDC' } },
+    update: { name: 'Mushitala Day Campus' },
+    create: {
+      organisationId: legacyOrg.id,
+      name: 'Mushitala Day Campus',
+      code: 'LSS-MDC',
+      address: 'Stand # S/SOLWE/3177178, Kansanshi Mine Road (opp. SGC Filling Station)',
+      city: 'Mushitala, Solwezi',
+      phone: '+260974371271',
+      isMainCampus: true,
+      latitude: -12.1642,
+      longitude: 26.3951,
+      elevationMeters: 1365,
+      capacity: 450,
+      campusType: 'DAY_PRIMARY_ECE',
+      landAreaHectares: 1.8,
+      contactEmail: 'mushitala@legacyschool.edu.zm',
+      headTeacherName: 'Mrs. Grace Tembo (MEd)',
+    },
+  });
+
+  const kansanshiCampus = await prisma.campus.upsert({
+    where: { organisationId_code: { organisationId: legacyOrg.id, code: 'LSS-KBC' } },
+    update: { name: 'Kansanshi Boarding Campus' },
+    create: {
+      organisationId: legacyOrg.id,
+      name: 'Kansanshi Boarding Campus',
+      code: 'LSS-KBC',
+      address: 'Kansanshi Mine Road Educational Corridor',
+      city: 'Solwezi',
+      phone: '+260967288578',
+      isMainCampus: false,
+      latitude: -12.1528,
+      longitude: 26.4085,
+      elevationMeters: 1378,
+      capacity: 650,
+      campusType: 'SECONDARY_BOARDING_WING',
+      landAreaHectares: 5.4,
+      contactEmail: 'boarding@legacyschool.edu.zm',
+      headTeacherName: 'Mr. Emmanuel Mwansa (Principal)',
+    },
+  });
+
+  // Academic Year & Terms for Legacy School Solwezi
+  const yearLegacy2026 = await prisma.academicYear.upsert({
+    where: { organisationId_name: { organisationId: legacyOrg.id, name: '2026 Academic Year' } },
+    update: { isCurrent: true },
+    create: {
+      organisationId: legacyOrg.id,
+      name: '2026 Academic Year',
+      startDate: new Date('2026-01-12'),
+      endDate: new Date('2026-12-04'),
+      isCurrent: true,
+    },
+  });
+
+  const legacyTerm1 = await prisma.term.upsert({
+    where: { id: 'term-legacy-2026-t1' },
+    update: { isCurrent: true },
+    create: {
+      id: 'term-legacy-2026-t1',
+      academicYearId: yearLegacy2026.id,
+      name: 'Term 1',
+      termNumber: 1,
+      startDate: new Date('2026-01-12'),
+      endDate: new Date('2026-04-10'),
+      isCurrent: true,
+    },
+  });
+
+  // Classes for both campuses
+  const classesDef = [
+    { id: 'lss-cls-reception', campusId: mushitalaCampus.id, name: 'Reception Stars', stage: EducationStage.ECE_RECEPTION, stream: 'Stars' },
+    { id: 'lss-cls-g1-gold', campusId: mushitalaCampus.id, name: 'Grade 1 Gold', stage: EducationStage.PRIMARY, stream: 'Gold' },
+    { id: 'lss-cls-g1-blue', campusId: mushitalaCampus.id, name: 'Grade 1 Blue', stage: EducationStage.PRIMARY, stream: 'Blue' },
+    { id: 'lss-cls-g2-emerald', campusId: mushitalaCampus.id, name: 'Grade 2 Emerald', stage: EducationStage.PRIMARY, stream: 'Emerald' },
+    { id: 'lss-cls-g3-diamond', campusId: mushitalaCampus.id, name: 'Grade 3 Diamond', stage: EducationStage.PRIMARY, stream: 'Diamond' },
+    { id: 'lss-cls-g4-ruby', campusId: mushitalaCampus.id, name: 'Grade 4 Ruby', stage: EducationStage.PRIMARY, stream: 'Ruby' },
+    { id: 'lss-cls-g5-blue', campusId: mushitalaCampus.id, name: 'Grade 5 Blue', stage: EducationStage.PRIMARY, stream: 'Blue' },
+    { id: 'lss-cls-f1-alpha', campusId: kansanshiCampus.id, name: 'Form 1 Alpha', stage: EducationStage.JUNIOR_SECONDARY, stream: 'Alpha' },
+    { id: 'lss-cls-f2-gold', campusId: kansanshiCampus.id, name: 'Form 2 Gold', stage: EducationStage.JUNIOR_SECONDARY, stream: 'Gold' },
+    { id: 'lss-cls-f3-blue', campusId: kansanshiCampus.id, name: 'Form 3 Blue', stage: EducationStage.JUNIOR_SECONDARY, stream: 'Blue' },
+    { id: 'lss-cls-f4-green', campusId: kansanshiCampus.id, name: 'Form 4 Green', stage: EducationStage.SENIOR_SECONDARY, stream: 'Green' },
+    { id: 'lss-cls-f5-sciences', campusId: kansanshiCampus.id, name: 'Form 5 Sciences', stage: EducationStage.SENIOR_SECONDARY, stream: 'Sciences' },
+  ];
+
+  const classLookup: Record<string, string> = {};
+  for (const c of classesDef) {
+    const cls = await prisma.class.upsert({
+      where: { id: c.id },
+      update: { name: c.name, stage: c.stage, stream: c.stream },
+      create: {
+        id: c.id,
+        campusId: c.campusId,
+        academicYearId: yearLegacy2026.id,
+        name: c.name,
+        stage: c.stage,
+        stream: c.stream,
+        capacity: 45,
+      },
+    });
+    classLookup[c.name] = cls.id;
+  }
+
+  // 48 Staff members across all cadres
+  for (const sm of LEGACY_STAFF_MEMBERS) {
+    const campusId = sm.campusId === 'LSS-KBC' ? kansanshiCampus.id : mushitalaCampus.id;
+
+    let role: SystemRole = SystemRole.TEACHER;
+    if (sm.jobTitle.includes('Director') || sm.jobTitle.includes('Principal') || sm.jobTitle.includes('Headteacher')) {
+      role = SystemRole.HEADTEACHER;
+    } else if (sm.jobTitle.includes('Deputy')) {
+      role = SystemRole.DEPUTY_HEADTEACHER;
+    } else if (sm.jobTitle.includes('Bursar') || sm.jobTitle.includes('Cashier') || (sm.department === 'FINANCE_OPERATIONS' && sm.jobTitle.includes('Accounts'))) {
+      role = SystemRole.BURSAR;
+    } else if (sm.jobTitle.includes('Registrar') || sm.jobTitle.includes('Admissions')) {
+      role = SystemRole.REGISTRAR;
+    } else if (sm.jobTitle.includes('HR')) {
+      role = SystemRole.HR_OFFICER;
+    } else if (sm.department === 'ACADEMIC_PRIMARY' && (sm.jobTitle.includes('ECE') || sm.jobTitle.includes('Reception') || sm.jobTitle.includes('Practitioner'))) {
+      role = SystemRole.ECE_PRACTITIONER;
+    }
+
+    const user = await prisma.user.upsert({
+      where: { email: sm.email },
+      update: {
+        firstName: sm.firstName,
+        lastName: sm.lastName,
+        phone: sm.phone,
+        role: role,
+      },
+      create: {
+        organisationId: legacyOrg.id,
+        email: sm.email,
+        passwordHash: defaultPasswordHash,
+        firstName: sm.firstName,
+        lastName: sm.lastName,
+        phone: sm.phone,
+        role: role,
+      },
+    });
+
+    const empStatus = sm.employmentStatus === 'CONTRACT'
+      ? EmploymentStatus.CONTRACT
+      : sm.employmentStatus === 'PROBATION'
+      ? EmploymentStatus.PROBATION
+      : EmploymentStatus.FULL_TIME;
+
+    await prisma.staff.upsert({
+      where: {
+        organisationId_staffNumber: {
+          organisationId: legacyOrg.id,
+          staffNumber: sm.staffNumber,
+        },
+      },
+      update: {
+        jobTitle: sm.jobTitle,
+        qualification: sm.qualification,
+        tczNumber: sm.tczNumber,
+        tczCertificateExpiry: new Date(sm.tczExpiry),
+        employmentStatus: empStatus,
+        phone: sm.phone,
+        email: sm.email,
+      },
+      create: {
+        organisationId: legacyOrg.id,
+        campusId,
+        userId: user.id,
+        staffNumber: sm.staffNumber,
+        firstName: sm.firstName,
+        lastName: sm.lastName,
+        email: sm.email,
+        phone: sm.phone,
+        jobTitle: sm.jobTitle,
+        qualification: sm.qualification,
+        tczNumber: sm.tczNumber,
+        tczCertificateExpiry: new Date(sm.tczExpiry),
+        employmentStatus: empStatus,
+        dateJoined: new Date(sm.dateJoined),
+      },
+    });
+  }
+  console.log(`✓ Seeded ${LEGACY_STAFF_MEMBERS.length} staff members across all cadres for Legacy School Solwezi`);
+
+  // Hundreds of Learners (320 learners)
+  const learnersData = generateLegacyLearners(320);
+  for (const l of learnersData) {
+    const campusId = l.campusName.includes('Mushitala') ? mushitalaCampus.id : kansanshiCampus.id;
+    const classId = classLookup[l.className] || classLookup['Grade 1 Gold'];
+
+    const names = l.learnerName.split(' ');
+    const firstName = names[0] || 'Learner';
+    const lastName = names.slice(1).join(' ') || 'Legacy';
+
+    // 1. Learner record
+    const learner = await prisma.learner.upsert({
+      where: {
+        organisationId_studentNumber: {
+          organisationId: legacyOrg.id,
+          studentNumber: l.studentNumber,
+        },
+      },
+      update: {
+        currentClassId: classId,
+        campusId,
+        status: LearnerStatus.ENROLLED,
+      },
+      create: {
+        organisationId: legacyOrg.id,
+        campusId,
+        studentNumber: l.studentNumber,
+        firstName,
+        lastName,
+        gender: l.gender === 'MALE' ? Gender.MALE : Gender.FEMALE,
+        dateOfBirth: new Date(l.studentType === 'BOARDER' ? '2010-06-15' : '2017-03-22'),
+        nationality: 'Zambian',
+        status: LearnerStatus.ENROLLED,
+        currentClassId: classId,
+        residentialArea: l.studentType === 'BOARDER' ? 'Kansanshi Mine Boarding Wing' : 'Mushitala, Solwezi',
+        emergencyContact: l.guardian.phone,
+      },
+    });
+
+    // 2. Invoice
+    const invStatus = l.balance === 0
+      ? InvoiceStatus.PAID
+      : l.totalPaid > 0
+      ? InvoiceStatus.PARTIALLY_PAID
+      : InvoiceStatus.ISSUED;
+
+    await prisma.invoice.upsert({
+      where: {
+        organisationId_invoiceNumber: {
+          organisationId: legacyOrg.id,
+          invoiceNumber: `INV-${l.studentNumber}`,
+        },
+      },
+      update: {
+        totalAmount: l.totalBilled,
+        paidAmount: l.totalPaid,
+        balance: l.balance,
+        status: invStatus,
+      },
+      create: {
+        organisationId: legacyOrg.id,
+        learnerId: learner.id,
+        termId: legacyTerm1.id,
+        invoiceNumber: `INV-${l.studentNumber}`,
+        idempotencyKey: `inv-key-${l.studentNumber}`,
+        totalAmount: l.totalBilled,
+        paidAmount: l.totalPaid,
+        balance: l.balance,
+        status: invStatus,
+        dueDate: new Date('2026-02-28'),
+      },
+    });
+
+    // 3. Payment & Receipt (if paid > 0)
+    if (l.totalPaid > 0) {
+      const payment = await prisma.payment.upsert({
+        where: {
+          organisationId_paymentNumber: {
+            organisationId: legacyOrg.id,
+            paymentNumber: `PAY-${l.studentNumber}-01`,
+          },
+        },
+        update: {
+          amount: l.totalPaid,
+        },
+        create: {
+          organisationId: legacyOrg.id,
+          learnerId: learner.id,
+          paymentNumber: `PAY-${l.studentNumber}-01`,
+          amount: l.totalPaid,
+          paymentMethod: PaymentMethod.BANK_TRANSFER,
+          referenceNumber: `ZANACO-SOL-${l.studentNumber}`,
+          receivedDate: new Date('2026-01-20'),
+        },
+      });
+
+      await prisma.receipt.upsert({
+        where: {
+          organisationId_receiptNumber: {
+            organisationId: legacyOrg.id,
+            receiptNumber: `REC-${l.studentNumber}-01`,
+          },
+        },
+        update: {
+          amount: l.totalPaid,
+        },
+        create: {
+          organisationId: legacyOrg.id,
+          paymentId: payment.id,
+          receiptNumber: `REC-${l.studentNumber}-01`,
+          amount: l.totalPaid,
+          issuedAt: new Date('2026-01-20'),
+        },
+      });
+    }
+  }
+  console.log(`✓ Seeded ${learnersData.length} learners with invoices, payments & receipts for Legacy School Solwezi`);
+
+  // Notice for Legacy School Solwezi (Idempotent)
+  const existingNotice = await prisma.notice.findFirst({
+    where: {
+      organisationId: legacyOrg.id,
+      title: 'Legacy School Solwezi: 250kVA Standby Power & Boarding Exeat Policy',
+    },
+  });
+
+  if (!existingNotice) {
+    await prisma.notice.create({
+      data: {
+        organisationId: legacyOrg.id,
+        title: 'Legacy School Solwezi: 250kVA Standby Power & Boarding Exeat Policy',
+        content:
+          'All parents and guardians are assured that Kansanshi Boarding Campus maintains 24/7 power via our 250kVA standby diesel generator. Weekend exeats must be authorized by 15:00 on Friday.',
+        isPinned: true,
+      },
+    });
+  }
+
+  console.log('✓ Successfully seeded Kabulonga Academy, Sunshine ECE, and Legacy School Solwezi (2 Campuses & Boarding)!');
 }
 
 main()
