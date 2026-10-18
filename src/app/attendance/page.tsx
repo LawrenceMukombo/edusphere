@@ -76,6 +76,178 @@ interface StudentRosterItem {
   alertSent: boolean;
 }
 
+interface MonthAttendanceRecord {
+  monthIndex: number; // 1 to 12
+  monthName: string; // 'January', 'February', ...
+  shortMonth: string; // 'Jan', 'Feb', ...
+  termNumber: 1 | 2 | 3;
+  teachingDays: number;
+  daysPresent: number;
+  daysAbsent: number;
+  daysLate: number;
+  daysExcused: number;
+  rate: number; // percentage
+  status: 'EXEMPLARY' | 'GOOD' | 'BORDERLINE' | 'CRITICAL';
+}
+
+interface DayAttendanceRecord {
+  dayNumber: number; // 1 to 31
+  dateStr: string; // YYYY-MM-DD
+  dayOfWeek: string; // 'M' | 'T' | 'W' | 'T' | 'F' | 'S' | 'S'
+  isWeekend: boolean;
+  isHoliday: boolean;
+  holidayName?: string;
+  status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED' | 'WEEKEND' | 'HOLIDAY';
+  time?: string;
+}
+
+interface TermAttendanceRecord {
+  termNumber: 1 | 2 | 3;
+  termLabel: string;
+  teachingDays: number;
+  sessionsAttended: number;
+  sessionsAbsent: number;
+  sessionsLate: number;
+  sessionsExcused: number;
+  rate: number;
+  standing: 'GOLD' | 'SILVER' | 'BRONZE' | 'CRITICAL';
+  isCurrentTerm: boolean;
+}
+
+interface AnnualAttendanceRecord {
+  totalTeachingDays: number; // 187
+  totalAttended: number;
+  annualRate: number;
+  totalAbsences: number;
+  totalLates: number;
+  standing: 'GOLD' | 'SILVER' | 'BRONZE' | 'CRITICAL';
+  eczExamClearance: 'CLEARED' | 'CONDITIONAL' | 'BARRED';
+  eczClearanceNote: string;
+}
+
+interface WeekAttendanceRecord {
+  weekNumber: number; // 1 to 13
+  weekLabel: string; // 'Wk 1', 'Wk 2', ...
+  teachingDays: number;
+  daysAttended: number;
+  rate: number;
+  standing: 'EXCELLENT' | 'SATISFACTORY' | 'CONCERN';
+}
+
+const MONTH_CONFIGS = [
+  { index: 1, name: 'January', short: 'Jan', days: 31, teachingDays: 15, term: 1 as const },
+  { index: 2, name: 'February', short: 'Feb', days: 28, teachingDays: 20, term: 1 as const },
+  { index: 3, name: 'March', short: 'Mar', days: 31, teachingDays: 22, term: 1 as const },
+  { index: 4, name: 'April', short: 'Apr', days: 30, teachingDays: 6, term: 1 as const },
+  { index: 5, name: 'May', short: 'May', days: 31, teachingDays: 15, term: 2 as const },
+  { index: 6, name: 'June', short: 'Jun', days: 30, teachingDays: 21, term: 2 as const },
+  { index: 7, name: 'July', short: 'Jul', days: 31, teachingDays: 22, term: 2 as const },
+  { index: 8, name: 'August', short: 'Aug', days: 31, teachingDays: 4, term: 2 as const },
+  { index: 9, name: 'September', short: 'Sep', days: 30, teachingDays: 18, term: 3 as const },
+  { index: 10, name: 'October', short: 'Oct', days: 31, teachingDays: 21, term: 3 as const },
+  { index: 11, name: 'November', short: 'Nov', days: 30, teachingDays: 20, term: 3 as const },
+  { index: 12, name: 'December', short: 'Dec', days: 31, teachingDays: 3, term: 3 as const },
+];
+
+function getMonthDaysForLearner(learner: StudentRosterItem, monthIndex: number): DayAttendanceRecord[] {
+  const mInfo = MONTH_CONFIGS.find((m) => m.index === monthIndex) || MONTH_CONFIGS[2];
+  const numPart = parseInt(learner.studentNumber.replace(/\D/g, ''), 10) || 101;
+  const seed = (numPart * 17 + 23) % 1000;
+  const days: DayAttendanceRecord[] = [];
+  const daysInMonth = mInfo.days;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `2026-${String(monthIndex).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    const dt = new Date(2026, monthIndex - 1, d);
+    const dayNum = dt.getDay(); // 0 = Sun, 6 = Sat
+    const dayOfWeekLetter = ['S', 'M', 'T', 'W', 'T', 'F', 'S'][dayNum];
+    const isWeekend = dayNum === 0 || dayNum === 6;
+    const holiday = ZAMBIAN_PUBLIC_HOLIDAYS_2026.find((h) => h.date === dateStr || h.observedDate === dateStr);
+
+    if (isWeekend) {
+      days.push({
+        dayNumber: d,
+        dateStr,
+        dayOfWeek: dayOfWeekLetter,
+        isWeekend: true,
+        isHoliday: false,
+        status: 'WEEKEND',
+      });
+    } else if (holiday) {
+      days.push({
+        dayNumber: d,
+        dateStr,
+        dayOfWeek: dayOfWeekLetter,
+        isWeekend: false,
+        isHoliday: true,
+        holidayName: holiday.name,
+        status: 'HOLIDAY',
+      });
+    } else {
+      const dayHash = (seed * 19 + d * 37 + monthIndex * 53) % 100;
+      let status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED' = 'PRESENT';
+      let time = '07:18';
+
+      // If month is March (3) and day is 6 (Today), reflect live today status!
+      if (monthIndex === 3 && d === 6) {
+        status = learner.status;
+        time = learner.status === 'LATE' ? '07:56' : learner.status === 'ABSENT' ? '—' : '07:19';
+      } else if (seed % 47 === 0) {
+        // Chronic absentee
+        if (dayHash < 20) {
+          status = 'ABSENT';
+          time = '—';
+        } else if (dayHash < 32) {
+          status = 'LATE';
+          time = '08:05';
+        } else if (dayHash < 36) {
+          status = 'EXCUSED';
+          time = '—';
+        } else {
+          status = 'PRESENT';
+          time = '07:22';
+        }
+      } else if (seed % 9 === 0) {
+        // Occasionally late
+        if (dayHash < 6) {
+          status = 'ABSENT';
+          time = '—';
+        } else if (dayHash < 18) {
+          status = 'LATE';
+          time = '07:52';
+        } else {
+          status = 'PRESENT';
+          time = '07:20';
+        }
+      } else {
+        // Regular learner
+        if (dayHash < 3) {
+          status = 'ABSENT';
+          time = '—';
+        } else if (dayHash < 6) {
+          status = 'LATE';
+          time = '07:49';
+        } else {
+          status = 'PRESENT';
+          time = '07:16';
+        }
+      }
+
+      days.push({
+        dayNumber: d,
+        dateStr,
+        dayOfWeek: dayOfWeekLetter,
+        isWeekend: false,
+        isHoliday: false,
+        status,
+        time,
+      });
+    }
+  }
+
+  return days;
+}
+
 interface LearnerAttendanceHorizons {
   daily: {
     monday: { status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'; time: string; date: string };
@@ -84,12 +256,16 @@ interface LearnerAttendanceHorizons {
     thursday: { status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'; time: string; date: string };
     friday: { status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'; time: string; date: string };
     today: { status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED'; time: string };
+    rollCallMethod: string;
+    arrivalTime: string;
+    arrivalMinutesLate: number;
   };
   weekly: {
     currentWeekRate: number;
     currentWeekDaysPresent: number;
     currentWeekTotalDays: number;
     weekTrends: { week: string; rate: number }[];
+    termWeeks: WeekAttendanceRecord[];
   };
   monthly: {
     currentMonthRate: number;
@@ -98,6 +274,7 @@ interface LearnerAttendanceHorizons {
     prevMonthRate: number;
     prevMonthDaysPresent: number;
     prevMonthTotalDays: number;
+    allMonths: MonthAttendanceRecord[];
   };
   termly: {
     termRate: number;
@@ -108,6 +285,8 @@ interface LearnerAttendanceHorizons {
     excusedCount: number;
     standing: 'GOLD' | 'SILVER' | 'BRONZE' | 'CRITICAL';
     isChronicAbsentee: boolean;
+    terms: TermAttendanceRecord[];
+    annual: AnnualAttendanceRecord;
   };
 }
 
@@ -138,39 +317,190 @@ function getLearnerAttendanceHorizons(learner: StudentRosterItem): LearnerAttend
     { week: 'Wk 8', rate: currentWeekRate },
   ];
 
-  // Monthly: March 2026 (22 school days)
-  const marchAbsent = (seed % 17 === 0 ? 2 : seed % 7 === 0 ? 1 : 0) + (learner.status === 'ABSENT' ? 1 : 0);
-  const marchTotal = 22;
-  const marchPresent = Math.max(0, marchTotal - marchAbsent);
-  const marchRate = Math.round((marchPresent / marchTotal) * 1000) / 10;
+  // Generate all 13 instructional weeks of Term 1
+  const termWeeks: WeekAttendanceRecord[] = Array.from({ length: 13 }, (_, i) => {
+    const wNum = i + 1;
+    const wHash = (seed * 23 + wNum * 41) % 100;
+    let daysAtt = 5;
+    if (wNum === 8) {
+      daysAtt = daysPresent;
+    } else if (seed % 47 === 0) {
+      daysAtt = wHash < 35 ? 4 : wHash < 60 ? 3 : 5;
+    } else if (seed % 9 === 0) {
+      daysAtt = wHash < 20 ? 4 : 5;
+    } else {
+      daysAtt = wHash < 8 ? 4 : 5;
+    }
+    const rate = Math.round((daysAtt / 5) * 100);
+    const standing: 'EXCELLENT' | 'SATISFACTORY' | 'CONCERN' =
+      rate >= 95 ? 'EXCELLENT' : rate >= 80 ? 'SATISFACTORY' : 'CONCERN';
+    return {
+      weekNumber: wNum,
+      weekLabel: `Wk ${wNum}`,
+      teachingDays: 5,
+      daysAttended: daysAtt,
+      rate,
+      standing,
+    };
+  });
 
-  // Monthly: February 2026 (20 school days)
-  const febAbsent = seed % 11 === 0 ? 1 : 0;
-  const febTotal = 20;
-  const febPresent = Math.max(0, febTotal - febAbsent);
-  const febRate = Math.round((febPresent / febTotal) * 1000) / 10;
+  // Monthly: 12-Month Academic Year Matrix (Jan through Dec)
+  const allMonths: MonthAttendanceRecord[] = MONTH_CONFIGS.map((mc) => {
+    const mHash = (seed * 31 + mc.index * 67) % 100;
+    const tDays = mc.teachingDays;
+    let mAbsent = 0;
+    let mLate = 0;
+    let mExcused = 0;
 
-  // Termly: Term 1 2026 (42 cumulative school days)
-  const termTotal = 42;
-  const termAbsent = marchAbsent + febAbsent;
-  const termPresent = Math.max(0, termTotal - termAbsent);
-  const termLate = (seed % 9 === 0 ? 2 : seed % 4 === 0 ? 1 : 0) + (learner.status === 'LATE' ? 1 : 0);
-  const termExcused = seed % 15 === 0 ? 1 : 0;
-  const termRate = Math.round((termPresent / termTotal) * 1000) / 10;
+    if (mc.index === 3) {
+      // March live Month-to-date
+      mAbsent = (seed % 17 === 0 ? 2 : seed % 7 === 0 ? 1 : 0) + (learner.status === 'ABSENT' ? 1 : 0);
+      mLate = seed % 9 === 0 ? 2 : seed % 4 === 0 ? 1 : 0;
+      mExcused = seed % 15 === 0 ? 1 : 0;
+    } else if (mc.index === 2) {
+      // February total
+      mAbsent = seed % 11 === 0 ? 1 : 0;
+      mLate = seed % 6 === 0 ? 1 : 0;
+    } else if (seed % 47 === 0) {
+      // Chronic absentee
+      mAbsent = Math.round(tDays * 0.18);
+      mLate = Math.round(tDays * 0.10);
+      mExcused = 1;
+    } else if (seed % 9 === 0) {
+      mAbsent = mHash < 25 ? 1 : 0;
+      mLate = mHash < 40 ? 2 : 1;
+    } else {
+      mAbsent = mHash < 12 ? 1 : 0;
+      mLate = mHash < 18 ? 1 : 0;
+    }
 
-  let standing: 'GOLD' | 'SILVER' | 'BRONZE' | 'CRITICAL' = 'GOLD';
-  let isChronicAbsentee = false;
+    const mPresent = Math.max(0, tDays - mAbsent);
+    const mRate = Math.round((mPresent / tDays) * 1000) / 10;
+    let status: 'EXEMPLARY' | 'GOOD' | 'BORDERLINE' | 'CRITICAL' = 'EXEMPLARY';
+    if (mRate >= 98) status = 'EXEMPLARY';
+    else if (mRate >= 95) status = 'GOOD';
+    else if (mRate >= 85) status = 'BORDERLINE';
+    else status = 'CRITICAL';
 
-  if (termRate >= 98.0) {
-    standing = 'GOLD';
-  } else if (termRate >= 95.0) {
-    standing = 'SILVER';
-  } else if (termRate >= 85.0) {
-    standing = 'BRONZE';
-  } else {
-    standing = 'CRITICAL';
-    isChronicAbsentee = true;
+    return {
+      monthIndex: mc.index,
+      monthName: mc.name,
+      shortMonth: mc.short,
+      termNumber: mc.term,
+      teachingDays: tDays,
+      daysPresent: mPresent,
+      daysAbsent: mAbsent,
+      daysLate: mLate,
+      daysExcused: mExcused,
+      rate: mRate,
+      status,
+    };
+  });
+
+  const marchRecord = allMonths[2];
+  const febRecord = allMonths[1];
+
+  // Tri-Term Breakdown (Term 1, Term 2, Term 3)
+  const term1Months = allMonths.filter((m) => m.termNumber === 1);
+  const term1Days = term1Months.reduce((acc, m) => acc + m.teachingDays, 0); // 63
+  const term1Present = term1Months.reduce((acc, m) => acc + m.daysPresent, 0);
+  const term1Absent = term1Months.reduce((acc, m) => acc + m.daysAbsent, 0);
+  const term1Late = term1Months.reduce((acc, m) => acc + m.daysLate, 0);
+  const term1Excused = term1Months.reduce((acc, m) => acc + m.daysExcused, 0);
+  const term1Rate = Math.round((term1Present / term1Days) * 1000) / 10;
+
+  const term2Months = allMonths.filter((m) => m.termNumber === 2);
+  const term2Days = term2Months.reduce((acc, m) => acc + m.teachingDays, 0); // 62
+  const term2Present = term2Months.reduce((acc, m) => acc + m.daysPresent, 0);
+  const term2Absent = term2Months.reduce((acc, m) => acc + m.daysAbsent, 0);
+  const term2Late = term2Months.reduce((acc, m) => acc + m.daysLate, 0);
+  const term2Excused = term2Months.reduce((acc, m) => acc + m.daysExcused, 0);
+  const term2Rate = Math.round((term2Present / term2Days) * 1000) / 10;
+
+  const term3Months = allMonths.filter((m) => m.termNumber === 3);
+  const term3Days = term3Months.reduce((acc, m) => acc + m.teachingDays, 0); // 62
+  const term3Present = term3Months.reduce((acc, m) => acc + m.daysPresent, 0);
+  const term3Absent = term3Months.reduce((acc, m) => acc + m.daysAbsent, 0);
+  const term3Late = term3Months.reduce((acc, m) => acc + m.daysLate, 0);
+  const term3Excused = term3Months.reduce((acc, m) => acc + m.daysExcused, 0);
+  const term3Rate = Math.round((term3Present / term3Days) * 1000) / 10;
+
+  const getStanding = (rate: number): 'GOLD' | 'SILVER' | 'BRONZE' | 'CRITICAL' => {
+    if (rate >= 98.0) return 'GOLD';
+    if (rate >= 95.0) return 'SILVER';
+    if (rate >= 85.0) return 'BRONZE';
+    return 'CRITICAL';
+  };
+
+  const terms: TermAttendanceRecord[] = [
+    {
+      termNumber: 1,
+      termLabel: 'Term 1 (Autumn)',
+      teachingDays: term1Days,
+      sessionsAttended: term1Present,
+      sessionsAbsent: term1Absent,
+      sessionsLate: term1Late,
+      sessionsExcused: term1Excused,
+      rate: term1Rate,
+      standing: getStanding(term1Rate),
+      isCurrentTerm: true,
+    },
+    {
+      termNumber: 2,
+      termLabel: 'Term 2 (Winter)',
+      teachingDays: term2Days,
+      sessionsAttended: term2Present,
+      sessionsAbsent: term2Absent,
+      sessionsLate: term2Late,
+      sessionsExcused: term2Excused,
+      rate: term2Rate,
+      standing: getStanding(term2Rate),
+      isCurrentTerm: false,
+    },
+    {
+      termNumber: 3,
+      termLabel: 'Term 3 (Promotional & ECZ)',
+      teachingDays: term3Days,
+      sessionsAttended: term3Present,
+      sessionsAbsent: term3Absent,
+      sessionsLate: term3Late,
+      sessionsExcused: term3Excused,
+      rate: term3Rate,
+      standing: getStanding(term3Rate),
+      isCurrentTerm: false,
+    },
+  ];
+
+  // Annual Cumulative (187 Days Total)
+  const annualTotalDays = term1Days + term2Days + term3Days; // 187
+  const annualAttended = term1Present + term2Present + term3Present;
+  const annualAbsent = term1Absent + term2Absent + term3Absent;
+  const annualLate = term1Late + term2Late + term3Late;
+  const annualRate = Math.round((annualAttended / annualTotalDays) * 1000) / 10;
+  const annualStanding = getStanding(annualRate);
+
+  let eczExamClearance: 'CLEARED' | 'CONDITIONAL' | 'BARRED' = 'CLEARED';
+  let eczClearanceNote = 'Fully cleared for ECZ National Examination candidate entry.';
+  if (annualRate < 80.0) {
+    eczExamClearance = 'BARRED';
+    eczClearanceNote = 'Disqualified under MoE statutory minimum 80% attendance rule; alert sent to Head.';
+  } else if (annualRate < 90.0) {
+    eczExamClearance = 'CONDITIONAL';
+    eczClearanceNote = 'Requires DEBS attendance dispensation waiver for ECZ examination registration.';
   }
+
+  const annual: AnnualAttendanceRecord = {
+    totalTeachingDays: annualTotalDays,
+    totalAttended: annualAttended,
+    annualRate,
+    totalAbsences: annualAbsent,
+    totalLates: annualLate,
+    standing: annualStanding,
+    eczExamClearance,
+    eczClearanceNote,
+  };
+
+  const isChronicAbsentee = term1Rate < 85.0;
 
   return {
     daily: {
@@ -180,30 +510,37 @@ function getLearnerAttendanceHorizons(learner: StudentRosterItem): LearnerAttend
       thursday: { status: thursdayStatus, time: thursdayStatus === 'LATE' ? '07:52' : '07:20', date: '05 Mar' },
       friday: { status: fridayStatus, time: fridayStatus === 'LATE' ? '07:55' : fridayStatus === 'ABSENT' ? '—' : '07:19', date: '06 Mar' },
       today: { status: learner.status, time: learner.status === 'LATE' ? '07:55' : learner.status === 'ABSENT' ? '—' : '07:19' },
+      rollCallMethod: learner.studentType === 'BOARDER' ? 'Boarding Master Roll-Call' : 'Classroom Teacher App',
+      arrivalTime: learner.status === 'LATE' ? '07:55 AM' : learner.status === 'ABSENT' ? '—' : '07:19 AM',
+      arrivalMinutesLate: learner.status === 'LATE' ? (learner.arrivalMinutesLate || 25) : 0,
     },
     weekly: {
       currentWeekRate,
       currentWeekDaysPresent: daysPresent,
       currentWeekTotalDays: 5,
       weekTrends,
+      termWeeks,
     },
     monthly: {
-      currentMonthRate: marchRate,
-      currentMonthDaysPresent: marchPresent,
-      currentMonthTotalDays: marchTotal,
-      prevMonthRate: febRate,
-      prevMonthDaysPresent: febPresent,
-      prevMonthTotalDays: febTotal,
+      currentMonthRate: marchRecord.rate,
+      currentMonthDaysPresent: marchRecord.daysPresent,
+      currentMonthTotalDays: marchRecord.teachingDays,
+      prevMonthRate: febRecord.rate,
+      prevMonthDaysPresent: febRecord.daysPresent,
+      prevMonthTotalDays: febRecord.teachingDays,
+      allMonths,
     },
     termly: {
-      termRate,
-      totalSessions: termTotal,
-      presentCount: termPresent,
-      absentCount: termAbsent,
-      lateCount: termLate,
-      excusedCount: termExcused,
-      standing,
+      termRate: term1Rate,
+      totalSessions: term1Days,
+      presentCount: term1Present,
+      absentCount: term1Absent,
+      lateCount: term1Late,
+      excusedCount: term1Excused,
+      standing: getStanding(term1Rate),
       isChronicAbsentee,
+      terms,
+      annual,
     },
   };
 }
@@ -246,6 +583,12 @@ export default function AttendancePage() {
   const [calendarBirthdaySearch, setCalendarBirthdaySearch] = useState('');
 
   // Multi-Horizon Matrix State (Daily, Weekly, Monthly, Termly)
+  const [matrixHorizonView, setMatrixHorizonView] = useState<'ALL' | 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'TERMLY'>('ALL');
+  const [monthlyViewMode, setMonthlyViewMode] = useState<'ALL_MONTHS' | 'DAILY_SHEET'>('ALL_MONTHS');
+  const [monthlySelectedMonth, setMonthlySelectedMonth] = useState<number>(3); // 1-12, defaults to March 2026
+  const [termlyStatusFilter, setTermlyStatusFilter] = useState<'ALL' | 'CLEARED' | 'CONDITIONAL' | 'BARRED'>('ALL');
+  const [selectedLearnerForForm12A, setSelectedLearnerForForm12A] = useState<StudentRosterItem | null>(null);
+
   const [matrixClass, setMatrixClass] = useState('Grade 1 Gold');
   const [matrixSearch, setMatrixSearch] = useState('');
   const [matrixStatusFilter, setMatrixStatusFilter] = useState<'ALL' | 'ABSENT_TODAY' | 'LATE_TODAY' | 'CHRONIC' | 'BOARDERS' | 'DAY_SCHOLARS'>('ALL');
@@ -477,60 +820,246 @@ export default function AttendancePage() {
   };
 
   const exportClassroomMatrixCsv = () => {
-    const headers = [
-      'Student ID',
-      'Student Name',
-      'Class Cohort',
-      'Campus',
-      'Format',
-      'Mon 02 Mar',
-      'Tue 03 Mar',
-      'Wed 04 Mar',
-      'Thu 05 Mar',
-      'Fri 06 Mar (Today)',
-      'Current Week Rate (%)',
-      'March MTD Rate (%)',
-      'March Present Days',
-      'Feb Rate (%)',
-      'Term 1 Rate (%)',
-      'Term Days Present',
-      'Term Days Absent',
-      'Term Days Late',
-      'Official Standing',
-    ];
-    const rows = matrixLearners.map((learner) => {
-      const h = getLearnerAttendanceHorizons(learner);
-      return [
-        `"${learner.studentNumber}"`,
-        `"${learner.learnerName}"`,
-        `"${learner.className}"`,
-        `"${learner.campusName}"`,
-        `"${learner.studentType}"`,
-        h.daily.monday.status,
-        h.daily.tuesday.status,
-        h.daily.wednesday.status,
-        h.daily.thursday.status,
-        h.daily.today.status,
-        `${h.weekly.currentWeekRate}%`,
-        `${h.monthly.currentMonthRate}%`,
-        `${h.monthly.currentMonthDaysPresent}/${h.monthly.currentMonthTotalDays}`,
-        `${h.monthly.prevMonthRate}%`,
-        `${h.termly.termRate}%`,
-        h.termly.presentCount,
-        h.termly.absentCount,
-        h.termly.lateCount,
-        h.termly.standing,
+    let headers: string[] = [];
+    let rows: (string | number)[][] = [];
+    let fileSuffix = 'Consolidated_Matrix';
+
+    if (matrixHorizonView === 'MONTHLY') {
+      if (monthlyViewMode === 'ALL_MONTHS') {
+        fileSuffix = '12_Month_Academic_Year';
+        headers = [
+          'Student ID',
+          'Student Name',
+          'Class Cohort',
+          'Campus',
+          'Format',
+          'Jan (15d)',
+          'Feb (20d)',
+          'Mar (22d)',
+          'Apr (6d)',
+          'May (15d)',
+          'Jun (21d)',
+          'Jul (22d)',
+          'Aug (4d)',
+          'Sep (18d)',
+          'Oct (21d)',
+          'Nov (20d)',
+          'Dec (3d)',
+          'YTD Rate (%)',
+          'YTD Days Present',
+          'Annual Standing',
+        ];
+        rows = matrixLearners.map((learner) => {
+          const h = getLearnerAttendanceHorizons(learner);
+          return [
+            `"${learner.studentNumber}"`,
+            `"${learner.learnerName}"`,
+            `"${learner.className}"`,
+            `"${learner.campusName}"`,
+            `"${learner.studentType}"`,
+            ...h.monthly.allMonths.map((m) => `${m.rate}% (${m.daysPresent}/${m.teachingDays}d)`),
+            `${h.termly.annual.annualRate}%`,
+            `${h.termly.annual.totalAttended}/${h.termly.annual.totalTeachingDays}`,
+            h.termly.annual.standing,
+          ];
+        });
+      } else {
+        const mInfo = MONTH_CONFIGS.find((m) => m.index === monthlySelectedMonth) || MONTH_CONFIGS[2];
+        fileSuffix = `${mInfo.name}_Daily_Register`;
+        const dayHeaders = Array.from({ length: mInfo.days }, (_, i) => `Day ${i + 1}`);
+        headers = [
+          'Student ID',
+          'Student Name',
+          'Class Cohort',
+          'Campus',
+          'Format',
+          ...dayHeaders,
+          'Present Days',
+          'Absent Days',
+          'Late Days',
+          'Excused Days',
+          `${mInfo.name} Rate (%)`,
+        ];
+        rows = matrixLearners.map((learner) => {
+          const dayRecords = getMonthDaysForLearner(learner, monthlySelectedMonth);
+          const pCount = dayRecords.filter((d) => d.status === 'PRESENT').length;
+          const aCount = dayRecords.filter((d) => d.status === 'ABSENT').length;
+          const lCount = dayRecords.filter((d) => d.status === 'LATE').length;
+          const eCount = dayRecords.filter((d) => d.status === 'EXCUSED').length;
+          const rate = mInfo.teachingDays > 0 ? Math.round(((pCount + lCount) / mInfo.teachingDays) * 1000) / 10 : 100;
+          return [
+            `"${learner.studentNumber}"`,
+            `"${learner.learnerName}"`,
+            `"${learner.className}"`,
+            `"${learner.campusName}"`,
+            `"${learner.studentType}"`,
+            ...dayRecords.map((d) => d.status),
+            pCount,
+            aCount,
+            lCount,
+            eCount,
+            `${rate}%`,
+          ];
+        });
+      }
+    } else if (matrixHorizonView === 'TERMLY') {
+      fileSuffix = 'Termly_Statutory_ECZ';
+      headers = [
+        'Student ID',
+        'Student Name',
+        'Class Cohort',
+        'Campus',
+        'Format',
+        'Term 1 Days (63d)',
+        'Term 1 Rate (%)',
+        'Term 1 Standing',
+        'Term 2 Days (62d)',
+        'Term 2 Rate (%)',
+        'Term 2 Standing',
+        'Term 3 Days (62d)',
+        'Term 3 Rate (%)',
+        'Term 3 Standing',
+        'Annual Total (187d)',
+        'Annual Rate (%)',
+        'ECZ Clearance Status',
+        'Official Note',
       ];
-    });
+      rows = matrixLearners.map((learner) => {
+        const h = getLearnerAttendanceHorizons(learner);
+        return [
+          `"${learner.studentNumber}"`,
+          `"${learner.learnerName}"`,
+          `"${learner.className}"`,
+          `"${learner.campusName}"`,
+          `"${learner.studentType}"`,
+          `${h.termly.terms[0].sessionsAttended}/63`,
+          `${h.termly.terms[0].rate}%`,
+          h.termly.terms[0].standing,
+          `${h.termly.terms[1].sessionsAttended}/62`,
+          `${h.termly.terms[1].rate}%`,
+          h.termly.terms[1].standing,
+          `${h.termly.terms[2].sessionsAttended}/62`,
+          `${h.termly.terms[2].rate}%`,
+          h.termly.terms[2].standing,
+          `${h.termly.annual.totalAttended}/187`,
+          `${h.termly.annual.annualRate}%`,
+          h.termly.annual.eczExamClearance,
+          `"${h.termly.annual.eczClearanceNote}"`,
+        ];
+      });
+    } else if (matrixHorizonView === 'DAILY') {
+      fileSuffix = 'Daily_RollCall';
+      headers = [
+        'Student ID',
+        'Student Name',
+        'Class Cohort',
+        'Campus',
+        'Format',
+        'Today Status',
+        'Arrival Time',
+        'Minutes Late',
+        'Roll-Call Method',
+        'Guardian Name',
+        'Guardian Phone',
+      ];
+      rows = matrixLearners.map((learner) => {
+        const h = getLearnerAttendanceHorizons(learner);
+        return [
+          `"${learner.studentNumber}"`,
+          `"${learner.learnerName}"`,
+          `"${learner.className}"`,
+          `"${learner.campusName}"`,
+          `"${learner.studentType}"`,
+          learner.status,
+          h.daily.today.time,
+          h.daily.arrivalMinutesLate,
+          `"${h.daily.rollCallMethod}"`,
+          `"${learner.guardianName}"`,
+          `"${learner.guardianPhone}"`,
+        ];
+      });
+    } else if (matrixHorizonView === 'WEEKLY') {
+      fileSuffix = 'Weekly_Term1_Register';
+      headers = [
+        'Student ID',
+        'Student Name',
+        'Class Cohort',
+        'Campus',
+        'Format',
+        ...Array.from({ length: 13 }, (_, i) => `Wk ${i + 1} (%)`),
+        'Current Week (Wk 8)',
+        'Weekly Trend',
+      ];
+      rows = matrixLearners.map((learner) => {
+        const h = getLearnerAttendanceHorizons(learner);
+        return [
+          `"${learner.studentNumber}"`,
+          `"${learner.learnerName}"`,
+          `"${learner.className}"`,
+          `"${learner.campusName}"`,
+          `"${learner.studentType}"`,
+          ...h.weekly.termWeeks.map((w) => `${w.rate}%`),
+          `${h.weekly.currentWeekRate}% (${h.weekly.currentWeekDaysPresent}/5d)`,
+          h.weekly.currentWeekRate >= 95 ? 'CONSISTENT' : 'VARIABLE',
+        ];
+      });
+    } else {
+      headers = [
+        'Student ID',
+        'Student Name',
+        'Class Cohort',
+        'Campus',
+        'Format',
+        'Mon 02 Mar',
+        'Tue 03 Mar',
+        'Wed 04 Mar',
+        'Thu 05 Mar',
+        'Fri 06 Mar (Today)',
+        'Current Week Rate (%)',
+        'March MTD Rate (%)',
+        'March Present Days',
+        'Feb Rate (%)',
+        'Term 1 Rate (%)',
+        'Term Days Present',
+        'Term Days Absent',
+        'Term Days Late',
+        'Official Standing',
+      ];
+      rows = matrixLearners.map((learner) => {
+        const h = getLearnerAttendanceHorizons(learner);
+        return [
+          `"${learner.studentNumber}"`,
+          `"${learner.learnerName}"`,
+          `"${learner.className}"`,
+          `"${learner.campusName}"`,
+          `"${learner.studentType}"`,
+          h.daily.monday.status,
+          h.daily.tuesday.status,
+          h.daily.wednesday.status,
+          h.daily.thursday.status,
+          h.daily.today.status,
+          `${h.weekly.currentWeekRate}%`,
+          `${h.monthly.currentMonthRate}%`,
+          `${h.monthly.currentMonthDaysPresent}/${h.monthly.currentMonthTotalDays}`,
+          `${h.monthly.prevMonthRate}%`,
+          `${h.termly.termRate}%`,
+          h.termly.presentCount,
+          h.termly.absentCount,
+          h.termly.lateCount,
+          h.termly.standing,
+        ];
+      });
+    }
+
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Attendance_Matrix_${matrixClass.replace(/\s+/g, '_')}_2026.csv`);
+    link.setAttribute('download', `Attendance_${fileSuffix}_${matrixClass.replace(/\s+/g, '_')}_2026.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast(`Multi-horizon attendance matrix for ${matrixClass} exported successfully.`);
+    showToast(`Attendance registry (${fileSuffix}) for ${matrixClass} exported successfully.`);
   };
 
   const handleUpdateExeatStatus = async (id: string, newStatus: 'RETURNED_ON_TIME') => {
@@ -1098,9 +1627,12 @@ export default function AttendancePage() {
 
         <button
           type="button"
-          onClick={() => setActiveTab('MATRIX')}
+          onClick={() => {
+            setActiveTab('MATRIX');
+            setMatrixHorizonView('ALL');
+          }}
           className={`pb-3 border-b-2 transition flex items-center gap-2 whitespace-nowrap ${
-            activeTab === 'MATRIX'
+            activeTab === 'MATRIX' && matrixHorizonView === 'ALL'
               ? 'border-emerald-700 text-emerald-800 font-black'
               : 'border-transparent text-slate-500 hover:text-slate-800'
           }`}
@@ -1109,6 +1641,44 @@ export default function AttendancePage() {
           <span>Multi-Horizon Matrix (Daily • Weekly • Monthly • Termly)</span>
           <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold">
             All Horizons
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('MATRIX');
+            setMatrixHorizonView('MONTHLY');
+          }}
+          className={`pb-3 border-b-2 transition flex items-center gap-2 whitespace-nowrap ${
+            activeTab === 'MATRIX' && matrixHorizonView === 'MONTHLY'
+              ? 'border-teal-700 text-teal-800 font-black'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4 text-teal-600" />
+          <span>Monthly View</span>
+          <span className="px-1.5 py-0.2 bg-teal-100 text-teal-800 rounded text-[10px] font-bold">
+            12-Month & 31d
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('MATRIX');
+            setMatrixHorizonView('TERMLY');
+          }}
+          className={`pb-3 border-b-2 transition flex items-center gap-2 whitespace-nowrap ${
+            activeTab === 'MATRIX' && matrixHorizonView === 'TERMLY'
+              ? 'border-amber-600 text-amber-700 font-black'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Award className="w-4 h-4 text-amber-500" />
+          <span>Termly View</span>
+          <span className="px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded text-[10px] font-bold">
+            Terms 1-3 & ECZ
           </span>
         </button>
 
@@ -1378,7 +1948,95 @@ export default function AttendancePage() {
             </div>
           )}
 
-          {/* Controls Bar: Classroom, Status Filter, Search, and Action */}
+          {/* Horizon Switcher Navigation Pill Bar */}
+          <div className="bg-white p-2.5 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5 overflow-x-auto text-xs font-bold p-1 bg-slate-100 rounded-xl">
+              <button
+                type="button"
+                onClick={() => setMatrixHorizonView('ALL')}
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                  matrixHorizonView === 'ALL'
+                    ? 'bg-white text-slate-900 shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                <span>All Horizons (Matrix)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMatrixHorizonView('DAILY')}
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                  matrixHorizonView === 'DAILY'
+                    ? 'bg-white text-sky-900 shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Clock className="w-3.5 h-3.5 text-sky-600" />
+                <span>Daily View (Roll-Call)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMatrixHorizonView('WEEKLY')}
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                  matrixHorizonView === 'WEEKLY'
+                    ? 'bg-white text-indigo-900 shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Weekly View (Weeks 1–13)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMatrixHorizonView('MONTHLY')}
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                  matrixHorizonView === 'MONTHLY'
+                    ? 'bg-white text-teal-900 shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5 text-teal-600" />
+                <span>Monthly View (Jan–Dec & 31d)</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-teal-100 text-teal-800 font-black">
+                  Full View
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMatrixHorizonView('TERMLY')}
+                className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+                  matrixHorizonView === 'TERMLY'
+                    ? 'bg-white text-amber-900 shadow-xs font-black'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                <Award className="w-3.5 h-3.5 text-amber-600" />
+                <span>Termly View (Terms 1–3 & ECZ)</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-amber-100 text-amber-800 font-black">
+                  Statutory
+                </span>
+              </button>
+            </div>
+
+            {/* Active Perspective Badge */}
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-[11px] text-slate-500 font-medium">Perspective:</span>
+              <span className="px-2.5 py-1 rounded-lg bg-slate-900 text-white font-bold text-[10px] uppercase tracking-wider">
+                {matrixHorizonView === 'ALL' && 'Consolidated Multi-Horizon Matrix'}
+                {matrixHorizonView === 'DAILY' && 'Morning Roll-Call & Punctuality'}
+                {matrixHorizonView === 'WEEKLY' && 'Term 1 Instructional Weeks (W1-W13)'}
+                {matrixHorizonView === 'MONTHLY' && '12-Month Academic Register & 31-Day Sheet'}
+                {matrixHorizonView === 'TERMLY' && 'Ministry of Education Terms 1-3 & ECZ Clearance'}
+              </span>
+            </div>
+          </div>
+
+          {/* Controls Bar: Classroom, Sub-views, Status Filter, Search, and Export */}
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/90 flex flex-wrap items-center justify-between gap-4 text-xs">
             <div className="flex flex-wrap items-center gap-3">
               {/* Classroom Selector */}
@@ -1417,7 +2075,74 @@ export default function AttendancePage() {
                 </select>
               </div>
 
-              {/* Status Filter */}
+              {/* Sub-mode Controls for Monthly View */}
+              {matrixHorizonView === 'MONTHLY' && (
+                <>
+                  <div>
+                    <label className="text-slate-500 block text-[10px] uppercase font-bold mb-1">Monthly Sub-Mode</label>
+                    <div className="flex items-center gap-1 p-0.5 bg-white border border-slate-300 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => setMonthlyViewMode('ALL_MONTHS')}
+                        className={`px-2.5 py-1 rounded text-xs font-bold transition ${
+                          monthlyViewMode === 'ALL_MONTHS'
+                            ? 'bg-teal-700 text-white'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        12-Month Year (Jan–Dec)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMonthlyViewMode('DAILY_SHEET')}
+                        className={`px-2.5 py-1 rounded text-xs font-bold transition ${
+                          monthlyViewMode === 'DAILY_SHEET'
+                            ? 'bg-teal-700 text-white'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        31-Day Active Sheet
+                      </button>
+                    </div>
+                  </div>
+
+                  {monthlyViewMode === 'DAILY_SHEET' && (
+                    <div>
+                      <label className="text-slate-500 block text-[10px] uppercase font-bold mb-1">Select Month</label>
+                      <select
+                        value={monthlySelectedMonth}
+                        onChange={(e) => setMonthlySelectedMonth(parseInt(e.target.value, 10))}
+                        className="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-teal-600"
+                      >
+                        {MONTH_CONFIGS.map((m) => (
+                          <option key={m.index} value={m.index}>
+                            {m.name} 2026 ({m.teachingDays} School Days • Term {m.term})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ECZ Filter for Termly View */}
+              {matrixHorizonView === 'TERMLY' && (
+                <div>
+                  <label className="text-slate-500 block text-[10px] uppercase font-bold mb-1">ECZ Clearance Filter</label>
+                  <select
+                    value={termlyStatusFilter}
+                    onChange={(e: any) => setTermlyStatusFilter(e.target.value)}
+                    className="bg-white border border-slate-300 rounded-lg px-3 py-1.5 text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-amber-600"
+                  >
+                    <option value="ALL">All Enrolled Learners</option>
+                    <option value="CLEARED">ECZ Exam Cleared (≥90%)</option>
+                    <option value="CONDITIONAL">Conditional DEBS Waiver (80-89%)</option>
+                    <option value="BARRED">At Risk / Barred (&lt;80%)</option>
+                  </select>
+                </div>
+              )}
+
+              {/* General Status Filter */}
               <div>
                 <label className="text-slate-500 block text-[10px] uppercase font-bold mb-1">Status Filter</label>
                 <select
@@ -1459,7 +2184,7 @@ export default function AttendancePage() {
               </div>
             </div>
 
-            {/* Quick Actions & Live Count */}
+            {/* Quick Actions & Live Export */}
             <div className="flex items-center gap-2">
               <button
                 type="button"
@@ -1467,13 +2192,16 @@ export default function AttendancePage() {
                 className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center gap-1.5 shadow-xs transition"
               >
                 <Download className="w-3.5 h-3.5 text-slate-600" />
-                <span>Export CSV</span>
+                <span>
+                  Export {matrixHorizonView === 'MONTHLY' ? 'Monthly CSV' : matrixHorizonView === 'TERMLY' ? 'Termly CSV' : 'CSV'}
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => {
                   setMatrixSearch('');
                   setMatrixStatusFilter('ALL');
+                  setTermlyStatusFilter('ALL');
                 }}
                 className="px-3 py-1.5 rounded-lg text-slate-500 hover:text-rose-600 font-bold text-xs transition"
               >
@@ -1482,375 +2210,1435 @@ export default function AttendancePage() {
             </div>
           </div>
 
-          {/* Classroom Multi-Horizon Aggregate KPI Strip */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-            {/* Daily Horizon KPI */}
-            <div className="p-3.5 rounded-xl bg-white border border-slate-200/90 shadow-xs space-y-1">
-              <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                <span>Daily (Today)</span>
-                <Clock className="w-3.5 h-3.5 text-sky-600" />
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl font-black text-slate-900">{classDailyPct}%</span>
-                <span className="text-[10px] font-bold text-emerald-600">({classPresentToday}/{classTotal})</span>
-              </div>
-              <div className="text-[10px] text-slate-500 flex items-center gap-2 pt-0.5">
-                <span className="text-emerald-700 font-semibold">{classPresentToday} Present</span>
-                <span>•</span>
-                <span className={classAbsentToday > 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}>
-                  {classAbsentToday} Absent
-                </span>
-                <span>•</span>
-                <span className="text-amber-600">{classLateToday} Late</span>
-              </div>
-            </div>
+          {/* Dynamic Horizon KPI Strip */}
+          {(() => {
+            const displayLearners = matrixLearners.filter((l) => {
+              if (matrixHorizonView === 'TERMLY' && termlyStatusFilter !== 'ALL') {
+                const h = getLearnerAttendanceHorizons(l);
+                if (h.termly.annual.eczExamClearance !== termlyStatusFilter) return false;
+              }
+              return true;
+            });
 
-            {/* Weekly Horizon KPI */}
-            <div className="p-3.5 rounded-xl bg-white border border-slate-200/90 shadow-xs space-y-1">
-              <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                <span>Weekly (Week 8)</span>
-                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl font-black text-slate-900">{classWeeklyAvg}%</span>
-                <span className="text-[10px] font-bold text-indigo-600">5-Day Rate</span>
-              </div>
-              <span className="text-[10px] text-slate-500 block pt-0.5">
-                Rolling weekly average across all instructional sessions
-              </span>
-            </div>
-
-            {/* Monthly Horizon KPI */}
-            <div className="p-3.5 rounded-xl bg-white border border-slate-200/90 shadow-xs space-y-1">
-              <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                <span>Monthly (March MTD)</span>
-                <BarChart3 className="w-3.5 h-3.5 text-emerald-600" />
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl font-black text-slate-900">{classMonthlyAvg}%</span>
-                <span className="text-[10px] font-bold text-emerald-600">22 Days</span>
-              </div>
-              <span className="text-[10px] text-slate-500 block pt-0.5">
-                Solwezi district curriculum calendar adherence
-              </span>
-            </div>
-
-            {/* Termly Horizon KPI */}
-            <div className="p-3.5 rounded-xl bg-white border border-slate-200/90 shadow-xs space-y-1">
-              <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                <span>Termly (Term 1)</span>
-                <Award className="w-3.5 h-3.5 text-amber-500" />
-              </div>
-              <div className="flex items-baseline gap-1.5">
-                <span className="text-xl font-black text-slate-900">{classTermlyAvg}%</span>
-                <span className={`text-[10px] font-bold ${classChronicCount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-                  {classChronicCount} Flagged
-                </span>
-              </div>
-              <span className="text-[10px] text-slate-500 block pt-0.5">
-                Official DEBS / Ministry of Education statutory return
-              </span>
-            </div>
-          </div>
-
-          {/* Table Container with Sticky Headers and Sticky Left Column */}
-          <div className="relative max-h-[580px] overflow-auto border border-slate-200 rounded-2xl shadow-xs bg-white">
-            <table className="w-full text-left border-collapse text-xs">
-              {/* Sticky Top Grouped Header */}
-              <thead className="sticky top-0 z-20 bg-slate-900 text-white font-bold text-[11px] shadow-sm">
-                <tr>
-                  {/* Sticky Top-Left Corner Cell: z-30 pinned vertically and horizontally */}
-                  <th
-                    rowSpan={2}
-                    className="sticky top-0 left-0 z-30 bg-slate-900 px-3.5 py-2.5 border-r border-slate-800 min-w-[210px] max-w-[230px] shadow-[2px_0_5px_rgba(0,0,0,0.18)]"
-                  >
-                    <div className="flex items-center justify-between">
-                      <span>Learner Identity</span>
-                      <span className="text-[10px] font-mono text-slate-400">({matrixLearners.length})</span>
+            if (matrixHorizonView === 'MONTHLY') {
+              const selectedM = MONTH_CONFIGS.find((m) => m.index === monthlySelectedMonth) || MONTH_CONFIGS[2];
+              return (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      <span>{selectedM.name} 2026 Rate</span>
+                      <BarChart3 className="w-3.5 h-3.5 text-teal-600" />
                     </div>
-                  </th>
-                  <th
-                    colSpan={6}
-                    className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-800 text-sky-200 uppercase tracking-wider text-[10px]"
-                  >
-                    Daily Horizon (This Week: Mon 02 - Fri 06 Mar)
-                  </th>
-                  <th
-                    colSpan={2}
-                    className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-850 text-indigo-200 uppercase tracking-wider text-[10px]"
-                  >
-                    Weekly Horizon
-                  </th>
-                  <th
-                    colSpan={2}
-                    className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-800 text-emerald-200 uppercase tracking-wider text-[10px]"
-                  >
-                    Monthly Horizon
-                  </th>
-                  <th
-                    colSpan={3}
-                    className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-850 text-amber-200 uppercase tracking-wider text-[10px]"
-                  >
-                    Term 1 Cumulative
-                  </th>
-                  <th
-                    rowSpan={2}
-                    className="sticky top-0 right-0 z-20 bg-slate-900 px-2 py-2 text-center min-w-[80px] border-l border-slate-800 shadow-[-2px_0_5px_rgba(0,0,0,0.15)]"
-                  >
-                    Card
-                  </th>
-                </tr>
-                {/* Second Row of Column Subheaders */}
-                <tr className="bg-slate-800 text-[10px] uppercase font-bold text-slate-300">
-                  <th className="px-1 py-1 text-center min-w-[34px] border-r border-slate-700/60" title="Monday 02 Mar">M</th>
-                  <th className="px-1 py-1 text-center min-w-[34px] border-r border-slate-700/60" title="Tuesday 03 Mar">T</th>
-                  <th className="px-1 py-1 text-center min-w-[34px] border-r border-slate-700/60" title="Wednesday 04 Mar">W</th>
-                  <th className="px-1 py-1 text-center min-w-[34px] border-r border-slate-700/60" title="Thursday 05 Mar">T</th>
-                  <th className="px-1 py-1 text-center min-w-[34px] border-r border-slate-700/60" title="Friday 06 Mar">F</th>
-                  <th className="px-2 py-1 text-center border-r border-slate-700 min-w-[75px]" title="Today Live Status">Today</th>
-                  <th className="px-2 py-1 text-center min-w-[65px]" title="Week 8 Attendance Rate">Wk 8 %</th>
-                  <th className="px-2 py-1 text-center border-r border-slate-700 min-w-[65px]" title="Past 4 Weeks Trend">Trend</th>
-                  <th className="px-2 py-1 text-center min-w-[70px]" title="March Month-to-Date">Mar %</th>
-                  <th className="px-2 py-1 text-center border-r border-slate-700 min-w-[65px]" title="February Total">Feb %</th>
-                  <th className="px-2 py-1 text-center min-w-[65px]" title="Term 1 Cumulative Rate">Term %</th>
-                  <th className="px-2 py-1 text-center min-w-[80px]" title="Present / Absent / Late Days">P • A • L</th>
-                  <th className="px-2 py-1 text-center border-r border-slate-700 min-w-[65px]" title="Official MOE Standing">Standing</th>
-                </tr>
-              </thead>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-slate-900">{classMonthlyAvg}%</span>
+                      <span className="text-[10px] font-bold text-teal-600">{selectedM.teachingDays} School Days</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block pt-0.5">
+                      Solwezi district curriculum calendar adherence
+                    </span>
+                  </div>
 
-              {/* Table Body */}
-              <tbody className="divide-y divide-slate-100 font-medium text-[11px]">
-                {matrixLearners.length > 0 ? (
-                  matrixLearners.map((learner) => {
-                    const h = getLearnerAttendanceHorizons(learner);
-                    return (
-                      <tr key={learner.id} className="hover:bg-blue-50/50 transition group">
-                        {/* Sticky Left Column: pinned on horizontal scroll */}
-                        <td className="sticky left-0 z-10 bg-white group-hover:bg-blue-50/90 px-3.5 py-2 border-r border-slate-200 min-w-[210px] max-w-[230px] shadow-[2px_0_5px_rgba(0,0,0,0.03)]">
-                          <div className="flex items-center gap-2">
-                            <span
-                              className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 border ${
-                                learner.studentType === 'BOARDER'
-                                  ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                                  : 'bg-sky-50 text-sky-700 border-sky-200'
-                              }`}
-                            >
-                              {learner.learnerName.charAt(0)}
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <span className="font-bold text-slate-900 block truncate leading-tight">
-                                {learner.learnerName}
-                              </span>
-                              <span className="text-[10px] font-mono text-slate-500">
-                                {learner.studentNumber} • <span className="font-semibold">{learner.studentType === 'BOARDER' ? 'Boarder' : 'Day'}</span>
-                              </span>
-                            </div>
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      <span>12-Month Progression</span>
+                      <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-slate-900">12 Months</span>
+                      <span className="text-[10px] font-bold text-emerald-600">Jan – Dec 2026</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block pt-0.5">
+                      Full academic year longitudinal record
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      <span>MoE Target Adherence</span>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-slate-900">98.4%</span>
+                      <span className="text-[10px] font-bold text-emerald-600">Target ≥95%</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block pt-0.5">
+                      Cohorts exceeding national statutory minimum
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      <span>Active Class Cohort</span>
+                      <Users className="w-3.5 h-3.5 text-blue-600" />
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-slate-900">{displayLearners.length}</span>
+                      <span className="text-[10px] font-bold text-blue-600">Learners</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block pt-0.5">
+                      {matrixClass === 'ALL' ? 'Consolidated School Roster' : matrixClass}
+                    </span>
+                  </div>
+                </div>
+              );
+            }
+
+            if (matrixHorizonView === 'TERMLY') {
+              const clearedCount = displayLearners.filter(
+                (l) => getLearnerAttendanceHorizons(l).termly.annual.eczExamClearance === 'CLEARED'
+              ).length;
+              const clearedPct = displayLearners.length > 0 ? Math.round((clearedCount / displayLearners.length) * 100) : 100;
+              return (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      <span>Term 1 (Autumn)</span>
+                      <Award className="w-3.5 h-3.5 text-amber-500" />
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-slate-900">{classTermlyAvg}%</span>
+                      <span className="text-[10px] font-bold text-emerald-600">63 Days</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block pt-0.5">
+                      Official 13 teaching weeks instruction total
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      <span>Term 2 (Winter)</span>
+                      <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-slate-900">98.8%</span>
+                      <span className="text-[10px] font-bold text-indigo-600">62 Days</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block pt-0.5">
+                      Mid-year term including Solwezi inter-house sports
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      <span>Term 3 (ECZ Exams)</span>
+                      <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-slate-900">98.5%</span>
+                      <span className="text-[10px] font-bold text-purple-600">62 Days</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block pt-0.5">
+                      Promotional & ECZ national exam window
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      <span>ECZ Clearance Rate</span>
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-slate-900">{clearedPct}%</span>
+                      <span className="text-[10px] font-bold text-emerald-600">({clearedCount}/{displayLearners.length} Cleared)</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block pt-0.5">
+                      Examination Council of Zambia 80% statutory rule
+                    </span>
+                  </div>
+                </div>
+              );
+            }
+
+            if (matrixHorizonView === 'DAILY') {
+              return (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      <span>Present Today</span>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-slate-900">{classPresentToday}</span>
+                      <span className="text-[10px] font-bold text-emerald-600">({classDailyPct}%)</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block pt-0.5">Checked-in on morning roll-call</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      <span>Absent Today</span>
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className={`text-xl font-black ${classAbsentToday > 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                        {classAbsentToday}
+                      </span>
+                      <span className="text-[10px] font-bold text-rose-600">Unexcused</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block pt-0.5">Automated SMS notifications queued</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      <span>Late Arrivals</span>
+                      <Clock className="w-3.5 h-3.5 text-amber-600" />
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-slate-900">{classLateToday}</span>
+                      <span className="text-[10px] font-bold text-amber-600">After 07:45 AM</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block pt-0.5">Security gate entry pass recorded</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      <span>Class Size</span>
+                      <Users className="w-3.5 h-3.5 text-blue-600" />
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-slate-900">{classTotal}</span>
+                      <span className="text-[10px] font-bold text-blue-600">Enrolled</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block pt-0.5">{matrixClass}</span>
+                  </div>
+                </div>
+              );
+            }
+
+            if (matrixHorizonView === 'WEEKLY') {
+              return (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      <span>Week 8 (Current)</span>
+                      <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-slate-900">{classWeeklyAvg}%</span>
+                      <span className="text-[10px] font-bold text-indigo-600">5-Day Rate</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block pt-0.5">Instruction week ending 06 March</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      <span>Week 7</span>
+                      <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-slate-900">97.8%</span>
+                      <span className="text-[10px] font-bold text-emerald-600">5-Day Rate</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block pt-0.5">Preceding week instruction return</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      <span>Week 6</span>
+                      <TrendingUp className="w-3.5 h-3.5 text-emerald-600" />
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-slate-900">98.2%</span>
+                      <span className="text-[10px] font-bold text-emerald-600">5-Day Rate</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block pt-0.5">Mid-term revision week</span>
+                  </div>
+
+                  <div className="p-3.5 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                    <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                      <span>Weeks 1–13 Framework</span>
+                      <Award className="w-3.5 h-3.5 text-amber-500" />
+                    </div>
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-black text-slate-900">13 Weeks</span>
+                      <span className="text-[10px] font-bold text-amber-600">MoE Zambia</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 block pt-0.5">63 teaching days tri-term standard</span>
+                  </div>
+                </div>
+              );
+            }
+
+            // Default: ALL Horizons
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                <div className="p-3.5 rounded-xl bg-white border border-slate-200/90 shadow-xs space-y-1">
+                  <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                    <span>Daily (Today)</span>
+                    <Clock className="w-3.5 h-3.5 text-sky-600" />
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xl font-black text-slate-900">{classDailyPct}%</span>
+                    <span className="text-[10px] font-bold text-emerald-600">({classPresentToday}/{classTotal})</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 flex items-center gap-2 pt-0.5">
+                    <span className="text-emerald-700 font-semibold">{classPresentToday} Present</span>
+                    <span>•</span>
+                    <span className={classAbsentToday > 0 ? 'text-rose-600 font-bold' : 'text-slate-400'}>
+                      {classAbsentToday} Absent
+                    </span>
+                    <span>•</span>
+                    <span className="text-amber-600">{classLateToday} Late</span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-white border border-slate-200/90 shadow-xs space-y-1">
+                  <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                    <span>Weekly (Week 8)</span>
+                    <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xl font-black text-slate-900">{classWeeklyAvg}%</span>
+                    <span className="text-[10px] font-bold text-indigo-600">5-Day Rate</span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 block pt-0.5">
+                    Rolling weekly average across all instructional sessions
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-white border border-slate-200/90 shadow-xs space-y-1">
+                  <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                    <span>Monthly (March MTD)</span>
+                    <BarChart3 className="w-3.5 h-3.5 text-emerald-600" />
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xl font-black text-slate-900">{classMonthlyAvg}%</span>
+                    <span className="text-[10px] font-bold text-emerald-600">22 Days</span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 block pt-0.5">
+                    Solwezi district curriculum calendar adherence
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-white border border-slate-200/90 shadow-xs space-y-1">
+                  <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                    <span>Termly (Term 1)</span>
+                    <Award className="w-3.5 h-3.5 text-amber-500" />
+                  </div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xl font-black text-slate-900">{classTermlyAvg}%</span>
+                    <span className={`text-[10px] font-bold ${classChronicCount > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      {classChronicCount} Flagged
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-500 block pt-0.5">
+                    Official DEBS / Ministry of Education statutory return
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* TABLE CONTAINER: Renders perspective-specific enterprise table with sticky headers & sticky left column */}
+          {(() => {
+            const displayLearners = matrixLearners.filter((l) => {
+              if (matrixHorizonView === 'TERMLY' && termlyStatusFilter !== 'ALL') {
+                const h = getLearnerAttendanceHorizons(l);
+                if (h.termly.annual.eczExamClearance !== termlyStatusFilter) return false;
+              }
+              return true;
+            });
+
+            // 1. MONTHLY VIEW: 12-Month Academic Year Matrix (Jan–Dec)
+            if (matrixHorizonView === 'MONTHLY' && monthlyViewMode === 'ALL_MONTHS') {
+              return (
+                <div className="relative max-h-[580px] overflow-auto border border-slate-200 rounded-2xl shadow-xs bg-white">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead className="sticky top-0 z-20 bg-slate-900 text-white font-bold text-[11px] shadow-sm">
+                      <tr>
+                        <th
+                          rowSpan={2}
+                          className="sticky top-0 left-0 z-30 bg-slate-900 px-3.5 py-2.5 border-r border-slate-800 min-w-[210px] max-w-[230px] shadow-[2px_0_5px_rgba(0,0,0,0.18)]"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>Learner Identity</span>
+                            <span className="text-[10px] font-mono text-slate-400">({displayLearners.length})</span>
                           </div>
-                        </td>
+                        </th>
+                        <th colSpan={4} className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-800 text-sky-200 uppercase tracking-wider text-[10px]">
+                          Term 1 (63 Days)
+                        </th>
+                        <th colSpan={4} className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-850 text-indigo-200 uppercase tracking-wider text-[10px]">
+                          Term 2 (62 Days)
+                        </th>
+                        <th colSpan={4} className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-800 text-purple-200 uppercase tracking-wider text-[10px]">
+                          Term 3 (62 Days)
+                        </th>
+                        <th colSpan={3} className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-850 text-amber-200 uppercase tracking-wider text-[10px]">
+                          Annual Academic Year Cumulative (187 Days)
+                        </th>
+                        <th rowSpan={2} className="sticky top-0 right-0 z-20 bg-slate-900 px-2 py-2 text-center min-w-[80px] border-l border-slate-800 shadow-[-2px_0_5px_rgba(0,0,0,0.15)]">
+                          Card
+                        </th>
+                      </tr>
+                      <tr className="bg-slate-800 text-[10px] uppercase font-bold text-slate-300">
+                        {/* Term 1 Months */}
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60" title="January (15 School Days)">Jan</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60" title="February (20 School Days)">Feb</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60 bg-teal-900/40 text-teal-200" title="March (22 School Days - Active MTD)">Mar</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700" title="April (6 School Days - Term Close)">Apr</th>
+                        {/* Term 2 Months */}
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60" title="May (15 School Days)">May</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60" title="June (21 School Days)">Jun</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60" title="July (22 School Days)">Jul</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700" title="August (4 School Days - Term Close)">Aug</th>
+                        {/* Term 3 Months */}
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60" title="September (18 School Days)">Sep</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60" title="October (21 School Days)">Oct</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60" title="November (20 School Days - ECZ Exams)">Nov</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700" title="December (3 School Days - Term Close)">Dec</th>
+                        {/* Annual Cumulative */}
+                        <th className="px-2 py-1 text-center min-w-[70px]" title="Year-to-Date Attended Days">Attended</th>
+                        <th className="px-2 py-1 text-center min-w-[65px]" title="Annual Attendance Rate %">YTD %</th>
+                        <th className="px-2 py-1 text-center border-r border-slate-700 min-w-[75px]" title="MoE Annual Standing">Standing</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-[11px]">
+                      {displayLearners.length > 0 ? (
+                        displayLearners.map((learner) => {
+                          const h = getLearnerAttendanceHorizons(learner);
+                          return (
+                            <tr key={learner.id} className="hover:bg-teal-50/40 transition group">
+                              {/* Pinned Left Column */}
+                              <td className="sticky left-0 z-10 bg-white group-hover:bg-teal-50/90 px-3.5 py-2 border-r border-slate-200 min-w-[210px] max-w-[230px] shadow-[2px_0_5px_rgba(0,0,0,0.03)]">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 border ${
+                                      learner.studentType === 'BOARDER'
+                                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                        : 'bg-sky-50 text-sky-700 border-sky-200'
+                                    }`}
+                                  >
+                                    {learner.learnerName.charAt(0)}
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <span className="font-bold text-slate-900 block truncate leading-tight">
+                                      {learner.learnerName}
+                                    </span>
+                                    <span className="text-[10px] font-mono text-slate-500">
+                                      {learner.studentNumber} • <span className="font-semibold">{learner.studentType === 'BOARDER' ? 'Boarder' : 'Day'}</span>
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
 
-                        {/* Daily: Mon */}
-                        <td className="px-1 py-1.5 text-center border-r border-slate-100">
-                          <span
-                            title={`Monday 02 Mar: ${h.daily.monday.status} (${h.daily.monday.time})`}
-                            className={`inline-block w-5 h-5 rounded-full text-[9px] font-black leading-5 text-center cursor-help ${
-                              h.daily.monday.status === 'PRESENT'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : h.daily.monday.status === 'LATE'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-rose-100 text-rose-800'
-                            }`}
-                          >
-                            {h.daily.monday.status.charAt(0)}
-                          </span>
-                        </td>
+                              {/* 12 Months Columns */}
+                              {h.monthly.allMonths.map((m) => (
+                                <td
+                                  key={m.monthIndex}
+                                  className={`px-1.5 py-1.5 text-center border-r border-slate-100 ${
+                                    m.monthIndex === 3 ? 'bg-teal-50/30' : ''
+                                  }`}
+                                >
+                                  <div className="flex flex-col items-center">
+                                    <span
+                                      className={`font-black ${
+                                        m.rate >= 98
+                                          ? 'text-emerald-700'
+                                          : m.rate >= 95
+                                          ? 'text-teal-700'
+                                          : m.rate >= 85
+                                          ? 'text-amber-700'
+                                          : 'text-rose-700'
+                                      }`}
+                                    >
+                                      {m.rate}%
+                                    </span>
+                                    <span className="text-[9px] font-mono text-slate-400">
+                                      {m.daysPresent}/{m.teachingDays}d
+                                    </span>
+                                  </div>
+                                </td>
+                              ))}
 
-                        {/* Daily: Tue */}
-                        <td className="px-1 py-1.5 text-center border-r border-slate-100">
-                          <span
-                            title={`Tuesday 03 Mar: ${h.daily.tuesday.status} (${h.daily.tuesday.time})`}
-                            className={`inline-block w-5 h-5 rounded-full text-[9px] font-black leading-5 text-center cursor-help ${
-                              h.daily.tuesday.status === 'PRESENT'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : h.daily.tuesday.status === 'LATE'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-rose-100 text-rose-800'
-                            }`}
-                          >
-                            {h.daily.tuesday.status.charAt(0)}
-                          </span>
-                        </td>
+                              {/* Annual Cumulative */}
+                              <td className="px-2 py-1.5 text-center font-mono text-slate-700">
+                                {h.termly.annual.totalAttended}/{h.termly.annual.totalTeachingDays}d
+                              </td>
+                              <td className="px-2 py-1.5 text-center font-black">
+                                <span
+                                  className={
+                                    h.termly.annual.annualRate >= 98
+                                      ? 'text-emerald-700'
+                                      : h.termly.annual.annualRate >= 95
+                                      ? 'text-blue-700'
+                                      : h.termly.annual.annualRate >= 85
+                                      ? 'text-amber-700'
+                                      : 'text-rose-700'
+                                  }
+                                >
+                                  {h.termly.annual.annualRate}%
+                                </span>
+                              </td>
+                              <td className="px-2 py-1.5 text-center border-r border-slate-200">
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-black ${
+                                    h.termly.annual.standing === 'GOLD'
+                                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                      : h.termly.annual.standing === 'SILVER'
+                                      ? 'bg-slate-100 text-slate-800 border border-slate-300'
+                                      : h.termly.annual.standing === 'BRONZE'
+                                      ? 'bg-orange-50 text-orange-800 border border-orange-200'
+                                      : 'bg-rose-100 text-rose-900 border border-rose-300 animate-pulse'
+                                  }`}
+                                >
+                                  {h.termly.annual.standing}
+                                </span>
+                              </td>
 
-                        {/* Daily: Wed */}
-                        <td className="px-1 py-1.5 text-center border-r border-slate-100">
-                          <span
-                            title={`Wednesday 04 Mar: ${h.daily.wednesday.status} (${h.daily.wednesday.time})`}
-                            className={`inline-block w-5 h-5 rounded-full text-[9px] font-black leading-5 text-center cursor-help ${
-                              h.daily.wednesday.status === 'PRESENT'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : h.daily.wednesday.status === 'LATE'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-rose-100 text-rose-800'
-                            }`}
-                          >
-                            {h.daily.wednesday.status.charAt(0)}
-                          </span>
-                        </td>
+                              {/* Sticky Right Action */}
+                              <td className="sticky right-0 z-10 bg-white group-hover:bg-teal-50/90 px-2 py-1.5 text-center border-l border-slate-200 shadow-[-2px_0_5px_rgba(0,0,0,0.03)]">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedLearnerForCard(learner)}
+                                  className="px-2 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 font-bold text-[10px] border border-teal-200 flex items-center justify-center gap-1 transition w-full"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  <span>Card</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={18} className="py-8 text-center text-slate-500 text-xs">
+                            No learners match the selected filter criteria.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            }
 
-                        {/* Daily: Thu */}
-                        <td className="px-1 py-1.5 text-center border-r border-slate-100">
-                          <span
-                            title={`Thursday 05 Mar: ${h.daily.thursday.status} (${h.daily.thursday.time})`}
-                            className={`inline-block w-5 h-5 rounded-full text-[9px] font-black leading-5 text-center cursor-help ${
-                              h.daily.thursday.status === 'PRESENT'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : h.daily.thursday.status === 'LATE'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-rose-100 text-rose-800'
-                            }`}
-                          >
-                            {h.daily.thursday.status.charAt(0)}
-                          </span>
-                        </td>
-
-                        {/* Daily: Fri */}
-                        <td className="px-1 py-1.5 text-center border-r border-slate-100">
-                          <span
-                            title={`Friday 06 Mar: ${h.daily.friday.status} (${h.daily.friday.time})`}
-                            className={`inline-block w-5 h-5 rounded-full text-[9px] font-black leading-5 text-center cursor-help ${
-                              h.daily.friday.status === 'PRESENT'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : h.daily.friday.status === 'LATE'
-                                ? 'bg-amber-100 text-amber-800'
-                                : 'bg-rose-100 text-rose-800'
-                            }`}
-                          >
-                            {h.daily.friday.status.charAt(0)}
-                          </span>
-                        </td>
-
-                        {/* Daily: Today Interactive Pill */}
-                        <td className="px-2 py-1.5 text-center border-r border-slate-200">
-                          <button
-                            type="button"
-                            onClick={() => cycleTodayPunctuality(learner.id, learner.status)}
-                            title="Click to toggle status: Present → Absent → Late → Excused"
-                            className={`px-2 py-0.5 rounded text-[10px] font-black border transition hover:scale-105 active:scale-95 ${
-                              learner.status === 'PRESENT'
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                : learner.status === 'LATE'
-                                ? 'bg-amber-50 text-amber-800 border-amber-300'
-                                : learner.status === 'EXCUSED'
-                                ? 'bg-slate-100 text-slate-700 border-slate-300'
-                                : 'bg-rose-50 text-rose-800 border-rose-300 animate-pulse'
-                            }`}
-                          >
-                            {learner.status}
-                          </button>
-                        </td>
-
-                        {/* Weekly: Week 8 % */}
-                        <td className="px-2 py-1.5 text-center font-bold text-slate-800">
-                          <div className="flex flex-col items-center">
-                            <span>{h.weekly.currentWeekRate}%</span>
-                            <span className="text-[9px] font-mono text-slate-400">({h.weekly.currentWeekDaysPresent}/5d)</span>
+            // 2. MONTHLY VIEW: Detailed 31-Day Active Month Register
+            if (matrixHorizonView === 'MONTHLY' && monthlyViewMode === 'DAILY_SHEET') {
+              const selectedM = MONTH_CONFIGS.find((m) => m.index === monthlySelectedMonth) || MONTH_CONFIGS[2];
+              const sampleDays = getMonthDaysForLearner(displayLearners[0] || matrixLearners[0] || roster[0], monthlySelectedMonth);
+              return (
+                <div className="relative max-h-[580px] overflow-auto border border-slate-200 rounded-2xl shadow-xs bg-white">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead className="sticky top-0 z-20 bg-slate-900 text-white font-bold text-[11px] shadow-sm">
+                      <tr>
+                        <th
+                          rowSpan={2}
+                          className="sticky top-0 left-0 z-30 bg-slate-900 px-3.5 py-2.5 border-r border-slate-800 min-w-[210px] max-w-[230px] shadow-[2px_0_5px_rgba(0,0,0,0.18)]"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>Learner Identity</span>
+                            <span className="text-[10px] font-mono text-slate-400">({displayLearners.length})</span>
                           </div>
-                        </td>
+                        </th>
+                        <th
+                          colSpan={sampleDays.length}
+                          className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-850 text-teal-200 uppercase tracking-wider text-[10px]"
+                        >
+                          {selectedM.name} 2026 Daily Roll-Call Register ({sampleDays.length} Calendar Days • {selectedM.teachingDays} Instructional Sessions)
+                        </th>
+                        <th colSpan={5} className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-800 text-amber-200 uppercase tracking-wider text-[10px]">
+                          Month Adherence Summary
+                        </th>
+                        <th rowSpan={2} className="sticky top-0 right-0 z-20 bg-slate-900 px-2 py-2 text-center min-w-[70px] border-l border-slate-800 shadow-[-2px_0_5px_rgba(0,0,0,0.15)]">
+                          Card
+                        </th>
+                      </tr>
+                      <tr className="bg-slate-800 text-[10px] uppercase font-bold text-slate-300">
+                        {sampleDays.map((d) => (
+                          <th
+                            key={d.dayNumber}
+                            className={`px-1 py-1 text-center min-w-[28px] border-r border-slate-700/60 ${
+                              d.isWeekend
+                                ? 'bg-slate-850/80 text-slate-500'
+                                : d.isHoliday
+                                ? 'bg-emerald-900/60 text-emerald-300'
+                                : 'text-slate-200'
+                            }`}
+                            title={`Day ${d.dayNumber} (${d.dayOfWeek})${d.isHoliday ? `: ${d.holidayName}` : d.isWeekend ? ': Weekend' : ''}`}
+                          >
+                            <span className="block text-[9px] font-mono leading-none">{d.dayNumber}</span>
+                            <span className="block text-[8px] opacity-70 mt-0.5">{d.dayOfWeek}</span>
+                          </th>
+                        ))}
+                        <th className="px-1.5 py-1 text-center min-w-[34px] text-emerald-300" title="Present Days">P</th>
+                        <th className="px-1.5 py-1 text-center min-w-[34px] text-rose-300" title="Absent Days">A</th>
+                        <th className="px-1.5 py-1 text-center min-w-[34px] text-amber-300" title="Late Days">L</th>
+                        <th className="px-1.5 py-1 text-center min-w-[34px] text-slate-300" title="Excused Days">E</th>
+                        <th className="px-2 py-1 text-center border-r border-slate-700 min-w-[55px]" title="Month Rate %">Rate %</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-[11px]">
+                      {displayLearners.length > 0 ? (
+                        displayLearners.map((learner) => {
+                          const dayRecords = getMonthDaysForLearner(learner, monthlySelectedMonth);
+                          const pCount = dayRecords.filter((d) => d.status === 'PRESENT').length;
+                          const aCount = dayRecords.filter((d) => d.status === 'ABSENT').length;
+                          const lCount = dayRecords.filter((d) => d.status === 'LATE').length;
+                          const eCount = dayRecords.filter((d) => d.status === 'EXCUSED').length;
+                          const rate = selectedM.teachingDays > 0 ? Math.round(((pCount + lCount) / selectedM.teachingDays) * 1000) / 10 : 100;
+                          return (
+                            <tr key={learner.id} className="hover:bg-teal-50/40 transition group">
+                              {/* Pinned Left Column */}
+                              <td className="sticky left-0 z-10 bg-white group-hover:bg-teal-50/90 px-3.5 py-2 border-r border-slate-200 min-w-[210px] max-w-[230px] shadow-[2px_0_5px_rgba(0,0,0,0.03)]">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 border ${
+                                      learner.studentType === 'BOARDER'
+                                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                        : 'bg-sky-50 text-sky-700 border-sky-200'
+                                    }`}
+                                  >
+                                    {learner.learnerName.charAt(0)}
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <span className="font-bold text-slate-900 block truncate leading-tight">
+                                      {learner.learnerName}
+                                    </span>
+                                    <span className="text-[10px] font-mono text-slate-500">
+                                      {learner.studentNumber} • <span className="font-semibold">{learner.studentType === 'BOARDER' ? 'Boarder' : 'Day'}</span>
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
 
-                        {/* Weekly: 4-Wk Trend */}
-                        <td className="px-2 py-1.5 text-center border-r border-slate-200">
-                          <div className="flex items-center justify-center gap-1" title="Weeks 5, 6, 7, 8 attendance trend">
-                            {h.weekly.weekTrends.map((wt) => (
+                              {/* Day by Day Cells */}
+                              {dayRecords.map((d) => {
+                                if (d.isWeekend) {
+                                  return (
+                                    <td key={d.dayNumber} className="px-1 py-1.5 text-center bg-slate-50/70 text-slate-300 font-mono text-[9px] border-r border-slate-100">
+                                      —
+                                    </td>
+                                  );
+                                }
+                                if (d.isHoliday) {
+                                  return (
+                                    <td key={d.dayNumber} className="px-1 py-1.5 text-center bg-emerald-50 text-[10px] border-r border-slate-100" title={`🇿🇲 Public Holiday: ${d.holidayName}`}>
+                                      🇿🇲
+                                    </td>
+                                  );
+                                }
+                                return (
+                                  <td key={d.dayNumber} className="px-1 py-1.5 text-center border-r border-slate-100">
+                                    <span
+                                      title={`${selectedM.name} ${d.dayNumber}: ${d.status} (${d.time || '07:18'})`}
+                                      className={`inline-block w-4 h-4 rounded-full text-[8px] font-black leading-4 text-center cursor-help ${
+                                        d.status === 'PRESENT'
+                                          ? 'bg-emerald-100 text-emerald-800'
+                                          : d.status === 'LATE'
+                                          ? 'bg-amber-100 text-amber-800'
+                                          : d.status === 'EXCUSED'
+                                          ? 'bg-slate-200 text-slate-700'
+                                          : 'bg-rose-100 text-rose-800'
+                                      }`}
+                                    >
+                                      {d.status.charAt(0)}
+                                    </span>
+                                  </td>
+                                );
+                              })}
+
+                              {/* Summary Columns */}
+                              <td className="px-1.5 py-1.5 text-center font-bold text-emerald-700">{pCount}</td>
+                              <td className="px-1.5 py-1.5 text-center font-bold text-rose-600">{aCount}</td>
+                              <td className="px-1.5 py-1.5 text-center font-bold text-amber-600">{lCount}</td>
+                              <td className="px-1.5 py-1.5 text-center font-mono text-slate-500">{eCount}</td>
+                              <td className="px-2 py-1.5 text-center font-black border-r border-slate-200">
+                                <span className={rate >= 95 ? 'text-emerald-700' : rate >= 85 ? 'text-amber-700' : 'text-rose-700'}>
+                                  {rate}%
+                                </span>
+                              </td>
+
+                              {/* Sticky Right Action */}
+                              <td className="sticky right-0 z-10 bg-white group-hover:bg-teal-50/90 px-2 py-1.5 text-center border-l border-slate-200 shadow-[-2px_0_5px_rgba(0,0,0,0.03)]">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedLearnerForCard(learner)}
+                                  className="px-2 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-800 font-bold text-[10px] border border-teal-200 flex items-center justify-center gap-1 transition w-full"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  <span>Card</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={sampleDays.length + 7} className="py-8 text-center text-slate-500 text-xs">
+                            No learners match the selected filter criteria.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            }
+
+            // 3. TERMLY VIEW: Terms 1, 2, 3 and Official ECZ Examination Clearance
+            if (matrixHorizonView === 'TERMLY') {
+              return (
+                <div className="relative max-h-[580px] overflow-auto border border-slate-200 rounded-2xl shadow-xs bg-white">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead className="sticky top-0 z-20 bg-slate-900 text-white font-bold text-[11px] shadow-sm">
+                      <tr>
+                        <th
+                          rowSpan={2}
+                          className="sticky top-0 left-0 z-30 bg-slate-900 px-3.5 py-2.5 border-r border-slate-800 min-w-[210px] max-w-[230px] shadow-[2px_0_5px_rgba(0,0,0,0.18)]"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>Learner Identity</span>
+                            <span className="text-[10px] font-mono text-slate-400">({displayLearners.length})</span>
+                          </div>
+                        </th>
+                        <th colSpan={4} className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-800 text-amber-200 uppercase tracking-wider text-[10px]">
+                          Term 1 (Autumn • 63 Instructional Days)
+                        </th>
+                        <th colSpan={4} className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-850 text-indigo-200 uppercase tracking-wider text-[10px]">
+                          Term 2 (Winter • 62 Instructional Days)
+                        </th>
+                        <th colSpan={4} className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-800 text-purple-200 uppercase tracking-wider text-[10px]">
+                          Term 3 (Promotional • 62 Instructional Days)
+                        </th>
+                        <th colSpan={3} className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-850 text-emerald-200 uppercase tracking-wider text-[10px]">
+                          Annual Statutory (187 Days)
+                        </th>
+                        <th colSpan={2} className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-900 text-sky-200 uppercase tracking-wider text-[10px]">
+                          ECZ Examination Clearance
+                        </th>
+                        <th rowSpan={2} className="sticky top-0 right-0 z-20 bg-slate-900 px-2 py-2 text-center min-w-[130px] border-l border-slate-800 shadow-[-2px_0_5px_rgba(0,0,0,0.15)]">
+                          Actions
+                        </th>
+                      </tr>
+                      <tr className="bg-slate-800 text-[10px] uppercase font-bold text-slate-300">
+                        {/* Term 1 */}
+                        <th className="px-2 py-1 text-center min-w-[65px]" title="Sessions Attended">Sessions</th>
+                        <th className="px-2 py-1 text-center min-w-[55px]" title="Term 1 Rate %">Rate %</th>
+                        <th className="px-2 py-1 text-center min-w-[80px]" title="Present • Absent • Late">P • A • L</th>
+                        <th className="px-2 py-1 text-center border-r border-slate-700 min-w-[65px]" title="Term 1 Standing">Standing</th>
+                        {/* Term 2 */}
+                        <th className="px-2 py-1 text-center min-w-[65px]" title="Sessions Attended">Sessions</th>
+                        <th className="px-2 py-1 text-center min-w-[55px]" title="Term 2 Rate %">Rate %</th>
+                        <th className="px-2 py-1 text-center min-w-[80px]" title="Present • Absent • Late">P • A • L</th>
+                        <th className="px-2 py-1 text-center border-r border-slate-700 min-w-[65px]" title="Term 2 Standing">Standing</th>
+                        {/* Term 3 */}
+                        <th className="px-2 py-1 text-center min-w-[65px]" title="Sessions Attended">Sessions</th>
+                        <th className="px-2 py-1 text-center min-w-[55px]" title="Term 3 Rate %">Rate %</th>
+                        <th className="px-2 py-1 text-center min-w-[80px]" title="Present • Absent • Late">P • A • L</th>
+                        <th className="px-2 py-1 text-center border-r border-slate-700 min-w-[65px]" title="Term 3 Standing">Standing</th>
+                        {/* Annual Cumulative */}
+                        <th className="px-2 py-1 text-center min-w-[70px]" title="Total Attended / 187d">Total Att.</th>
+                        <th className="px-2 py-1 text-center min-w-[65px]" title="Annual Cumulative %">Annual %</th>
+                        <th className="px-2 py-1 text-center border-r border-slate-700 min-w-[65px]" title="Annual Standing">Standing</th>
+                        {/* ECZ Clearance */}
+                        <th className="px-2 py-1 text-center min-w-[90px]" title="ECZ Candidate Clearance">Clearance</th>
+                        <th className="px-2 py-1 text-center border-r border-slate-700 min-w-[120px]" title="Statutory Regulation Note">Regulatory Note</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-[11px]">
+                      {displayLearners.length > 0 ? (
+                        displayLearners.map((learner) => {
+                          const h = getLearnerAttendanceHorizons(learner);
+                          const t1 = h.termly.terms[0];
+                          const t2 = h.termly.terms[1];
+                          const t3 = h.termly.terms[2];
+                          return (
+                            <tr key={learner.id} className="hover:bg-amber-50/40 transition group">
+                              {/* Pinned Left Column */}
+                              <td className="sticky left-0 z-10 bg-white group-hover:bg-amber-50/90 px-3.5 py-2 border-r border-slate-200 min-w-[210px] max-w-[230px] shadow-[2px_0_5px_rgba(0,0,0,0.03)]">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 border ${
+                                      learner.studentType === 'BOARDER'
+                                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                        : 'bg-sky-50 text-sky-700 border-sky-200'
+                                    }`}
+                                  >
+                                    {learner.learnerName.charAt(0)}
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <span className="font-bold text-slate-900 block truncate leading-tight">
+                                      {learner.learnerName}
+                                    </span>
+                                    <span className="text-[10px] font-mono text-slate-500">
+                                      {learner.studentNumber} • <span className="font-semibold">{learner.studentType === 'BOARDER' ? 'Boarder' : 'Day'}</span>
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Term 1 */}
+                              <td className="px-2 py-1.5 text-center font-mono text-slate-700">{t1.sessionsAttended}/63</td>
+                              <td className="px-2 py-1.5 text-center font-black text-slate-900">{t1.rate}%</td>
+                              <td className="px-2 py-1.5 text-center font-mono text-[10px] text-slate-500">
+                                {t1.sessionsAttended}P • <span className="text-rose-600 font-bold">{t1.sessionsAbsent}A</span> • {t1.sessionsLate}L
+                              </td>
+                              <td className="px-2 py-1.5 text-center border-r border-slate-100">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300">
+                                  {t1.standing}
+                                </span>
+                              </td>
+
+                              {/* Term 2 */}
+                              <td className="px-2 py-1.5 text-center font-mono text-slate-700">{t2.sessionsAttended}/62</td>
+                              <td className="px-2 py-1.5 text-center font-black text-slate-900">{t2.rate}%</td>
+                              <td className="px-2 py-1.5 text-center font-mono text-[10px] text-slate-500">
+                                {t2.sessionsAttended}P • <span className="text-rose-600 font-bold">{t2.sessionsAbsent}A</span> • {t2.sessionsLate}L
+                              </td>
+                              <td className="px-2 py-1.5 text-center border-r border-slate-100">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-slate-100 text-slate-800 border border-slate-300">
+                                  {t2.standing}
+                                </span>
+                              </td>
+
+                              {/* Term 3 */}
+                              <td className="px-2 py-1.5 text-center font-mono text-slate-700">{t3.sessionsAttended}/62</td>
+                              <td className="px-2 py-1.5 text-center font-black text-slate-900">{t3.rate}%</td>
+                              <td className="px-2 py-1.5 text-center font-mono text-[10px] text-slate-500">
+                                {t3.sessionsAttended}P • <span className="text-rose-600 font-bold">{t3.sessionsAbsent}A</span> • {t3.sessionsLate}L
+                              </td>
+                              <td className="px-2 py-1.5 text-center border-r border-slate-100">
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-purple-100 text-purple-900 border border-purple-300">
+                                  {t3.standing}
+                                </span>
+                              </td>
+
+                              {/* Annual Cumulative */}
+                              <td className="px-2 py-1.5 text-center font-mono font-bold text-slate-800">
+                                {h.termly.annual.totalAttended}/187
+                              </td>
+                              <td className="px-2 py-1.5 text-center font-black">
+                                <span
+                                  className={
+                                    h.termly.annual.annualRate >= 95
+                                      ? 'text-emerald-700'
+                                      : h.termly.annual.annualRate >= 85
+                                      ? 'text-amber-700'
+                                      : 'text-rose-700'
+                                  }
+                                >
+                                  {h.termly.annual.annualRate}%
+                                </span>
+                              </td>
+                              <td className="px-2 py-1.5 text-center border-r border-slate-100">
+                                <span className="px-2 py-0.5 rounded text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300">
+                                  {h.termly.annual.standing}
+                                </span>
+                              </td>
+
+                              {/* ECZ Clearance */}
+                              <td className="px-2 py-1.5 text-center">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black ${
+                                    h.termly.annual.eczExamClearance === 'CLEARED'
+                                      ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                                      : h.termly.annual.eczExamClearance === 'CONDITIONAL'
+                                      ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                      : 'bg-rose-100 text-rose-900 border border-rose-300 animate-pulse'
+                                  }`}
+                                >
+                                  <ShieldCheck className="w-3 h-3 shrink-0" />
+                                  <span>{h.termly.annual.eczExamClearance}</span>
+                                </span>
+                              </td>
+                              <td className="px-2 py-1.5 text-[10px] text-slate-600 border-r border-slate-200 max-w-[130px] truncate" title={h.termly.annual.eczClearanceNote}>
+                                {h.termly.annual.eczClearanceNote}
+                              </td>
+
+                              {/* Actions */}
+                              <td className="sticky right-0 z-10 bg-white group-hover:bg-amber-50/90 px-2 py-1.5 text-center border-l border-slate-200 shadow-[-2px_0_5px_rgba(0,0,0,0.03)]">
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedLearnerForForm12A(learner)}
+                                    title="View official Ministry of Education Form 12A Attendance Clearance Return"
+                                    className="px-2 py-1 rounded bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-[9px] border border-amber-200 flex items-center gap-0.5 transition"
+                                  >
+                                    <FileText className="w-2.5 h-2.5 text-amber-700" />
+                                    <span>Form 12A</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedLearnerForCard(learner)}
+                                    className="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[9px] border border-slate-300 flex items-center gap-0.5 transition"
+                                  >
+                                    <Eye className="w-2.5 h-2.5" />
+                                    <span>Card</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={18} className="py-8 text-center text-slate-500 text-xs">
+                            No learners match the selected filter criteria.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            }
+
+            // 4. DAILY VIEW: Morning Roll-Call & Punctuality
+            if (matrixHorizonView === 'DAILY') {
+              return (
+                <div className="relative max-h-[580px] overflow-auto border border-slate-200 rounded-2xl shadow-xs bg-white">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead className="sticky top-0 z-20 bg-slate-900 text-white font-bold text-[11px] shadow-sm">
+                      <tr>
+                        <th className="sticky top-0 left-0 z-30 bg-slate-900 px-3.5 py-2.5 border-r border-slate-800 min-w-[210px] max-w-[230px] shadow-[2px_0_5px_rgba(0,0,0,0.18)]">
+                          <div className="flex items-center justify-between">
+                            <span>Learner Identity</span>
+                            <span className="text-[10px] font-mono text-slate-400">({displayLearners.length})</span>
+                          </div>
+                        </th>
+                        <th className="px-3 py-2 text-center min-w-[100px] border-r border-slate-800">Today Roll-Call</th>
+                        <th className="px-3 py-2 text-center min-w-[85px] border-r border-slate-800">Arrival Time</th>
+                        <th className="px-3 py-2 text-center min-w-[100px] border-r border-slate-800">Punctuality Variance</th>
+                        <th className="px-3 py-2 min-w-[140px] border-r border-slate-800">Verification Source</th>
+                        <th className="px-3 py-2 min-w-[160px] border-r border-slate-800">Guardian Contact</th>
+                        <th className="sticky top-0 right-0 z-20 bg-slate-900 px-2 py-2 text-center min-w-[90px] border-l border-slate-800 shadow-[-2px_0_5px_rgba(0,0,0,0.15)]">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-[11px]">
+                      {displayLearners.length > 0 ? (
+                        displayLearners.map((learner) => {
+                          const h = getLearnerAttendanceHorizons(learner);
+                          return (
+                            <tr key={learner.id} className="hover:bg-sky-50/40 transition group">
+                              <td className="sticky left-0 z-10 bg-white group-hover:bg-sky-50/90 px-3.5 py-2 border-r border-slate-200 min-w-[210px] max-w-[230px] shadow-[2px_0_5px_rgba(0,0,0,0.03)]">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 border ${
+                                      learner.studentType === 'BOARDER'
+                                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                        : 'bg-sky-50 text-sky-700 border-sky-200'
+                                    }`}
+                                  >
+                                    {learner.learnerName.charAt(0)}
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <span className="font-bold text-slate-900 block truncate leading-tight">
+                                      {learner.learnerName}
+                                    </span>
+                                    <span className="text-[10px] font-mono text-slate-500">
+                                      {learner.studentNumber} • <span className="font-semibold">{learner.studentType === 'BOARDER' ? 'Boarder' : 'Day'}</span>
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              <td className="px-3 py-2 text-center border-r border-slate-100">
+                                <button
+                                  type="button"
+                                  onClick={() => cycleTodayPunctuality(learner.id, learner.status)}
+                                  title="Click to toggle status: Present → Absent → Late → Excused"
+                                  className={`px-2.5 py-1 rounded text-[10px] font-black border transition hover:scale-105 active:scale-95 ${
+                                    learner.status === 'PRESENT'
+                                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                      : learner.status === 'LATE'
+                                      ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                      : learner.status === 'EXCUSED'
+                                      ? 'bg-slate-100 text-slate-700 border-slate-300'
+                                      : 'bg-rose-50 text-rose-800 border-rose-300 animate-pulse'
+                                  }`}
+                                >
+                                  {learner.status}
+                                </button>
+                              </td>
+
+                              <td className="px-3 py-2 text-center font-mono text-slate-700 border-r border-slate-100">
+                                {h.daily.today.time}
+                              </td>
+
+                              <td className="px-3 py-2 text-center border-r border-slate-100">
+                                {learner.status === 'LATE' ? (
+                                  <span className="px-2 py-0.5 rounded bg-amber-50 text-amber-800 font-bold text-[10px] border border-amber-200">
+                                    +{h.daily.arrivalMinutesLate} mins late
+                                  </span>
+                                ) : learner.status === 'ABSENT' ? (
+                                  <span className="px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-bold text-[10px] border border-rose-200">
+                                    No Check-in
+                                  </span>
+                                ) : (
+                                  <span className="text-emerald-700 font-semibold text-[10px]">On-Time</span>
+                                )}
+                              </td>
+
+                              <td className="px-3 py-2 text-slate-600 border-r border-slate-100">
+                                {h.daily.rollCallMethod}
+                              </td>
+
+                              <td className="px-3 py-2 border-r border-slate-100">
+                                <span className="font-bold text-slate-800 block truncate">{learner.guardianName}</span>
+                                <span className="font-mono text-[10px] text-slate-500">{learner.guardianPhone}</span>
+                              </td>
+
+                              <td className="sticky right-0 z-10 bg-white group-hover:bg-sky-50/90 px-2 py-1.5 text-center border-l border-slate-200 shadow-[-2px_0_5px_rgba(0,0,0,0.03)]">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedLearnerForCard(learner)}
+                                  className="px-2 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-800 font-bold text-[10px] border border-sky-200 flex items-center justify-center gap-1 transition w-full"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  <span>Card</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={7} className="py-8 text-center text-slate-500 text-xs">
+                            No learners match the selected filter criteria.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            }
+
+            // 5. WEEKLY VIEW: Weeks 1 through 13 of Term 1
+            if (matrixHorizonView === 'WEEKLY') {
+              return (
+                <div className="relative max-h-[580px] overflow-auto border border-slate-200 rounded-2xl shadow-xs bg-white">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead className="sticky top-0 z-20 bg-slate-900 text-white font-bold text-[11px] shadow-sm">
+                      <tr>
+                        <th
+                          rowSpan={2}
+                          className="sticky top-0 left-0 z-30 bg-slate-900 px-3.5 py-2.5 border-r border-slate-800 min-w-[210px] max-w-[230px] shadow-[2px_0_5px_rgba(0,0,0,0.18)]"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>Learner Identity</span>
+                            <span className="text-[10px] font-mono text-slate-400">({displayLearners.length})</span>
+                          </div>
+                        </th>
+                        <th colSpan={13} className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-850 text-indigo-200 uppercase tracking-wider text-[10px]">
+                          Term 1 Instructional Weeks (Weeks 1 to 13 • 63 School Days)
+                        </th>
+                        <th colSpan={2} className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-800 text-emerald-200 uppercase tracking-wider text-[10px]">
+                          Consistency
+                        </th>
+                        <th rowSpan={2} className="sticky top-0 right-0 z-20 bg-slate-900 px-2 py-2 text-center min-w-[70px] border-l border-slate-800 shadow-[-2px_0_5px_rgba(0,0,0,0.15)]">
+                          Card
+                        </th>
+                      </tr>
+                      <tr className="bg-slate-800 text-[10px] uppercase font-bold text-slate-300">
+                        {Array.from({ length: 13 }, (_, i) => (
+                          <th
+                            key={i}
+                            className={`px-1 py-1 text-center min-w-[36px] border-r border-slate-700/60 ${
+                              i === 7 ? 'bg-indigo-900/60 text-indigo-200 font-black' : ''
+                            }`}
+                            title={`Week ${i + 1}${i === 7 ? ' (Current Active Week)' : ''}`}
+                          >
+                            Wk {i + 1}
+                          </th>
+                        ))}
+                        <th className="px-2 py-1 text-center min-w-[65px]" title="Term 1 Average Weekly Rate">Avg %</th>
+                        <th className="px-2 py-1 text-center border-r border-slate-700 min-w-[70px]" title="Attendance Trend Indicator">Trend</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-[11px]">
+                      {displayLearners.length > 0 ? (
+                        displayLearners.map((learner) => {
+                          const h = getLearnerAttendanceHorizons(learner);
+                          return (
+                            <tr key={learner.id} className="hover:bg-indigo-50/40 transition group">
+                              <td className="sticky left-0 z-10 bg-white group-hover:bg-indigo-50/90 px-3.5 py-2 border-r border-slate-200 min-w-[210px] max-w-[230px] shadow-[2px_0_5px_rgba(0,0,0,0.03)]">
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 border ${
+                                      learner.studentType === 'BOARDER'
+                                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                        : 'bg-sky-50 text-sky-700 border-sky-200'
+                                    }`}
+                                  >
+                                    {learner.learnerName.charAt(0)}
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <span className="font-bold text-slate-900 block truncate leading-tight">
+                                      {learner.learnerName}
+                                    </span>
+                                    <span className="text-[10px] font-mono text-slate-500">
+                                      {learner.studentNumber} • <span className="font-semibold">{learner.studentType === 'BOARDER' ? 'Boarder' : 'Day'}</span>
+                                    </span>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {h.weekly.termWeeks.map((w) => (
+                                <td
+                                  key={w.weekNumber}
+                                  className={`px-1 py-1.5 text-center border-r border-slate-100 ${
+                                    w.weekNumber === 8 ? 'bg-indigo-50/40 font-bold' : ''
+                                  }`}
+                                >
+                                  <span
+                                    title={`Week ${w.weekNumber}: ${w.rate}% (${w.daysAttended}/5 days)`}
+                                    className={`inline-block px-1 py-0.5 rounded text-[9px] font-mono ${
+                                      w.rate >= 95
+                                        ? 'text-emerald-700 font-bold'
+                                        : w.rate >= 80
+                                        ? 'text-amber-700'
+                                        : 'text-rose-600 font-bold'
+                                    }`}
+                                  >
+                                    {w.rate}%
+                                  </span>
+                                </td>
+                              ))}
+
+                              <td className="px-2 py-1.5 text-center font-black text-slate-900">
+                                {h.termly.termRate}%
+                              </td>
+
+                              <td className="px-2 py-1.5 text-center border-r border-slate-200">
+                                <div className="flex items-center justify-center gap-1" title="Attendance trend">
+                                  {h.weekly.weekTrends.map((wt) => (
+                                    <span
+                                      key={wt.week}
+                                      className={`w-1.5 h-3.5 rounded-xs ${
+                                        wt.rate >= 95 ? 'bg-emerald-500' : wt.rate >= 80 ? 'bg-amber-400' : 'bg-rose-500'
+                                      }`}
+                                    />
+                                  ))}
+                                </div>
+                              </td>
+
+                              <td className="sticky right-0 z-10 bg-white group-hover:bg-indigo-50/90 px-2 py-1.5 text-center border-l border-slate-200 shadow-[-2px_0_5px_rgba(0,0,0,0.03)]">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedLearnerForCard(learner)}
+                                  className="px-2 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-[10px] border border-indigo-200 flex items-center justify-center gap-1 transition w-full"
+                                >
+                                  <Eye className="w-3 h-3" />
+                                  <span>Card</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td colSpan={17} className="py-8 text-center text-slate-500 text-xs">
+                            No learners match the selected filter criteria.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            }
+
+            // 6. DEFAULT CONSOLIDATED MULTI-HORIZON MATRIX
+            return (
+              <div className="relative max-h-[580px] overflow-auto border border-slate-200 rounded-2xl shadow-xs bg-white">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="sticky top-0 z-20 bg-slate-900 text-white font-bold text-[11px] shadow-sm">
+                    <tr>
+                      <th
+                        rowSpan={2}
+                        className="sticky top-0 left-0 z-30 bg-slate-900 px-3.5 py-2.5 border-r border-slate-800 min-w-[210px] max-w-[230px] shadow-[2px_0_5px_rgba(0,0,0,0.18)]"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span>Learner Identity</span>
+                          <span className="text-[10px] font-mono text-slate-400">({displayLearners.length})</span>
+                        </div>
+                      </th>
+                      <th
+                        colSpan={6}
+                        className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-800 text-sky-200 uppercase tracking-wider text-[10px]"
+                      >
+                        Daily Horizon (This Week: Mon 02 - Fri 06 Mar)
+                      </th>
+                      <th
+                        colSpan={2}
+                        className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-850 text-indigo-200 uppercase tracking-wider text-[10px]"
+                      >
+                        Weekly Horizon
+                      </th>
+                      <th
+                        colSpan={2}
+                        className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-800 text-emerald-200 uppercase tracking-wider text-[10px]"
+                      >
+                        Monthly Horizon
+                      </th>
+                      <th
+                        colSpan={3}
+                        className="px-2 py-1.5 text-center border-r border-slate-800 bg-slate-850 text-amber-200 uppercase tracking-wider text-[10px]"
+                      >
+                        Term 1 Cumulative
+                      </th>
+                      <th
+                        rowSpan={2}
+                        className="sticky top-0 right-0 z-20 bg-slate-900 px-2 py-2 text-center min-w-[80px] border-l border-slate-800 shadow-[-2px_0_5px_rgba(0,0,0,0.15)]"
+                      >
+                        Card
+                      </th>
+                    </tr>
+                    <tr className="bg-slate-800 text-[10px] uppercase font-bold text-slate-300">
+                      <th className="px-1 py-1 text-center min-w-[34px] border-r border-slate-700/60" title="Monday 02 Mar">M</th>
+                      <th className="px-1 py-1 text-center min-w-[34px] border-r border-slate-700/60" title="Tuesday 03 Mar">T</th>
+                      <th className="px-1 py-1 text-center min-w-[34px] border-r border-slate-700/60" title="Wednesday 04 Mar">W</th>
+                      <th className="px-1 py-1 text-center min-w-[34px] border-r border-slate-700/60" title="Thursday 05 Mar">T</th>
+                      <th className="px-1 py-1 text-center min-w-[34px] border-r border-slate-700/60" title="Friday 06 Mar">F</th>
+                      <th className="px-2 py-1 text-center border-r border-slate-700 min-w-[75px]" title="Today Live Status">Today</th>
+                      <th className="px-2 py-1 text-center min-w-[65px]" title="Week 8 Attendance Rate">Wk 8 %</th>
+                      <th className="px-2 py-1 text-center border-r border-slate-700 min-w-[65px]" title="Past 4 Weeks Trend">Trend</th>
+                      <th className="px-2 py-1 text-center min-w-[70px]" title="March Month-to-Date">Mar %</th>
+                      <th className="px-2 py-1 text-center border-r border-slate-700 min-w-[65px]" title="February Total">Feb %</th>
+                      <th className="px-2 py-1 text-center min-w-[65px]" title="Term 1 Cumulative Rate">Term %</th>
+                      <th className="px-2 py-1 text-center min-w-[80px]" title="Present / Absent / Late Days">P • A • L</th>
+                      <th className="px-2 py-1 text-center border-r border-slate-700 min-w-[65px]" title="Official MOE Standing">Standing</th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-100 font-medium text-[11px]">
+                    {displayLearners.length > 0 ? (
+                      displayLearners.map((learner) => {
+                        const h = getLearnerAttendanceHorizons(learner);
+                        return (
+                          <tr key={learner.id} className="hover:bg-blue-50/50 transition group">
+                            {/* Sticky Left Column */}
+                            <td className="sticky left-0 z-10 bg-white group-hover:bg-blue-50/90 px-3.5 py-2 border-r border-slate-200 min-w-[210px] max-w-[230px] shadow-[2px_0_5px_rgba(0,0,0,0.03)]">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 border ${
+                                    learner.studentType === 'BOARDER'
+                                      ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                      : 'bg-sky-50 text-sky-700 border-sky-200'
+                                  }`}
+                                >
+                                  {learner.learnerName.charAt(0)}
+                                </span>
+                                <div className="min-w-0 flex-1">
+                                  <span className="font-bold text-slate-900 block truncate leading-tight">
+                                    {learner.learnerName}
+                                  </span>
+                                  <span className="text-[10px] font-mono text-slate-500">
+                                    {learner.studentNumber} • <span className="font-semibold">{learner.studentType === 'BOARDER' ? 'Boarder' : 'Day'}</span>
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Daily: Mon */}
+                            <td className="px-1 py-1.5 text-center border-r border-slate-100">
                               <span
-                                key={wt.week}
-                                className={`w-2 h-3.5 rounded-xs ${
-                                  wt.rate >= 95 ? 'bg-emerald-500' : wt.rate >= 80 ? 'bg-amber-400' : 'bg-rose-500'
+                                title={`Monday 02 Mar: ${h.daily.monday.status} (${h.daily.monday.time})`}
+                                className={`inline-block w-5 h-5 rounded-full text-[9px] font-black leading-5 text-center cursor-help ${
+                                  h.daily.monday.status === 'PRESENT'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : h.daily.monday.status === 'LATE'
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-rose-100 text-rose-800'
                                 }`}
-                                title={`${wt.week}: ${wt.rate}%`}
-                              />
-                            ))}
-                          </div>
-                        </td>
+                              >
+                                {h.daily.monday.status.charAt(0)}
+                              </span>
+                            </td>
 
-                        {/* Monthly: March MTD % */}
-                        <td className="px-2 py-1.5 text-center font-bold text-slate-800">
-                          <div className="flex flex-col items-center">
-                            <span>{h.monthly.currentMonthRate}%</span>
-                            <span className="text-[9px] font-mono text-slate-400">
-                              ({h.monthly.currentMonthDaysPresent}/{h.monthly.currentMonthTotalDays}d)
-                            </span>
-                          </div>
-                        </td>
+                            {/* Daily: Tue */}
+                            <td className="px-1 py-1.5 text-center border-r border-slate-100">
+                              <span
+                                title={`Tuesday 03 Mar: ${h.daily.tuesday.status} (${h.daily.tuesday.time})`}
+                                className={`inline-block w-5 h-5 rounded-full text-[9px] font-black leading-5 text-center cursor-help ${
+                                  h.daily.tuesday.status === 'PRESENT'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : h.daily.tuesday.status === 'LATE'
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-rose-100 text-rose-800'
+                                }`}
+                              >
+                                {h.daily.tuesday.status.charAt(0)}
+                              </span>
+                            </td>
 
-                        {/* Monthly: Feb Total % */}
-                        <td className="px-2 py-1.5 text-center font-semibold text-slate-600 border-r border-slate-200">
-                          <span>{h.monthly.prevMonthRate}%</span>
-                        </td>
+                            {/* Daily: Wed */}
+                            <td className="px-1 py-1.5 text-center border-r border-slate-100">
+                              <span
+                                title={`Wednesday 04 Mar: ${h.daily.wednesday.status} (${h.daily.wednesday.time})`}
+                                className={`inline-block w-5 h-5 rounded-full text-[9px] font-black leading-5 text-center cursor-help ${
+                                  h.daily.wednesday.status === 'PRESENT'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : h.daily.wednesday.status === 'LATE'
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-rose-100 text-rose-800'
+                                }`}
+                              >
+                                {h.daily.wednesday.status.charAt(0)}
+                              </span>
+                            </td>
 
-                        {/* Termly: Cumulative % */}
-                        <td className="px-2 py-1.5 text-center font-black">
-                          <span
-                            className={
-                              h.termly.termRate >= 98
-                                ? 'text-emerald-700'
-                                : h.termly.termRate >= 95
-                                ? 'text-blue-700'
-                                : h.termly.termRate >= 85
-                                ? 'text-amber-700'
-                                : 'text-rose-700'
-                            }
-                          >
-                            {h.termly.termRate}%
-                          </span>
-                        </td>
+                            {/* Daily: Thu */}
+                            <td className="px-1 py-1.5 text-center border-r border-slate-100">
+                              <span
+                                title={`Thursday 05 Mar: ${h.daily.thursday.status} (${h.daily.thursday.time})`}
+                                className={`inline-block w-5 h-5 rounded-full text-[9px] font-black leading-5 text-center cursor-help ${
+                                  h.daily.thursday.status === 'PRESENT'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : h.daily.thursday.status === 'LATE'
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-rose-100 text-rose-800'
+                                }`}
+                              >
+                                {h.daily.thursday.status.charAt(0)}
+                              </span>
+                            </td>
 
-                        {/* Termly: P • A • L Days */}
-                        <td className="px-2 py-1.5 text-center font-mono text-[10px] text-slate-600">
-                          <span>
-                            {h.termly.presentCount}P • <strong className="text-rose-600">{h.termly.absentCount}A</strong> • {h.termly.lateCount}L
-                          </span>
-                        </td>
+                            {/* Daily: Fri */}
+                            <td className="px-1 py-1.5 text-center border-r border-slate-100">
+                              <span
+                                title={`Friday 06 Mar: ${h.daily.friday.status} (${h.daily.friday.time})`}
+                                className={`inline-block w-5 h-5 rounded-full text-[9px] font-black leading-5 text-center cursor-help ${
+                                  h.daily.friday.status === 'PRESENT'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : h.daily.friday.status === 'LATE'
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-rose-100 text-rose-800'
+                                }`}
+                              >
+                                {h.daily.friday.status.charAt(0)}
+                              </span>
+                            </td>
 
-                        {/* Termly: Standing Badge */}
-                        <td className="px-2 py-1.5 text-center border-r border-slate-200">
-                          <span
-                            className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-black ${
-                              h.termly.standing === 'GOLD'
-                                ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                                : h.termly.standing === 'SILVER'
-                                ? 'bg-slate-100 text-slate-800 border border-slate-300'
-                                : h.termly.standing === 'BRONZE'
-                                ? 'bg-orange-50 text-orange-800 border border-orange-200'
-                                : 'bg-rose-100 text-rose-900 border border-rose-300 animate-pulse'
-                            }`}
-                          >
-                            {h.termly.standing}
-                          </span>
-                        </td>
+                            {/* Daily: Today Interactive Pill */}
+                            <td className="px-2 py-1.5 text-center border-r border-slate-200">
+                              <button
+                                type="button"
+                                onClick={() => cycleTodayPunctuality(learner.id, learner.status)}
+                                title="Click to toggle status: Present → Absent → Late → Excused"
+                                className={`px-2 py-0.5 rounded text-[10px] font-black border transition hover:scale-105 active:scale-95 ${
+                                  learner.status === 'PRESENT'
+                                    ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                    : learner.status === 'LATE'
+                                    ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                    : learner.status === 'EXCUSED'
+                                    ? 'bg-slate-100 text-slate-700 border-slate-300'
+                                    : 'bg-rose-50 text-rose-800 border-rose-300 animate-pulse'
+                                }`}
+                              >
+                                {learner.status}
+                              </button>
+                            </td>
 
-                        {/* Sticky Right Action Column */}
-                        <td className="sticky right-0 z-10 bg-white group-hover:bg-blue-50/90 px-2 py-1.5 text-center border-l border-slate-200 shadow-[-2px_0_5px_rgba(0,0,0,0.03)]">
-                          <button
-                            type="button"
-                            onClick={() => setSelectedLearnerForCard(learner)}
-                            className="px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-[10px] border border-blue-200 flex items-center justify-center gap-1 transition w-full"
-                          >
-                            <Eye className="w-3 h-3" />
-                            <span>Card</span>
-                          </button>
+                            {/* Weekly: Week 8 % */}
+                            <td className="px-2 py-1.5 text-center font-bold text-slate-800">
+                              <div className="flex flex-col items-center">
+                                <span>{h.weekly.currentWeekRate}%</span>
+                                <span className="text-[9px] font-mono text-slate-400">({h.weekly.currentWeekDaysPresent}/5d)</span>
+                              </div>
+                            </td>
+
+                            {/* Weekly: 4-Wk Trend */}
+                            <td className="px-2 py-1.5 text-center border-r border-slate-200">
+                              <div className="flex items-center justify-center gap-1" title="Weeks 5, 6, 7, 8 attendance trend">
+                                {h.weekly.weekTrends.map((wt) => (
+                                  <span
+                                    key={wt.week}
+                                    className={`w-2 h-3.5 rounded-xs ${
+                                      wt.rate >= 95 ? 'bg-emerald-500' : wt.rate >= 80 ? 'bg-amber-400' : 'bg-rose-500'
+                                    }`}
+                                    title={`${wt.week}: ${wt.rate}%`}
+                                  />
+                                ))}
+                              </div>
+                            </td>
+
+                            {/* Monthly: March MTD % */}
+                            <td className="px-2 py-1.5 text-center font-bold text-slate-800">
+                              <div className="flex flex-col items-center">
+                                <span>{h.monthly.currentMonthRate}%</span>
+                                <span className="text-[9px] font-mono text-slate-400">
+                                  ({h.monthly.currentMonthDaysPresent}/{h.monthly.currentMonthTotalDays}d)
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Monthly: Feb Total % */}
+                            <td className="px-2 py-1.5 text-center font-semibold text-slate-600 border-r border-slate-200">
+                              <span>{h.monthly.prevMonthRate}%</span>
+                            </td>
+
+                            {/* Termly: Cumulative % */}
+                            <td className="px-2 py-1.5 text-center font-black">
+                              <span
+                                className={
+                                  h.termly.termRate >= 98
+                                    ? 'text-emerald-700'
+                                    : h.termly.termRate >= 95
+                                    ? 'text-blue-700'
+                                    : h.termly.termRate >= 85
+                                    ? 'text-amber-700'
+                                    : 'text-rose-700'
+                                }
+                              >
+                                {h.termly.termRate}%
+                              </span>
+                            </td>
+
+                            {/* Termly: P • A • L Days */}
+                            <td className="px-2 py-1.5 text-center font-mono text-[10px] text-slate-600">
+                              <span>
+                                {h.termly.presentCount}P • <strong className="text-rose-600">{h.termly.absentCount}A</strong> • {h.termly.lateCount}L
+                              </span>
+                            </td>
+
+                            {/* Termly: Standing Badge */}
+                            <td className="px-2 py-1.5 text-center border-r border-slate-200">
+                              <span
+                                className={`inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[9px] font-black ${
+                                  h.termly.standing === 'GOLD'
+                                    ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                                    : h.termly.standing === 'SILVER'
+                                    ? 'bg-slate-100 text-slate-800 border border-slate-300'
+                                    : h.termly.standing === 'BRONZE'
+                                    ? 'bg-orange-50 text-orange-800 border border-orange-200'
+                                    : 'bg-rose-100 text-rose-900 border border-rose-300 animate-pulse'
+                                }`}
+                              >
+                                {h.termly.standing}
+                              </span>
+                            </td>
+
+                            {/* Sticky Right Action Column */}
+                            <td className="sticky right-0 z-10 bg-white group-hover:bg-blue-50/90 px-2 py-1.5 text-center border-l border-slate-200 shadow-[-2px_0_5px_rgba(0,0,0,0.03)]">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedLearnerForCard(learner)}
+                                className="px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-[10px] border border-blue-200 flex items-center justify-center gap-1 transition w-full"
+                              >
+                                <Eye className="w-3 h-3" />
+                                <span>Card</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={15} className="py-8 text-center text-slate-500 text-xs">
+                          No learners match the selected filter criteria.
                         </td>
                       </tr>
-                    );
-                  })
-                ) : (
-                  <tr>
-                    <td colSpan={15} className="py-8 text-center text-slate-500 text-xs">
-                      No learners match the selected filter criteria.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -3352,6 +5140,186 @@ export default function AttendancePage() {
                   <button
                     type="button"
                     onClick={() => setSelectedLearnerForCard(null)}
+                    className="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* MODAL: Ministry of Education Form 12A Statutory Attendance Return & ECZ Clearance Slip */}
+      {selectedLearnerForForm12A && (() => {
+        const h = getLearnerAttendanceHorizons(selectedLearnerForForm12A);
+        const t1 = h.termly.terms[0];
+        const t2 = h.termly.terms[1];
+        const t3 = h.termly.terms[2];
+        const ann = h.termly.annual;
+        return (
+          <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-5 border border-slate-200 max-h-[90vh] overflow-y-auto">
+              {/* Header */}
+              <div className="flex items-start justify-between border-b border-slate-200 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center font-black text-xl border border-amber-300">
+                    🇿🇲
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">
+                      Republic of Zambia • Ministry of Education (MoE)
+                    </span>
+                    <h3 className="text-base font-black text-slate-900">
+                      Official Form 12A: Statutory Attendance & ECZ Clearance Return
+                    </h3>
+                    <span className="text-xs text-slate-500">
+                      Solwezi District Education Board Secretary (DEBS) • North-Western Province
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedLearnerForForm12A(null)}
+                  className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Learner Identification Strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                <div>
+                  <span className="text-slate-500 text-[10px] uppercase font-bold block">Learner Full Name</span>
+                  <span className="font-bold text-slate-900">{selectedLearnerForForm12A.learnerName}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px] uppercase font-bold block">Student Number</span>
+                  <span className="font-mono font-bold text-slate-900">{selectedLearnerForForm12A.studentNumber}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px] uppercase font-bold block">Classroom Cohort</span>
+                  <span className="font-bold text-slate-900">{selectedLearnerForForm12A.className}</span>
+                </div>
+                <div>
+                  <span className="text-slate-500 text-[10px] uppercase font-bold block">Campus & Format</span>
+                  <span className="font-bold text-slate-900">
+                    {selectedLearnerForForm12A.studentType === 'BOARDER' ? 'Boarder' : 'Day Scholar'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Termly Breakdown Table */}
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-100 text-slate-700 font-bold uppercase text-[10px]">
+                    <tr>
+                      <th className="px-3 py-2 border-r border-slate-200">Term / Horizon</th>
+                      <th className="px-3 py-2 text-center border-r border-slate-200">Statutory Days</th>
+                      <th className="px-3 py-2 text-center border-r border-slate-200">Sessions Attended</th>
+                      <th className="px-3 py-2 text-center border-r border-slate-200">Absences (P•A•L)</th>
+                      <th className="px-3 py-2 text-center border-r border-slate-200">Rate (%)</th>
+                      <th className="px-3 py-2 text-center">Standing</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-[11px]">
+                    <tr>
+                      <td className="px-3 py-2 font-bold text-slate-900 border-r border-slate-100">{t1.termLabel}</td>
+                      <td className="px-3 py-2 text-center font-mono border-r border-slate-100">{t1.teachingDays}</td>
+                      <td className="px-3 py-2 text-center font-mono font-bold text-emerald-700 border-r border-slate-100">{t1.sessionsAttended}</td>
+                      <td className="px-3 py-2 text-center font-mono text-[10px] text-slate-500 border-r border-slate-100">
+                        {t1.sessionsAttended}P • {t1.sessionsAbsent}A • {t1.sessionsLate}L
+                      </td>
+                      <td className="px-3 py-2 text-center font-black text-slate-900 border-r border-slate-100">{t1.rate}%</td>
+                      <td className="px-3 py-2 text-center font-bold text-amber-700">{t1.standing}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 font-bold text-slate-900 border-r border-slate-100">{t2.termLabel}</td>
+                      <td className="px-3 py-2 text-center font-mono border-r border-slate-100">{t2.teachingDays}</td>
+                      <td className="px-3 py-2 text-center font-mono font-bold text-emerald-700 border-r border-slate-100">{t2.sessionsAttended}</td>
+                      <td className="px-3 py-2 text-center font-mono text-[10px] text-slate-500 border-r border-slate-100">
+                        {t2.sessionsAttended}P • {t2.sessionsAbsent}A • {t2.sessionsLate}L
+                      </td>
+                      <td className="px-3 py-2 text-center font-black text-slate-900 border-r border-slate-100">{t2.rate}%</td>
+                      <td className="px-3 py-2 text-center font-bold text-slate-700">{t2.standing}</td>
+                    </tr>
+                    <tr>
+                      <td className="px-3 py-2 font-bold text-slate-900 border-r border-slate-100">{t3.termLabel}</td>
+                      <td className="px-3 py-2 text-center font-mono border-r border-slate-100">{t3.teachingDays}</td>
+                      <td className="px-3 py-2 text-center font-mono font-bold text-emerald-700 border-r border-slate-100">{t3.sessionsAttended}</td>
+                      <td className="px-3 py-2 text-center font-mono text-[10px] text-slate-500 border-r border-slate-100">
+                        {t3.sessionsAttended}P • {t3.sessionsAbsent}A • {t3.sessionsLate}L
+                      </td>
+                      <td className="px-3 py-2 text-center font-black text-slate-900 border-r border-slate-100">{t3.rate}%</td>
+                      <td className="px-3 py-2 text-center font-bold text-purple-700">{t3.standing}</td>
+                    </tr>
+                    <tr className="bg-amber-50/50 font-black">
+                      <td className="px-3 py-2 text-slate-900 border-r border-slate-200">Annual Academic Year Total</td>
+                      <td className="px-3 py-2 text-center font-mono border-r border-slate-200">{ann.totalTeachingDays} Days</td>
+                      <td className="px-3 py-2 text-center font-mono text-emerald-800 border-r border-slate-200">{ann.totalAttended} Days</td>
+                      <td className="px-3 py-2 text-center font-mono text-[10px] text-slate-600 border-r border-slate-200">
+                        {ann.totalAbsences} Absences • {ann.totalLates} Lates
+                      </td>
+                      <td className="px-3 py-2 text-center text-slate-900 border-r border-slate-200">{ann.annualRate}%</td>
+                      <td className="px-3 py-2 text-center text-amber-900">{ann.standing}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ECZ Official Determination Banner */}
+              <div
+                className={`p-4 rounded-xl border flex items-start gap-3 text-xs ${
+                  ann.eczExamClearance === 'CLEARED'
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
+                    : ann.eczExamClearance === 'CONDITIONAL'
+                    ? 'bg-amber-50 border-amber-200 text-amber-950'
+                    : 'bg-rose-50 border-rose-200 text-rose-950'
+                }`}
+              >
+                <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-700 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm">Examinations Council of Zambia (ECZ) Clearance:</span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                        ann.eczExamClearance === 'CLEARED'
+                          ? 'bg-emerald-200 text-emerald-900'
+                          : ann.eczExamClearance === 'CONDITIONAL'
+                          ? 'bg-amber-200 text-amber-900'
+                          : 'bg-rose-200 text-rose-900'
+                      }`}
+                    >
+                      {ann.eczExamClearance}
+                    </span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed opacity-90">
+                    {ann.eczClearanceNote} Under Chapter 134 of the Laws of Zambia and official MoE circulars, learners must maintain a cumulative attendance record of no less than 80% to be certified for national ECZ examination sitting.
+                  </p>
+                </div>
+              </div>
+
+              {/* Endorsement and Actions */}
+              <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div className="text-[11px] text-slate-500">
+                  <span className="font-bold text-slate-800 block">Endorsed by Legacy School Solwezi</span>
+                  <span>Stand # S/SOLWE/31/7178, Kansanshi Rd • Authenticated Digital Return</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setToastMessage(`Official MoE Form 12A Attendance Slip printed for ${selectedLearnerForForm12A.learnerName}! 🖨️`);
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Print Form 12A Slip</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLearnerForForm12A(null)}
                     className="px-3.5 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs transition"
                   >
                     Close
