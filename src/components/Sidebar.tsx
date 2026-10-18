@@ -19,6 +19,7 @@ import {
   Building2,
   DollarSign,
   Bed,
+  Sliders,
 } from 'lucide-react';
 import { useCampus } from './CampusContext';
 
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { href: '/academics', label: 'Academics & Reports', icon: GraduationCap },
   { href: '/teacher', label: 'Teacher Workspace', icon: ClipboardCheck },
   { href: '/parent', label: 'Parent Portal', icon: HeartHandshake },
+  { href: '/settings', label: 'System Settings', icon: Sliders, badge: 'Config' },
   { href: '/admin', label: 'Platform Admin', icon: ShieldCheck },
 ];
 

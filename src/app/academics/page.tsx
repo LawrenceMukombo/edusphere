@@ -28,6 +28,8 @@ import {
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { useCampus } from '@/components/CampusContext';
 
+import { generateLegacyLearners } from '@/server/services/legacySchoolData';
+
 type ApprovalStage = 'DRAFT' | 'SUBMITTED' | 'ENDORSED' | 'APPROVED' | 'PUBLISHED';
 
 interface AcademicReport {
@@ -81,44 +83,78 @@ export default function AcademicsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [dispatchStatus, setDispatchStatus] = useState<string | null>(null);
 
-  // Load sample report cards from database or state
+  // Load sample report cards from database or state with full offline baseline fallback
   useEffect(() => {
     setIsLoading(true);
-    fetch(`/api/students?campusId=${selectedCampus}`)
-      .then((res) => res.json())
-      .then((json) => {
-        if (json.success && json.data.length > 0) {
-          const sampleReports: AcademicReport[] = json.data.map((learner: any, idx: number) => {
-            const stages: ApprovalStage[] = ['PUBLISHED', 'APPROVED', 'ENDORSED', 'SUBMITTED', 'DRAFT'];
-            const assignedStage = stages[idx % stages.length];
-            const avg = Number((88 - idx * 2.3).toFixed(1));
 
-            return {
-              id: `rc-${learner.id}-${selectedTerm.replace(/\s+/g, '')}`,
-              learnerId: learner.id,
-              learnerName: `${learner.firstName} ${learner.lastName}`,
-              studentNumber: learner.studentNumber,
-              className: learner.currentClass?.name || 'Form 2 Green',
-              termName: selectedTerm,
-              academicYear: '2026',
-              status: assignedStage,
-              aggregateScore: avg,
-              rank: `${idx + 1} of ${json.data.length}`,
-              guardianName: learner.guardianName || 'Mr. & Mrs. Mulenga',
-              guardianPhone: learner.guardianPhone || '+260 977 123456',
-              guardianEmail: learner.guardianEmail || 'chileshe.mulenga@kansanshi.com',
-              teacherRemarks: 'Diligent and consistent effort observed across all learning areas.',
-              supervisorRemarks: 'Academic standards met. Continuous assessments verified against scheme of work.',
-              principalRemarks: 'Approved for progression with honours. Well done!',
-              dispatchedViaWhatsApp: assignedStage === 'PUBLISHED',
-              dispatchedViaEmail: assignedStage === 'PUBLISHED',
-              subjects: SAMPLE_SUBJECTS,
-            };
-          });
-          setReportCards(sampleReports);
-        } else {
-          setReportCards([]);
+    const generateMockReportsFromLearners = (learners: any[]) => {
+      const stages: ApprovalStage[] = ['PUBLISHED', 'APPROVED', 'ENDORSED', 'SUBMITTED', 'DRAFT'];
+      return learners.map((learner: any, idx: number) => {
+        const assignedStage = stages[idx % stages.length];
+        const baseAvg = 92 - (idx % 22) * 1.6;
+        const avg = Number(Math.max(48, Math.min(98, baseAvg)).toFixed(1));
+
+        const learnerName = learner.learnerName || `${learner.firstName || ''} ${learner.lastName || ''}`.trim() || 'Learner';
+        const guardian = learner.guardian || {};
+        const guardianName = guardian.name || learner.guardianName || (learner.guardians?.[0]?.guardian ? `${learner.guardians[0].guardian.firstName} ${learner.guardians[0].guardian.lastName}` : 'Mr. & Mrs. Mulenga');
+        const guardianPhone = guardian.phone || learner.guardianPhone || learner.guardians?.[0]?.guardian?.phone || '+260 977 123456';
+        const guardianEmail = guardian.email || learner.guardianEmail || learner.guardians?.[0]?.guardian?.email || 'guardian@solwezinet.zm';
+        const className = learner.className || learner.currentClass?.name || 'Form 2 Green';
+
+        return {
+          id: `rc-${learner.id}-${selectedTerm.replace(/\s+/g, '')}`,
+          learnerId: learner.id,
+          learnerName,
+          studentNumber: learner.studentNumber,
+          className,
+          termName: selectedTerm,
+          academicYear: '2026',
+          status: assignedStage,
+          aggregateScore: avg,
+          rank: `${(idx % 35) + 1} of 35`,
+          guardianName,
+          guardianPhone,
+          guardianEmail,
+          teacherRemarks: avg >= 75 ? 'Exceptional mastery and active classroom contribution.' : avg >= 60 ? 'Satisfactory progress. Continued focus on mathematical problem solving recommended.' : 'Requires closer tutorial support in sciences.',
+          supervisorRemarks: 'Academic standards met. Continuous assessments verified against scheme of work.',
+          principalRemarks: 'Approved for progression with honours. Well done!',
+          dispatchedViaWhatsApp: assignedStage === 'PUBLISHED',
+          dispatchedViaEmail: assignedStage === 'PUBLISHED',
+          subjects: SAMPLE_SUBJECTS,
+        };
+      });
+    };
+
+    const loadFallback = () => {
+      const all = generateLegacyLearners(780);
+      const filtered = all.filter((l) => {
+        if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
+          return l.campusName.includes('Mushitala') || l.campusName.includes('Kansanshi') || l.stage === 'SECONDARY' || l.studentType === 'BOARDER';
         }
+        if (selectedCampus === 'URBAN') {
+          return l.campusName.includes('Urban') || l.stage === 'PRIMARY' || l.stage === 'ECE';
+        }
+        return true;
+      });
+      const chosen = filtered.length > 0 ? filtered : all;
+      setReportCards(generateMockReportsFromLearners(chosen));
+    };
+
+    fetch(`/api/students?campusId=${selectedCampus}`)
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((json) => {
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          setReportCards(generateMockReportsFromLearners(json.data));
+        } else {
+          loadFallback();
+        }
+      })
+      .catch((err) => {
+        console.warn('[Academics] Falling back to local offline learner assessment database:', err);
+        loadFallback();
       })
       .finally(() => setIsLoading(false));
   }, [selectedCampus, selectedTerm]);

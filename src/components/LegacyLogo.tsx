@@ -34,21 +34,21 @@ export function LegacyLogo({
   // Compact Header / Navbar Format
   if (variant === 'compact') {
     return (
-      <div className={`flex items-center gap-3.5 ${className}`}>
+      <div className={`flex items-center gap-2.5 sm:gap-3.5 shrink-0 ${className}`}>
         <LegacyLogo variant="emblem" size={size} />
-        <div className="flex flex-col">
-          <div className="flex items-center gap-1.5">
-            <span className="text-lg font-black tracking-wider text-blue-950 font-serif leading-none">
+        <div className="flex flex-col min-w-0">
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-base sm:text-lg font-black tracking-wider text-blue-950 font-serif leading-none whitespace-nowrap">
               LEGACY SCHOOL
             </span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200">
+            <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200 whitespace-nowrap">
               SOLWEZI
             </span>
           </div>
-          <span className="text-xs font-serif italic text-blue-700 tracking-wide mt-0.5 leading-tight">
+          <span className="text-[11px] sm:text-xs font-serif italic text-blue-700 tracking-wide mt-0.5 leading-tight truncate max-w-[210px] sm:max-w-[280px] lg:max-w-[220px] xl:max-w-none">
             We Strive for Your Academic and Moral Excellence
           </span>
-          <span className="text-[10px] text-slate-500 font-medium">
+          <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium hidden 2xl:block truncate">
             Mushitala Campus (Near Kansanshi) • Urban Campus
           </span>
         </div>

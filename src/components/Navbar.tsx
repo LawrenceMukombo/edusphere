@@ -34,44 +34,47 @@ export function Navbar() {
           </div>
 
           {/* Center: Campus Switcher (Management Control) */}
-          <div className="hidden lg:flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 shadow-inner">
+          <div className="hidden lg:flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 shadow-inner shrink-0">
             <button
               type="button"
               onClick={() => setSelectedCampus('ALL')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+              className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
                 selectedCampus === 'ALL'
                   ? 'bg-blue-900 text-white shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Layers className="w-3.5 h-3.5" />
-              <span>All Campuses (Consolidated)</span>
+              <Layers className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden xl:inline">All Campuses (Consolidated)</span>
+              <span className="xl:hidden">All Campuses</span>
             </button>
 
             <button
               type="button"
               onClick={() => setSelectedCampus('MUSHITALA')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+              className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
                 selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI'
                   ? 'bg-indigo-700 text-white shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Bed className="w-3.5 h-3.5" />
-              <span>Mushitala Campus (Near Kansanshi)</span>
+              <Bed className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden 2xl:inline">Mushitala Campus (Near Kansanshi)</span>
+              <span className="2xl:hidden">Mushitala Campus</span>
             </button>
 
             <button
               type="button"
               onClick={() => setSelectedCampus('URBAN')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition ${
+              className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
                 selectedCampus === 'URBAN'
                   ? 'bg-sky-600 text-white shadow-sm'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              <Sun className="w-3.5 h-3.5" />
-              <span>Urban Campus (Solwezi Central)</span>
+              <Sun className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden 2xl:inline">Urban Campus (Solwezi Central)</span>
+              <span className="2xl:hidden">Urban Campus</span>
             </button>
           </div>
 
