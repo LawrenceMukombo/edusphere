@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
           toCampusId: 'LSS-URB',
           toCampusName: 'Urban Campus (Solwezi Central - opp Kikombe School / Army Mess)',
           toCampusCode: 'URB',
-          distanceKm: 3.8,
-          estimatedDriveMinutes: 7,
+          distanceKm: 4.4,
+          estimatedDriveMinutes: 8,
         },
         {
           fromCampusId: 'LSS-URB',
@@ -46,8 +46,8 @@ export async function GET(request: NextRequest) {
           toCampusId: 'LSS-MSC',
           toCampusName: 'Mushitala Campus (Near Kansanshi)',
           toCampusCode: 'MSC',
-          distanceKm: 3.8,
-          estimatedDriveMinutes: 7,
+          distanceKm: 4.4,
+          estimatedDriveMinutes: 8,
         },
       ];
     }

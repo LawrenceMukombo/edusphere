@@ -130,10 +130,15 @@ export default function ParentPortalPage() {
           stage: student.className.includes('Grade') ? 'PRIMARY' : 'SECONDARY',
           campusName: student.campusName,
           currentClass: { name: student.className },
-          campus: { name: student.campusName, address: 'Solwezi Educational Network' },
-          isBoarder: student.campusName.includes('Mushitala'),
-          totalBilled: 10400,
-          totalPaid: 10400 - student.balance,
+          campus: {
+            name: student.campusName,
+            address: student.campusName.includes('Mushitala')
+              ? 'Stand # S/SOLWE/3177178, Plot 889, 890 Kansanshi Mine Road (opp. SGC Filling Station), Mushitala'
+              : 'Opposite Kikombe School, next to Zambia Army Mess, Solwezi Central',
+          },
+          isBoarder: student.isBoarder ?? student.campusName.includes('Mushitala'),
+          totalBilled: student.totalBilled || (student.campusName.includes('Mushitala') ? 10400 : 2800),
+          totalPaid: (student.totalBilled || (student.campusName.includes('Mushitala') ? 10400 : 2800)) - student.balance,
           balance: student.balance,
           financialStatus: student.balance === 0 ? 'CLEARED' : 'ARREARS',
           academicStanding: 'Distinction (1)',

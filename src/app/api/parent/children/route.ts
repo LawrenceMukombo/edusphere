@@ -121,8 +121,8 @@ export async function GET(req: Request) {
           campus: {
             name: learner.campusName,
             address: learner.campusName.includes('Mushitala')
-              ? 'Plot 889, Kansanshi Mine Road, Mushitala'
-              : 'Solwezi Urban Education Corridor, Town Centre',
+              ? 'Stand # S/SOLWE/3177178, Plot 889, 890 Kansanshi Mine Road (opp. SGC Filling Station), Mushitala'
+              : 'Opposite Kikombe School, next to Zambia Army Mess, Solwezi Central',
           },
           isBoarder,
           accommodation: learner.currentAccommodation,
@@ -172,13 +172,17 @@ export async function GET(req: Request) {
         residentialAddress: 'House # 42, Kansanshi Golf Estate, Solwezi',
         profession: 'Senior Metallurgical Superintendent, Kansanshi Mining PLC',
       },
-      allSchoolLearnersSummary: all780.slice(0, 100).map((l) => ({
+      allSchoolLearnersSummary: all780.map((l) => ({
         id: l.id,
         studentNumber: l.studentNumber,
         learnerName: l.learnerName,
         className: l.className,
         campusName: l.campusName,
         balance: l.balance,
+        totalBilled: l.totalBilled,
+        totalPaid: l.totalPaid,
+        gender: l.gender || 'MALE',
+        isBoarder: l.currentAccommodation.isBoarder,
       })),
     });
   } catch (error: any) {

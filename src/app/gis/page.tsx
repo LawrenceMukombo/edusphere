@@ -152,8 +152,8 @@ export default function GisCampusesPage() {
   // Nearest Campus Calculator state
   const [calculatorInput, setCalculatorInput] = useState({
     presetArea: 'Mushitala / Kansanshi Mine Road',
-    latitude: -12.1642,
-    longitude: 26.3951,
+    latitude: -12.151775,
+    longitude: 26.424711,
   });
   const [calculatorResult, setCalculatorResult] = useState<any>(null);
   const [calculatingNearest, setCalculatingNearest] = useState(false);
@@ -200,10 +200,10 @@ export default function GisCampusesPage() {
 
   // Preset Feeder Areas strictly in Solwezi
   const PRESET_AREAS = [
-    { name: 'Mushitala / Kansanshi Mine Road', lat: -12.1642, lng: 26.3951 },
-    { name: 'Kansanshi Golf Estate / Senior Staff Mess', lat: -12.1550, lng: 26.4020 },
-    { name: 'Kikombe Residential (Opposite Kikombe School / Zambia Army Mess)', lat: -12.1835, lng: 26.3835 },
-    { name: 'Solwezi Town Centre / Independence Ave', lat: -12.1812, lng: 26.3884 },
+    { name: 'Mushitala / Kansanshi Mine Road', lat: -12.151775, lng: 26.424711 },
+    { name: 'Kansanshi Golf Estate / Senior Staff Mess', lat: -12.1480, lng: 26.4120 },
+    { name: 'Kikombe Residential (Opposite Kikombe School / Zambia Army Mess)', lat: -12.187002, lng: 26.406948 },
+    { name: 'Solwezi Town Centre / Independence Ave', lat: -12.1825, lng: 26.3850 },
     { name: 'Kyawama Residential / Market Area', lat: -12.1930, lng: 26.3780 },
     { name: 'Kazomba Feeder Zone', lat: -12.1720, lng: 26.3760 },
     { name: 'Kimasala Feeder Area', lat: -12.1890, lng: 26.4010 },
@@ -250,7 +250,7 @@ export default function GisCampusesPage() {
   useEffect(() => {
     fetchData();
     fetchTransportData();
-    runNearestCalculation(-12.1642, 26.3951);
+    runNearestCalculation(-12.151775, 26.424711);
     const interval = setInterval(() => {
       fetchTransportData();
     }, 4000);

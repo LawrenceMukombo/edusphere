@@ -122,15 +122,15 @@ let transportRoutesStore: ShuttleVehicle[] = [
     networkPath: [
       [-12.1865, 26.3790],
       [-12.1852, 26.3815],
-      [-12.1835, 26.3835], // Kikombe Junction
+      [-12.187002, 26.406948], // Kikombe Junction
       [-12.1828, 26.3848],
       [-12.1825, 26.3850], // Civic Centre / Post Office
       [-12.1818, 26.3868],
-      [-12.1812, 26.3884], // Urban Campus (opp Kikombe School / Army Mess)
+      [-12.187002, 26.406948], // Urban Campus (opp Kikombe School / Army Mess)
       [-12.1760, 26.3910],
       [-12.1700, 26.3940],
       [-12.1620, 26.3980], // SGC Junction
-      [-12.1642, 26.3951], // Mushitala Campus
+      [-12.151775, 26.424711], // Mushitala Campus
     ],
     trafficSegments: [
       {
@@ -203,8 +203,8 @@ let transportRoutesStore: ShuttleVehicle[] = [
         id: 'stop-01-2',
         name: 'Kikombe Junction (opp Kikombe School / Army Mess)',
         routeCode: 'BUS-SOL-01',
-        latitude: -12.1835,
-        longitude: 26.3835,
+        latitude: -12.187002,
+        longitude: 26.406948,
         morningPickupTime: '06:48',
         afternoonDropTime: '15:42',
         studentCount: 10,
@@ -231,8 +231,8 @@ let transportRoutesStore: ShuttleVehicle[] = [
         id: 'stop-01-4',
         name: 'Urban Campus Main Gate (opp Kikombe School / Army Mess)',
         routeCode: 'BUS-SOL-01',
-        latitude: -12.1812,
-        longitude: 26.3884,
+        latitude: -12.187002,
+        longitude: 26.406948,
         morningPickupTime: '07:10',
         afternoonDropTime: '15:15',
         studentCount: 7,
@@ -259,8 +259,8 @@ let transportRoutesStore: ShuttleVehicle[] = [
         id: 'stop-01-6',
         name: 'Mushitala Boarding Main Gate',
         routeCode: 'BUS-SOL-01',
-        latitude: -12.1642,
-        longitude: 26.3951,
+        latitude: -12.151775,
+        longitude: 26.424711,
         morningPickupTime: '07:32',
         afternoonDropTime: '14:50',
         studentCount: 3,
@@ -300,10 +300,10 @@ let transportRoutesStore: ShuttleVehicle[] = [
       [-12.1560, 26.4040], // Officers Mess
       [-12.1590, 26.4010], // Kansanshi Mine Gate Turnoff
       [-12.1620, 26.3980], // SGC Junction
-      [-12.1642, 26.3951], // Mushitala Campus
+      [-12.151775, 26.424711], // Mushitala Campus
       [-12.1700, 26.3920], // Messenger Township
       [-12.1760, 26.3900],
-      [-12.1812, 26.3884], // Urban Campus
+      [-12.187002, 26.406948], // Urban Campus
     ],
     trafficSegments: [
       {
@@ -404,8 +404,8 @@ let transportRoutesStore: ShuttleVehicle[] = [
         id: 'stop-02-4',
         name: 'Mushitala Boarding Main Gate',
         routeCode: 'BUS-SOL-02',
-        latitude: -12.1642,
-        longitude: 26.3951,
+        latitude: -12.151775,
+        longitude: 26.424711,
         morningPickupTime: '07:15',
         afternoonDropTime: '15:20',
         studentCount: 8,
@@ -432,8 +432,8 @@ let transportRoutesStore: ShuttleVehicle[] = [
         id: 'stop-02-6',
         name: 'Urban Campus Main Gate (opp Kikombe School / Army Mess)',
         routeCode: 'BUS-SOL-02',
-        latitude: -12.1812,
-        longitude: 26.3884,
+        latitude: -12.187002,
+        longitude: 26.406948,
         morningPickupTime: '07:38',
         afternoonDropTime: '14:55',
         studentCount: 5,
@@ -471,9 +471,9 @@ let transportRoutesStore: ShuttleVehicle[] = [
       [-12.1890, 26.4010], // Kimasala Feeder
       [-12.1850, 26.3940],
       [-12.1780, 26.4050], // Airport Junction
-      [-12.1812, 26.3884], // Urban Campus (opp Kikombe School / Army Mess)
+      [-12.187002, 26.406948], // Urban Campus (opp Kikombe School / Army Mess)
       [-12.1700, 26.3920],
-      [-12.1642, 26.3951], // Mushitala Campus
+      [-12.151775, 26.424711], // Mushitala Campus
     ],
     trafficSegments: [
       {
@@ -540,8 +540,8 @@ let transportRoutesStore: ShuttleVehicle[] = [
         id: 'stop-03-3',
         name: 'Urban Campus Main Gate (opp Kikombe School / Army Mess)',
         routeCode: 'BUS-SOL-03',
-        latitude: -12.1812,
-        longitude: 26.3884,
+        latitude: -12.187002,
+        longitude: 26.406948,
         morningPickupTime: '07:12',
         afternoonDropTime: '15:15',
         studentCount: 4,
@@ -554,8 +554,8 @@ let transportRoutesStore: ShuttleVehicle[] = [
         id: 'stop-03-4',
         name: 'Mushitala Boarding Main Gate',
         routeCode: 'BUS-SOL-03',
-        latitude: -12.1642,
-        longitude: 26.3951,
+        latitude: -12.151775,
+        longitude: 26.424711,
         morningPickupTime: '07:28',
         afternoonDropTime: '14:55',
         studentCount: 2,
