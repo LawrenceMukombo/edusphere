@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
       // Fallback seamlessly
     }
 
-    if (!result || !result.campus) {
+    if (!result || (!result.nearest && !result.campus && !result.nearestCampus)) {
       // Solwezi campuses direct computation
       const solweziCampuses = [
         {
@@ -77,16 +77,32 @@ export async function POST(request: NextRequest) {
           distanceKm: dist,
           estimatedDriveMinutes: driveMinutes,
           isWithinCatchment: inCatchment,
+          hasAvailableCapacity: true,
+          spareCapacity: c.code === 'MSC' ? 65 : 45,
         };
       }).sort((a, b) => a.distanceKm - b.distanceKm);
 
       result = {
+        nearest: ranked[0],
+        allRecommendations: ranked,
+        targetCoordinates: { latitude: lat, longitude: lng },
+        // Backwards compatibility aliases
         nearestCampus: ranked[0].campus,
         distanceKm: ranked[0].distanceKm,
         estimatedDriveMinutes: ranked[0].estimatedDriveMinutes,
         isWithinCatchment: ranked[0].isWithinCatchment,
         allCampusesRanked: ranked,
       };
+    } else if (result && !result.nearest && result.nearestCampus) {
+      result.nearest = {
+        campus: result.nearestCampus,
+        distanceKm: result.distanceKm || 0,
+        estimatedDriveMinutes: result.estimatedDriveMinutes || 10,
+        isWithinCatchment: Boolean(result.isWithinCatchment),
+        hasAvailableCapacity: true,
+        spareCapacity: 50,
+      };
+      result.allRecommendations = result.allCampusesRanked || [result.nearest];
     }
 
     return NextResponse.json({

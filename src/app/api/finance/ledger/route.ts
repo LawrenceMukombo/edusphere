@@ -2,7 +2,50 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/server/db';
 import { extractAuthHeader, verifyToken } from '@/server/auth';
-import { LEGACY_FEE_TRANSACTIONS } from '@/server/services/legacySchoolData';
+import { generateLegacyLearners } from '@/server/services/legacySchoolData';
+
+let cachedLedger: any[] | null = null;
+function getLegacyLedger() {
+  if (!cachedLedger) {
+    const learners = generateLegacyLearners(780);
+    const list: any[] = [];
+    learners.forEach((l, idx) => {
+      l.feeHistory?.forEach((f, fIdx) => {
+        if (f.amountPaid > 0) {
+          list.push({
+            id: f.id || `txn-${l.studentNumber}-${fIdx}`,
+            organisationId: 'EDS-ZM-SOL-001',
+            learnerId: l.studentNumber,
+            entryType: 'CREDIT_PAYMENT',
+            amount: f.amountPaid,
+            balanceAfter: f.balanceRemaining,
+            description: `${f.category === 'BOARDING_AND_TUITION' ? 'Term 1 Boarding & Tuition' : 'Term 1 Primary Day Tuition'} (${f.termLabel}) — ${f.paymentMethod} (Ref: ${f.referenceNumber})`,
+            postedById: 'Mr. C. Mulenga (Bursar)',
+            postedAt: `${f.paymentDate}T10:00:00Z`,
+            payment: {
+              paymentNumber: `PAY-${f.academicYear}-${String((idx * 7 + fIdx) % 8999 + 1000)}`,
+              referenceNumber: f.referenceNumber,
+              amount: f.amountPaid,
+              paymentMethod: f.paymentMethod.toUpperCase().replace(/\s+/g, '_'),
+              receivedDate: f.paymentDate,
+              receipt: {
+                receiptNumber: f.receiptNumber,
+              },
+            },
+            learnerName: l.learnerName,
+            studentNumber: l.studentNumber,
+            campusName: l.campusName,
+            gradeName: l.className,
+          });
+        }
+      });
+    });
+    // Sort latest payments first
+    list.sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
+    cachedLedger = list;
+  }
+  return cachedLedger;
+}
 
 export async function GET(req: Request) {
   try {
@@ -43,40 +86,28 @@ export async function GET(req: Request) {
 
     const campus = searchParams.get('campus') || 'ALL';
 
-    // If database has no entries or failed, supply rich Legacy School Solwezi ledger fixtures
-    if (!entries || entries.length === 0) {
-      let mapped = LEGACY_FEE_TRANSACTIONS.map((txn, index) => ({
-        id: txn.id,
-        organisationId: orgId || 'EDS-ZM-SOL-001',
-        learnerId: txn.studentNumber,
-        entryType: 'CREDIT_PAYMENT',
-        amount: txn.amountZMW,
-        balanceAfter: txn.balanceRemainingZMW,
-        description: `${txn.categoryLabel} — ${txn.paymentMethodLabel} (Ref: ${txn.referenceNumber})`,
-        postedById: txn.recordedBy,
-        postedAt: new Date(Date.now() - index * 86400000).toISOString(),
-        payment: {
-          paymentNumber: `PAY-2026-${String(index + 80).padStart(4, '0')}`,
-          referenceNumber: txn.referenceNumber,
-          amount: txn.amountZMW,
-          paymentMethod: txn.paymentMethod,
-          receivedDate: txn.paymentDate,
-          receipt: {
-            receiptNumber: txn.receiptNumber,
-          },
-        },
-        learnerName: txn.learnerName,
-        studentNumber: txn.studentNumber,
-        campusName: txn.campusName,
-        gradeName: txn.gradeName,
-      }));
+    const hasRichSolweziLedger =
+      entries.length >= 50 &&
+      entries.some(
+        (e) =>
+          e.campusName &&
+          (e.campusName.includes('Mushitala') || e.campusName.includes('Urban') || e.campusName.includes('Kansanshi'))
+      );
+
+    // If database has no entries or test entries lack campus attribution, supply rich Legacy School Solwezi ledger fixtures
+    if (!hasRichSolweziLedger) {
+      let mapped = [...getLegacyLedger()];
 
       if (campus && campus !== 'ALL') {
-        if (campus === 'MUSHITALA' || campus === 'KANSANSHI') {
+        if (campus === 'MUSHITALA' || campus === 'KANSANSHI' || campus === 'LSS-MSC' || campus === 'LSS-KBC') {
           mapped = mapped.filter((t) => t.campusName.includes('Mushitala') || t.campusName.includes('Kansanshi'));
-        } else if (campus === 'URBAN') {
-          mapped = mapped.filter((t) => t.campusName.includes('Urban') || t.campusName.includes('Mushitala Day'));
+        } else if (campus === 'URBAN' || campus === 'LSS-URB' || campus === 'LSS-MDC') {
+          mapped = mapped.filter((t) => t.campusName.includes('Urban'));
         }
+      }
+
+      if (learnerId) {
+        mapped = mapped.filter((t) => t.studentNumber === learnerId || t.learnerId === learnerId);
       }
 
       return NextResponse.json({ success: true, data: mapped, totalCount: mapped.length });

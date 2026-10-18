@@ -1102,68 +1102,89 @@ export default function GisCampusesPage() {
               <div className="p-12 text-center text-slate-400 text-xs">
                 Click &quot;Evaluate Catchment &amp; Distance&quot; or click anywhere on the map to view branch recommendations.
               </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Nearest Branch Card */}
-                <div className="p-5 rounded-2xl border-2 border-blue-500 bg-blue-50/40 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-blue-600 text-white">
-                      Recommended Primary Feeder Branch
-                    </span>
-                    <span className="font-mono text-xs font-bold text-blue-900">
-                      {calculatorResult.nearest.distanceKm.toFixed(2)} km away
-                    </span>
-                  </div>
+            ) : (() => {
+              const nearestItem = calculatorResult?.nearest || (calculatorResult?.nearestCampus ? {
+                campus: calculatorResult.nearestCampus,
+                distanceKm: calculatorResult.distanceKm || 0,
+                estimatedDriveMinutes: calculatorResult.estimatedDriveMinutes || 10,
+                isWithinCatchment: Boolean(calculatorResult.isWithinCatchment),
+                spareCapacity: 50,
+              } : null);
+              const allRecs = calculatorResult?.allRecommendations || calculatorResult?.allCampusesRanked || (nearestItem ? [nearestItem] : []);
 
-                  <div>
-                    <h4 className="text-lg font-black text-slate-900">{calculatorResult.nearest.campus.name}</h4>
-                    <p className="text-xs text-slate-500">{calculatorResult.nearest.campus.address || calculatorResult.nearest.campus.city}</p>
+              if (!nearestItem || !nearestItem.campus) {
+                return (
+                  <div className="p-8 text-center text-slate-400 text-xs">
+                    Evaluating spatial feeder branches...
                   </div>
+                );
+              }
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-xs border-t border-blue-200/60">
-                    <div>
-                      <span className="text-slate-500 block">Transit Time:</span>
-                      <strong className="text-slate-900">~{calculatorResult.nearest.estimatedDriveMinutes} mins</strong>
+              return (
+                <div className="space-y-4">
+                  {/* Nearest Branch Card */}
+                  <div className="p-5 rounded-2xl border-2 border-blue-500 bg-blue-50/40 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-blue-600 text-white">
+                        Recommended Primary Feeder Branch
+                      </span>
+                      <span className="font-mono text-xs font-bold text-blue-900">
+                        {(nearestItem.distanceKm != null ? nearestItem.distanceKm : 0).toFixed(2)} km away
+                      </span>
                     </div>
-                    <div>
-                      <span className="text-slate-500 block">Catchment Status:</span>
-                      <strong className={calculatorResult.nearest.isWithinCatchment ? 'text-emerald-700 font-bold' : 'text-amber-700'}>
-                        {calculatorResult.nearest.isWithinCatchment ? '✓ Inside Catchment' : 'Outside Catchment'}
-                      </strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block">Spare Capacity:</span>
-                      <strong className="text-slate-900">{calculatorResult.nearest.spareCapacity} vacancies</strong>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 block">Branch Code:</span>
-                      <strong className="text-slate-900">{calculatorResult.nearest.campus.code}</strong>
-                    </div>
-                  </div>
-                </div>
 
-                {/* All Other Campuses Distance Comparison */}
-                <div>
-                  <h5 className="font-bold text-xs text-slate-700 mb-2">Distance to Other School Branches:</h5>
-                  <div className="space-y-2">
-                    {calculatorResult.allRecommendations.slice(1).map((rec: any) => (
-                      <div key={rec.campus.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs">
-                        <div>
-                          <strong className="text-slate-800">{rec.campus.name}</strong>
-                          <span className="text-[11px] text-slate-400 ml-2">({rec.campus.code})</span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="text-slate-600">{rec.distanceKm.toFixed(2)} km (~{rec.estimatedDriveMinutes} mins)</span>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${rec.isWithinCatchment ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>
-                            {rec.isWithinCatchment ? 'In Catchment' : 'Out of Zone'}
-                          </span>
-                        </div>
+                    <div>
+                      <h4 className="text-lg font-black text-slate-900">{nearestItem.campus?.name}</h4>
+                      <p className="text-xs text-slate-500">{nearestItem.campus?.address || nearestItem.campus?.city}</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 text-xs border-t border-blue-200/60">
+                      <div>
+                        <span className="text-slate-500 block">Transit Time:</span>
+                        <strong className="text-slate-900">~{nearestItem.estimatedDriveMinutes || 10} mins</strong>
                       </div>
-                    ))}
+                      <div>
+                        <span className="text-slate-500 block">Catchment Status:</span>
+                        <strong className={nearestItem.isWithinCatchment ? 'text-emerald-700 font-bold' : 'text-amber-700'}>
+                          {nearestItem.isWithinCatchment ? '✓ Inside Catchment' : 'Outside Catchment'}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Spare Capacity:</span>
+                        <strong className="text-slate-900">{nearestItem.spareCapacity ?? 45} vacancies</strong>
+                      </div>
+                      <div>
+                        <span className="text-slate-500 block">Branch Code:</span>
+                        <strong className="text-slate-900">{nearestItem.campus?.code}</strong>
+                      </div>
+                    </div>
                   </div>
+
+                  {/* All Other Campuses Distance Comparison */}
+                  {allRecs.length > 1 && (
+                    <div>
+                      <h5 className="font-bold text-xs text-slate-700 mb-2">Distance to Other School Branches:</h5>
+                      <div className="space-y-2">
+                        {allRecs.slice(1).map((rec: any, idx: number) => (
+                          <div key={rec.campus?.id || idx} className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-xs">
+                            <div>
+                              <strong className="text-slate-800">{rec.campus?.name}</strong>
+                              <span className="text-[11px] text-slate-400 ml-2">({rec.campus?.code})</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <span className="text-slate-600">{(rec.distanceKm != null ? rec.distanceKm : 0).toFixed(2)} km (~{rec.estimatedDriveMinutes || 10} mins)</span>
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${rec.isWithinCatchment ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'}`}>
+                                {rec.isWithinCatchment ? 'In Catchment' : 'Out of Zone'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
       )}
