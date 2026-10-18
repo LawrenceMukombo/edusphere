@@ -1,16 +1,36 @@
 // src/app/layout.tsx
 import './globals.css';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Navbar } from '@/components/Navbar';
 import { Sidebar } from '@/components/Sidebar';
 import { CampusProvider } from '@/components/CampusContext';
+import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
 
 const inter = Inter({ subsets: ['latin'] });
 
+export const viewport: Viewport = {
+  themeColor: '#1e3a8a',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 export const metadata: Metadata = {
   title: 'Legacy School Solwezi — EduSphere SMIS Enterprise',
-  description: 'Zambia-first, enterprise-grade School Management Information System for Legacy School Solwezi (Mushitala Day Campus & Kansanshi Boarding Campus).',
+  description:
+    'Zambia-first, enterprise-grade, offline-first School Management Information System for Legacy School Solwezi (Mushitala Day Campus & Kansanshi Boarding Campus).',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'EduSphere',
+  },
+  icons: {
+    icon: '/icons/icon-192.svg',
+    shortcut: '/icons/icon-192.svg',
+    apple: '/icons/icon-192.svg',
+  },
 };
 
 export default function RootLayout({
@@ -21,6 +41,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        <ServiceWorkerRegistration />
         <CampusProvider>
           <Navbar />
           <div className="flex">

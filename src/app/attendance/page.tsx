@@ -52,6 +52,11 @@ import {
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { useCampus } from '@/components/CampusContext';
 import {
+  cacheOfflineRecord,
+  getOfflineRecord,
+  enqueueOfflineMutation,
+} from '@/lib/offlineSync';
+import {
   LEGACY_BOARDING_ROLLCALLS,
   LEGACY_BOARDING_EXEATS,
   BoardingRollCall,
@@ -827,11 +832,42 @@ export default function AttendancePage() {
       };
 
       setAuditLogs((prev) => [auditEntry, ...prev]);
+
+      // Enqueue offline mutation if disconnected
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        enqueueOfflineMutation('MOBILE_MONEY_PAYMENT', 'FINANCE', {
+          studentId,
+          amountPaid,
+          channel: mobileMoneyProvider,
+          reference: refCode,
+          learnerName: mobileMoneyModalStudent.learnerName,
+        });
+      }
+
       setMobileMoneyProcessing(false);
       setMobileMoneyModalStudent(null);
       showToast(`✅ Payment of K ${amountPaid.toLocaleString()} confirmed via ${mobileMoneyProvider}! ${mobileMoneyModalStudent.learnerName} unlocked: Bus & Campus Access Restored.`);
     }, 600);
   };
+
+  // Synchronize active roster with persistent offline cache
+  useEffect(() => {
+    if (typeof window !== 'undefined' && roster.length > 0) {
+      cacheOfflineRecord('rosters', `class_${selectedClass}_campus_${selectedCampus}`, roster);
+    }
+  }, [roster, selectedClass, selectedCampus]);
+
+  // Restore roster from offline cache if loaded without internet
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !navigator.onLine) {
+      getOfflineRecord<StudentRosterItem[]>('rosters', `class_${selectedClass}_campus_${selectedCampus}`).then((cached) => {
+        if (cached && cached.length > 0) {
+          setRoster(cached);
+          showToast('Loaded attendance roster from offline cache 📱');
+        }
+      });
+    }
+  }, [selectedClass, selectedCampus]);
 
   // Synchronize default classroom cohort when user switches campus in the header
   useEffect(() => {
@@ -963,10 +999,22 @@ export default function AttendancePage() {
     setRoster((prev) =>
       prev.map((s) => (s.id === id ? { ...s, status } : s))
     );
+
+    // If offline, queue mutation locally
+    if (typeof navigator !== 'undefined' && !navigator.onLine && target) {
+      enqueueOfflineMutation('UPDATE_ATTENDANCE', 'ATTENDANCE', {
+        studentId: id,
+        status,
+        date: selectedDate,
+        learnerName: target.learnerName,
+      });
+      showToast(`Saved locally: ${target.learnerName} marked ${status} 💾`);
+    }
   };
 
   const markAllPresent = () => {
     let lockedCount = 0;
+    let updatedCount = 0;
     setRoster((prev) =>
       prev.map((s) => {
         if ((selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') && !s.campusName.includes('Mushitala') && !s.campusName.includes('Kansanshi')) return s;
@@ -976,9 +1024,19 @@ export default function AttendancePage() {
           lockedCount++;
           return s; // Preserve locked status
         }
+        updatedCount++;
         return { ...s, status: 'PRESENT' };
       })
     );
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine && updatedCount > 0) {
+      enqueueOfflineMutation('UPDATE_ATTENDANCE', 'ATTENDANCE', {
+        action: 'MARK_ALL_PRESENT',
+        date: selectedDate,
+        cohort: selectedClass,
+        campus: selectedCampus,
+      });
+    }
     if (lockedCount > 0) {
       showToast(`All fee-cleared learners marked PRESENT. (${lockedCount} learners with fee arrears were retained as locked).`);
     } else {

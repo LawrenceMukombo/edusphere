@@ -17,6 +17,7 @@ import {
 import { useCampus, CampusId } from './CampusContext';
 
 import { LegacyLogo } from './LegacyLogo';
+import { OfflineIndicator } from './OfflineIndicator';
 
 export function Navbar() {
   const { selectedCampus, setSelectedCampus, campusInfo } = useCampus();
@@ -76,6 +77,8 @@ export function Navbar() {
 
           {/* Quick Links & Active User */}
           <div className="flex items-center gap-3">
+            <OfflineIndicator />
+
             <div className="hidden md:flex flex-col text-right">
               <span className="inline-flex items-center justify-end gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />

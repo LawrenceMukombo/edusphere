@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline Mode • Legacy School Solwezi — EduSphere SMIS</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#1e3a8a">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 1.25rem;
+      max-width: 620px;
+      width: 100%;
+      padding: 2.25rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      text-align: center;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.85rem;
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid #f59e0b;
+      color: #fbbf24;
+      font-size: 0.75rem;
+      font-weight: 800;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 1.25rem;
+    }
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #f59e0b;
+      box-shadow: 0 0 10px #f59e0b;
+      animation: pulse 1.8s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+    h1 {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+      line-height: 1.25;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 0.925rem;
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+    .guarantee-box {
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid #10b981;
+      border-radius: 0.75rem;
+      padding: 0.875rem 1rem;
+      color: #6ee7b7;
+      font-size: 0.825rem;
+      margin-bottom: 1.75rem;
+      text-align: left;
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.75rem;
+    }
+    .module-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.875rem 0.5rem;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 0.75rem;
+      color: #e2e8f0;
+      text-decoration: none;
+      font-size: 0.8rem;
+      font-weight: 700;
+      transition: all 0.2s ease;
+    }
+    .module-btn:hover {
+      background: #1e3a8a;
+      border-color: #3b82f6;
+      color: #ffffff;
+      transform: translateY(-2px);
+    }
+    .icon {
+      font-size: 1.25rem;
+    }
+    .btn-row {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 800;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.2s ease;
+    }
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+    .btn-secondary {
+      background: #334155;
+      color: #f1f5f9;
+      border: none;
+      padding: 0.75rem 1.25rem;
+      border-radius: 0.75rem;
+      font-size: 0.875rem;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s ease;
+    }
+    .btn-secondary:hover {
+      background: #475569;
+    }
+    .footer-note {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">
+      <span class="pulse-dot"></span>
+      Offline Mode • Local Operations Active
+    </div>
+
+    <h1>Legacy School Solwezi</h1>
+    <p>
+      You are currently working offline. EduSphere has preserved your workspace so you can continue taking roll-calls, recording boarding passes, and inspecting records without interruption.
+    </p>
+
+    <div class="guarantee-box">
+      <span style="font-size: 1.25rem;">🔒</span>
+      <div>
+        <strong>Offline-First Data Guarantee:</strong>
+        <div style="font-size: 0.775rem; margin-top: 0.2rem; opacity: 0.9;">
+          Any roll-calls, financial updates, or exeat passes logged while offline are queued in your device's local database and will automatically synchronize with cloud servers once Internet access is restored.
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <a href="/" class="module-btn">
+        <span class="icon">🏠</span>
+        <span>Command Center</span>
+      </a>
+      <a href="/attendance" class="module-btn">
+        <span class="icon">📋</span>
+        <span>Daily Register</span>
+      </a>
+      <a href="/boarding" class="module-btn">
+        <span class="icon">🛏️</span>
+        <span>Boarding & Exeat</span>
+      </a>
+      <a href="/finance" class="module-btn">
+        <span class="icon">💵</span>
+        <span>Fees & Ledger</span>
+      </a>
+      <a href="/calendar" class="module-btn">
+        <span class="icon">📅</span>
+        <span>2026 Calendar</span>
+      </a>
+      <a href="/gis" class="module-btn">
+        <span class="icon">🗺️</span>
+        <span>GIS & Campuses</span>
+      </a>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-primary" onclick="window.location.reload()">
+        <span>🔄</span>
+        <span>Retry Connection</span>
+      </button>
+      <a href="/attendance" class="btn-secondary">
+        <span>Go to Register</span>
+      </a>
+    </div>
+
+    <div class="footer-note">
+      Stand # S/SOLWE/3177178, Kansanshi Rd • Mushitala & Urban Campuses<br>
+      Licensed by Ministry of Education (MoE) Zambia
+    </div>
+  </div>
+
+  <script>
+    // Live reconnect listener
+    window.addEventListener('online', function() {
+      console.log('[EduSphere] Network connection re-established.');
+      window.location.reload();
+    });
+  </script>
+</body>
+</html>
