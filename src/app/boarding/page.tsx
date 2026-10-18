@@ -51,6 +51,7 @@ import {
 import { useCampus } from '@/components/CampusContext';
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { LegacyLogo } from '@/components/LegacyLogo';
+import { ModuleGate } from '@/components/ModuleGate';
 import {
   generateLegacyLearners,
   LegacyLearnerBalance,
@@ -966,7 +967,14 @@ export default function BoardingVillagePage() {
   ];
 
   return (
-    <div className="space-y-6 w-full pb-16">
+    <ModuleGate
+      moduleKey="boarding"
+      moduleName="Boarding Village & Residential Houses"
+      moduleDescription="Real-time bed allocation, dormitory rosters, night curfew headcounts, and weekend exeat gate passes for Kansanshi and Kalumbila halls."
+      planRequired="PROFESSIONAL"
+      pricePerTermZMW={2200}
+    >
+      <div className="space-y-6 w-full pb-16">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 text-xs font-bold border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
@@ -3006,6 +3014,7 @@ export default function BoardingVillagePage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </ModuleGate>
   );
 }

@@ -45,6 +45,7 @@ import {
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { InteractiveChart } from '@/components/InteractiveChart';
 import { useCampus } from '@/components/CampusContext';
+import { ModuleGate } from '@/components/ModuleGate';
 import { saveAdminAuditLogs, AdminAuditLog } from '@/lib/appSettings';
 import {
   LEGACY_EXPENDITURES,
@@ -1034,7 +1035,14 @@ export default function FinancePage() {
 
 
   return (
-    <div className="space-y-6 w-full">
+    <ModuleGate
+      moduleKey="fees"
+      moduleName="Fees Management & Operational Expenditures"
+      moduleDescription="Automated fee invoicing, multi-channel payment reconciliation (Zanaco, MTN MoMo, Airtel Money), aged debtors ledger, and authorized expenditure vouchers."
+      planRequired="PROFESSIONAL"
+      pricePerTermZMW={2450}
+    >
+      <div className="space-y-6 w-full">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700 animate-in slide-in-from-top-4">
@@ -2630,6 +2638,7 @@ export default function FinancePage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </ModuleGate>
   );
 }

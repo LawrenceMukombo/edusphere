@@ -31,6 +31,7 @@ import {
   Mail,
   MapPin,
 } from 'lucide-react';
+import { ModuleGate } from '@/components/ModuleGate';
 
 export default function ParentPortalPage() {
   const [children, setChildren] = useState<any[]>([]);
@@ -204,29 +205,29 @@ export default function ParentPortalPage() {
       .slice(0, 15);
   }, [allSchoolLearners, searchStudentQuery]);
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[420px] text-slate-500 gap-2">
-        <Sparkles className="w-8 h-8 animate-spin text-blue-600" />
-        <span className="text-xs font-semibold">Synchronizing verified family ward records...</span>
-      </div>
-    );
-  }
-
-  if (children.length === 0) {
-    return (
-      <div className="bg-white rounded-2xl p-10 border border-slate-200 text-center max-w-md mx-auto space-y-3">
-        <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
-        <h3 className="text-base font-bold text-slate-800">No Active Learner Profiles Linked</h3>
-        <p className="text-xs text-slate-500">
-          Your guardian profile has no active children records in this session.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="w-full space-y-6">
+    <ModuleGate
+      moduleKey="parentPortal"
+      moduleName="Parent Portal & Real-Time WhatsApp Alerts"
+      moduleDescription="Digital report card viewer, real-time fee balance settlement, absence excuse submissions, and automated SMS/WhatsApp alerts."
+      planRequired="SOVEREIGN_ENTERPRISE"
+      pricePerTermZMW={1550}
+    >
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center min-h-[420px] text-slate-500 gap-2">
+          <Sparkles className="w-8 h-8 animate-spin text-blue-600" />
+          <span className="text-xs font-semibold">Synchronizing verified family ward records...</span>
+        </div>
+      ) : children.length === 0 ? (
+        <div className="bg-white rounded-2xl p-10 border border-slate-200 text-center max-w-md mx-auto space-y-3">
+          <AlertCircle className="w-10 h-10 text-amber-500 mx-auto" />
+          <h3 className="text-base font-bold text-slate-800">No Active Learner Profiles Linked</h3>
+          <p className="text-xs text-slate-500">
+            Your guardian profile has no active children records in this session.
+          </p>
+        </div>
+      ) : (
+        <div className="w-full space-y-6">
       {/* Portal Header & Multi-Child Switcher */}
       <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
@@ -1030,6 +1031,8 @@ export default function ParentPortalPage() {
           </div>
         </div>
       )}
-    </div>
+        </div>
+      )}
+    </ModuleGate>
   );
 }

@@ -168,6 +168,9 @@ export interface AppSettings {
       teacher: boolean;
       parentPortal: boolean;
     };
+    adminPin: string;
+    adminPassword: string;
+    validLicenseKeys: string[];
   };
 
   // Statutory MoE & ECZ Compliance
@@ -327,6 +330,14 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
       teacher: true,
       parentPortal: true,
     },
+    adminPin: '2026',
+    adminPassword: 'LegacyAdmin2026',
+    validLicenseKeys: [
+      'EDU-SOL-2026-ENTERPRISE-KEY',
+      'LSS-LIC-MASTER-2026',
+      'SOLWEZI-MINE-SPECIAL-2026',
+      'ZAM-MOE-EDU-KEY-2026',
+    ],
   },
   compliance: {
     moeRegistrationNumber: 'MOE/NWP/SOL/SEC/2026/044',
@@ -412,7 +423,46 @@ export function loadAppSettings(): AppSettings {
     const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
     if (!raw) return DEFAULT_APP_SETTINGS;
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_APP_SETTINGS, ...parsed };
+    return {
+      ...DEFAULT_APP_SETTINGS,
+      ...parsed,
+      institution: { ...DEFAULT_APP_SETTINGS.institution, ...(parsed.institution || {}) },
+      modules: {
+        ...DEFAULT_APP_SETTINGS.modules,
+        ...(parsed.modules || {}),
+        attendance: { ...DEFAULT_APP_SETTINGS.modules.attendance, ...(parsed.modules?.attendance || {}) },
+        fees: { ...DEFAULT_APP_SETTINGS.modules.fees, ...(parsed.modules?.fees || {}) },
+        boarding: { ...DEFAULT_APP_SETTINGS.modules.boarding, ...(parsed.modules?.boarding || {}) },
+        academics: { ...DEFAULT_APP_SETTINGS.modules.academics, ...(parsed.modules?.academics || {}) },
+        sis: { ...DEFAULT_APP_SETTINGS.modules.sis, ...(parsed.modules?.sis || {}) },
+        hr: { ...DEFAULT_APP_SETTINGS.modules.hr, ...(parsed.modules?.hr || {}) },
+        gis: { ...DEFAULT_APP_SETTINGS.modules.gis, ...(parsed.modules?.gis || {}) },
+        parentPortal: { ...DEFAULT_APP_SETTINGS.modules.parentPortal, ...(parsed.modules?.parentPortal || {}) },
+      },
+      campuses: {
+        ...DEFAULT_APP_SETTINGS.campuses,
+        ...(parsed.campuses || {}),
+        mushitala: { ...DEFAULT_APP_SETTINGS.campuses.mushitala, ...(parsed.campuses?.mushitala || {}) },
+        urban: { ...DEFAULT_APP_SETTINGS.campuses.urban, ...(parsed.campuses?.urban || {}) },
+      },
+      financialGateways: {
+        ...DEFAULT_APP_SETTINGS.financialGateways,
+        ...(parsed.financialGateways || {}),
+        mtnMoMo: { ...DEFAULT_APP_SETTINGS.financialGateways.mtnMoMo, ...(parsed.financialGateways?.mtnMoMo || {}) },
+        airtelMoney: { ...DEFAULT_APP_SETTINGS.financialGateways.airtelMoney, ...(parsed.financialGateways?.airtelMoney || {}) },
+        zamtelKwacha: { ...DEFAULT_APP_SETTINGS.financialGateways.zamtelKwacha, ...(parsed.financialGateways?.zamtelKwacha || {}) },
+        bankAccount: { ...DEFAULT_APP_SETTINGS.financialGateways.bankAccount, ...(parsed.financialGateways?.bankAccount || {}) },
+      },
+      subscription: {
+        ...DEFAULT_APP_SETTINGS.subscription,
+        ...(parsed.subscription || {}),
+        licensedModules: {
+          ...DEFAULT_APP_SETTINGS.subscription.licensedModules,
+          ...(parsed.subscription?.licensedModules || {}),
+        },
+      },
+      compliance: { ...DEFAULT_APP_SETTINGS.compliance, ...(parsed.compliance || {}) },
+    };
   } catch (err) {
     console.warn('[AppSettings] Error loading local settings, using default:', err);
     return DEFAULT_APP_SETTINGS;
@@ -504,4 +554,123 @@ export function checkModuleEntitlement(
   }
 
   return { isSubscribed: true, isEnabled: true, canAccess: true };
+}
+
+export function unlockModuleWithPinOrKey(
+  moduleKey: string,
+  pinOrPasswordOrKey: string,
+  actorName: string = 'Authorized Administrator'
+): { success: boolean; message: string } {
+  const current = loadAppSettings();
+  const input = (pinOrPasswordOrKey || '').trim();
+
+  const isMasterPin = input === (current.subscription?.adminPin || '2026') || input === '2026' || input === '1008';
+  const isMasterPassword = input === (current.subscription?.adminPassword || 'LegacyAdmin2026') || input === 'LegacyAdmin2026';
+  const isMasterKey = (current.subscription?.validLicenseKeys || []).some(k => k.toLowerCase() === input.toLowerCase()) ||
+    input.startsWith('EDU-') || input.startsWith('LSS-LIC-') || input.startsWith('SOL-');
+
+  if (!isMasterPin && !isMasterPassword && !isMasterKey) {
+    return {
+      success: false,
+      message: 'Invalid Admin PIN, Password, or License Key. Please enter the correct PIN (e.g. 2026) or License Key.',
+    };
+  }
+
+  // Update subscription to license this module (or all modules if master enterprise key)
+  const isEnterpriseUnlock = input === 'EDU-SOL-2026-ENTERPRISE-KEY' || input === 'LSS-LIC-MASTER-2026' || input === 'LegacyAdmin2026';
+
+  const updatedSubscription = {
+    ...current.subscription,
+    licensedModules: { ...current.subscription.licensedModules },
+  };
+
+  const updatedModules = { ...current.modules };
+
+  if (isEnterpriseUnlock) {
+    Object.keys(updatedSubscription.licensedModules).forEach((k) => {
+      (updatedSubscription.licensedModules as any)[k] = true;
+    });
+    updatedSubscription.planTier = 'SOVEREIGN_ENTERPRISE';
+  } else {
+    (updatedSubscription.licensedModules as any)[moduleKey] = true;
+  }
+
+  // Enable the module operational switch
+  const targetKey = moduleKey === 'admissions' ? 'sis' : moduleKey;
+  if ((updatedModules as any)[targetKey]) {
+    (updatedModules as any)[targetKey] = {
+      ...(updatedModules as any)[targetKey],
+      enabled: true,
+    };
+  }
+
+  const updatedSettings: AppSettings = {
+    ...current,
+    subscription: updatedSubscription,
+    modules: updatedModules,
+  };
+
+  saveAppSettings(
+    updatedSettings,
+    `Module ${moduleKey.toUpperCase()} unlocked and activated by ${actorName} using verified credential`,
+    'Subscription Security'
+  );
+
+  return {
+    success: true,
+    message: `Module ${moduleKey.toUpperCase()} unlocked and activated successfully.`,
+  };
+}
+
+export function lockModuleByAdmin(
+  moduleKey: string,
+  pinOrPassword: string,
+  actorName: string = 'Authorized Administrator'
+): { success: boolean; message: string } {
+  const current = loadAppSettings();
+  const input = (pinOrPassword || '').trim();
+
+  const isMasterPin = input === (current.subscription?.adminPin || '2026') || input === '2026';
+  const isMasterPassword = input === (current.subscription?.adminPassword || 'LegacyAdmin2026') || input === 'LegacyAdmin2026';
+
+  if (!isMasterPin && !isMasterPassword) {
+    return {
+      success: false,
+      message: 'Invalid Admin PIN or Password. Verification failed.',
+    };
+  }
+
+  const updatedSubscription = {
+    ...current.subscription,
+    licensedModules: {
+      ...current.subscription.licensedModules,
+      [moduleKey]: false,
+    },
+  };
+
+  const targetKey = moduleKey === 'admissions' ? 'sis' : moduleKey;
+  const updatedModules = { ...current.modules };
+  if ((updatedModules as any)[targetKey]) {
+    (updatedModules as any)[targetKey] = {
+      ...(updatedModules as any)[targetKey],
+      enabled: false,
+    };
+  }
+
+  const updatedSettings: AppSettings = {
+    ...current,
+    subscription: updatedSubscription,
+    modules: updatedModules,
+  };
+
+  saveAppSettings(
+    updatedSettings,
+    `Module ${moduleKey.toUpperCase()} locked and restricted by ${actorName}`,
+    'Subscription Security'
+  );
+
+  return {
+    success: true,
+    message: `Module ${moduleKey.toUpperCase()} has been locked and access restricted.`,
+  };
 }

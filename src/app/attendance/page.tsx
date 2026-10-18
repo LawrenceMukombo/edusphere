@@ -51,6 +51,7 @@ import {
 } from 'lucide-react';
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { useCampus } from '@/components/CampusContext';
+import { ModuleGate } from '@/components/ModuleGate';
 import {
   cacheOfflineRecord,
   getOfflineRecord,
@@ -1924,7 +1925,14 @@ export default function AttendancePage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <ModuleGate
+      moduleKey="attendance"
+      moduleName="Operations & Attendance Registry"
+      moduleDescription="Real-time classroom morning roll-calls, boarding night curfews, multi-horizon attendance matrices, and weekend exeat gate passes for Solwezi."
+      planRequired="STARTER"
+      pricePerTermZMW={1450}
+    >
+      <div className="space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700 animate-in slide-in-from-top-4">
@@ -6389,6 +6397,7 @@ export default function AttendancePage() {
           </div>
         );
       })()}
-    </div>
+      </div>
+    </ModuleGate>
   );
 }

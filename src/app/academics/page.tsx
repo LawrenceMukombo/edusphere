@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { useCampus } from '@/components/CampusContext';
+import { ModuleGate } from '@/components/ModuleGate';
 
 import { generateLegacyLearners } from '@/server/services/legacySchoolData';
 
@@ -303,7 +304,14 @@ export default function AcademicsPage() {
   ];
 
   return (
-    <div className="space-y-6 w-full">
+    <ModuleGate
+      moduleKey="academics"
+      moduleName="Academics & ECZ Gradebook Reports"
+      moduleDescription="ECZ continuous assessments (CA 40%), final examination scorecards (60%), multi-tier teacher/principal endorsement workflows, and PDF gradebooks."
+      planRequired="STARTER"
+      pricePerTermZMW={1650}
+    >
+      <div className="space-y-6 w-full">
       {/* Toast Alert */}
       {dispatchStatus && (
         <div className="p-3.5 bg-emerald-900 text-emerald-100 rounded-xl shadow-lg border border-emerald-700 text-xs font-semibold flex items-center justify-between">
@@ -638,6 +646,7 @@ export default function AcademicsPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </ModuleGate>
   );
 }

@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { CampusGisItem, LiveShuttleItem } from '@/components/gis/CampusMap';
 import { useCampus } from '@/components/CampusContext';
+import { ModuleGate } from '@/components/ModuleGate';
 
 // Dynamically import Leaflet Map to avoid SSR errors
 const CampusMap = dynamic(() => import('@/components/gis/CampusMap'), {
@@ -571,7 +572,14 @@ export default function GisCampusesPage() {
   const totalRoutes = campuses.reduce((sum, c) => sum + (c.transportRoutes?.length || 0), 0);
 
   return (
-    <div className="space-y-6 w-full pb-12">
+    <ModuleGate
+      moduleKey="gis"
+      moduleName="Solwezi GIS & Campus Fleet Tracking"
+      moduleDescription="Leaflet interactive satellite maps, Mushitala & Urban campus spatial telemetry, shuttle fleet tracking, and student catchment analytics."
+      planRequired="SOVEREIGN_ENTERPRISE"
+      pricePerTermZMW={2650}
+    >
+      <div className="space-y-6 w-full pb-12">
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
         <div>
@@ -2418,6 +2426,7 @@ export default function GisCampusesPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </ModuleGate>
   );
 }

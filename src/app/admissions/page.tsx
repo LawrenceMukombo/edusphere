@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { useCampus } from '@/components/CampusContext';
+import { ModuleGate } from '@/components/ModuleGate';
 import { generateLegacyLearners } from '@/server/services/legacySchoolData';
 import {
   UserPlus,
@@ -569,7 +570,14 @@ export default function AdmissionsPage() {
   ];
 
   return (
-    <div className="space-y-6 w-full">
+    <ModuleGate
+      moduleKey="admissions"
+      moduleName="Admissions & SIS Student Information"
+      moduleDescription="Digital student dossiers, Ministry of Education learner IDs, inter-campus branch transfers, and automated guardian directory."
+      planRequired="SOVEREIGN_ENTERPRISE"
+      pricePerTermZMW={1750}
+    >
+      <div className="space-y-6 w-full">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-[100] max-w-md p-4 bg-slate-900 text-white rounded-2xl shadow-2xl border border-slate-700 text-xs flex items-center justify-between gap-3 animate-in fade-in slide-in-from-top-4">
@@ -1552,6 +1560,7 @@ export default function AdmissionsPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </ModuleGate>
   );
 }

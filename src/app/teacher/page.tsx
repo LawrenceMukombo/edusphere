@@ -35,6 +35,7 @@ import {
   GraduationCap,
 } from 'lucide-react';
 import { generateLegacyLearners, LegacyLearnerBalance } from '@/server/services/legacySchoolData';
+import { ModuleGate } from '@/components/ModuleGate';
 
 interface RosterStudent {
   id: string;
@@ -388,7 +389,14 @@ export default function TeacherWorkspacePage() {
   };
 
   return (
-    <div className="space-y-6 w-full">
+    <ModuleGate
+      moduleKey="teacher"
+      moduleName="Teacher Workspace & Lesson Planning"
+      moduleDescription="Classroom markbook management, ECZ continuous assessment scoring, offline-first sync cache, and supervisory submission workflows."
+      planRequired="PROFESSIONAL"
+      pricePerTermZMW={1250}
+    >
+      <div className="space-y-6 w-full">
       {/* Top Banner & Connectivity Controls */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
         <div>
@@ -1024,6 +1032,7 @@ export default function TeacherWorkspacePage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </ModuleGate>
   );
 }

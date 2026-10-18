@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { useCampus } from '@/components/CampusContext';
+import { ModuleGate } from '@/components/ModuleGate';
 import {
   LEGACY_STAFF_MEMBERS,
   LEGACY_LEAVE_REQUESTS,
@@ -605,7 +606,14 @@ export default function HRPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <ModuleGate
+      moduleKey="hr"
+      moduleName="Staff HR & TCZ Compliance Suite"
+      moduleDescription="Teaching Council of Zambia (TCZ) teacher registration audits, statutory leave allocations, performance appraisals, and staff recruitment pipeline."
+      planRequired="SOVEREIGN_ENTERPRISE"
+      pricePerTermZMW={1950}
+    >
+      <div className="space-y-6">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700 animate-in slide-in-from-top-4">
@@ -1622,6 +1630,7 @@ export default function HRPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </ModuleGate>
   );
 }
