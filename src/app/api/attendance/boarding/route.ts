@@ -22,6 +22,8 @@ export async function GET(req: Request) {
         exeats: exeatsStore,
         summary: {
           totalBoarders: 318,
+          kansanshiBoysCount: 162,
+          kalumbilaGirlsCount: 156,
           mopaniBoysCount: 162,
           mukwaGirlsCount: 156,
           activeExeatsCount: exeatsStore.filter((e) => e.securityGateStatus === 'DEPARTED').length,
@@ -57,6 +59,15 @@ export async function POST(req: Request) {
       };
       exeatsStore.unshift(newExeat);
       return NextResponse.json({ success: true, message: 'Boarding gate pass issued.', data: newExeat });
+    }
+
+    if (body.action === 'UPDATE_EXEAT_STATUS') {
+      const target = exeatsStore.find((e) => e.id === body.id || e.passNumber === body.passNumber);
+      if (target) {
+        target.securityGateStatus = body.status || 'RETURNED_ON_TIME';
+        return NextResponse.json({ success: true, message: `Gate status updated to ${target.securityGateStatus}.`, data: target });
+      }
+      return NextResponse.json({ success: false, message: 'Exeat record not found.' }, { status: 404 });
     }
 
     if (body.action === 'RECORD_ROLLCALL') {
