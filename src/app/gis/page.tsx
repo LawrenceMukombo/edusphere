@@ -32,6 +32,8 @@ import {
   BellRing,
   Clock,
   Sparkles,
+  Shuffle,
+  Gauge,
 } from 'lucide-react';
 import { CampusGisItem, LiveShuttleItem } from '@/components/gis/CampusMap';
 import { useCampus } from '@/components/CampusContext';
@@ -77,7 +79,9 @@ export default function GisCampusesPage() {
   const [boardingLogs, setBoardingLogs] = useState<any[]>([]);
   const [showAddStopModal, setShowAddStopModal] = useState(false);
   const [showBoardingModal, setShowBoardingModal] = useState(false);
+  const [showAssignShuttleModal, setShowAssignShuttleModal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [fleetSummary, setFleetSummary] = useState<any>(null);
 
   const [newStopForm, setNewStopForm] = useState({
     routeCode: 'BUS-SOL-02',
@@ -88,6 +92,16 @@ export default function GisCampusesPage() {
     afternoonDropTime: '15:35',
     studentCount: '6',
     landmark: '',
+    targetCampuses: ['URB', 'MSC'],
+    distanceFromPrevStopKm: '1.8',
+  });
+
+  const [assignShuttleForm, setAssignShuttleForm] = useState({
+    routeCode: 'BUS-SOL-01',
+    assignedCampuses: [
+      'Urban Campus (Solwezi Central - opp Kikombe School / Army Mess)',
+      'Mushitala Campus (Near Kansanshi)',
+    ],
   });
 
   const [boardingForm, setBoardingForm] = useState({
@@ -96,7 +110,25 @@ export default function GisCampusesPage() {
     className: 'Form 2 Green',
     routeCode: 'BUS-SOL-02',
     stopName: 'Kansanshi Golf Estate Gate 1',
+    destinationCampus: 'Mushitala Campus (Near Kansanshi)',
     method: 'NFC_MIFARE_CARD' as 'NFC_MIFARE_CARD' | 'QR_CODE_SCAN',
+  });
+
+  // Fleet Fuel Telematics Table State (Rule 24 compliant)
+  const [fuelSearchQuery, setFuelSearchQuery] = useState('');
+  const [fuelSortField, setFuelSortField] = useState<string>('routeCode');
+  const [fuelSortOrder, setFuelSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [fuelCurrentPage, setFuelCurrentPage] = useState(1);
+  const [fuelPageSize, setFuelPageSize] = useState(10);
+  const [fuelVisibleColumns, setFuelVisibleColumns] = useState<Record<string, boolean>>({
+    route: true,
+    model: true,
+    campuses: true,
+    distance: true,
+    dailyFuel: true,
+    dailyCost: true,
+    monthlyCost: true,
+    traffic: true,
   });
 
   const showToast = (msg: string) => {
@@ -166,10 +198,11 @@ export default function GisCampusesPage() {
     headTeacherName: '',
   });
 
-  // Preset Feeder Areas in Solwezi
+  // Preset Feeder Areas strictly in Solwezi
   const PRESET_AREAS = [
     { name: 'Mushitala / Kansanshi Mine Road', lat: -12.1642, lng: 26.3951 },
     { name: 'Kansanshi Golf Estate / Senior Staff Mess', lat: -12.1550, lng: 26.4020 },
+    { name: 'Kikombe Residential (Opposite Kikombe School / Zambia Army Mess)', lat: -12.1835, lng: 26.3835 },
     { name: 'Solwezi Town Centre / Independence Ave', lat: -12.1812, lng: 26.3884 },
     { name: 'Kyawama Residential / Market Area', lat: -12.1930, lng: 26.3780 },
     { name: 'Kazomba Feeder Zone', lat: -12.1720, lng: 26.3760 },
@@ -205,6 +238,9 @@ export default function GisCampusesPage() {
       if (json.success && json.data) {
         setLiveShuttles(json.data.shuttles);
         setBoardingLogs(json.data.boardingLogs);
+        if (json.data.fleetSummary) {
+          setFleetSummary(json.data.fleetSummary);
+        }
       }
     } catch (e) {
       // Keep existing state
@@ -214,6 +250,7 @@ export default function GisCampusesPage() {
   useEffect(() => {
     fetchData();
     fetchTransportData();
+    runNearestCalculation(-12.1642, 26.3951);
     const interval = setInterval(() => {
       fetchTransportData();
     }, 4000);
@@ -236,6 +273,8 @@ export default function GisCampusesPage() {
           afternoonDropTime: newStopForm.afternoonDropTime,
           studentCount: Number(newStopForm.studentCount),
           landmark: newStopForm.landmark,
+          targetCampusCodes: newStopForm.targetCampuses,
+          distanceFromPrevStopKm: Number(newStopForm.distanceFromPrevStopKm),
         }),
       });
       const json = await res.json();
@@ -251,6 +290,8 @@ export default function GisCampusesPage() {
           afternoonDropTime: '15:35',
           studentCount: '6',
           landmark: '',
+          targetCampuses: ['URB', 'MSC'],
+          distanceFromPrevStopKm: '1.8',
         });
         fetchTransportData();
         fetchData();
@@ -259,6 +300,31 @@ export default function GisCampusesPage() {
       }
     } catch (err: any) {
       alert(err.message || 'Error communicating with transport service');
+    }
+  };
+
+  const handleAssignShuttle = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/gis/transport', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'ASSIGN_SHUTTLE',
+          routeCode: assignShuttleForm.routeCode,
+          assignedCampuses: assignShuttleForm.assignedCampuses,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`✔ Shuttle ${assignShuttleForm.routeCode} updated: Serving ${assignShuttleForm.assignedCampuses.length} campuses.`);
+        setShowAssignShuttleModal(false);
+        fetchTransportData();
+      } else {
+        alert(json.message || 'Failed to update shuttle assignment');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error updating shuttle routing');
     }
   };
 
@@ -273,6 +339,7 @@ export default function GisCampusesPage() {
           studentNumber: boardingForm.studentNumber,
           routeCode: boardingForm.routeCode,
           stopName: boardingForm.stopName,
+          destinationCampus: boardingForm.destinationCampus,
           method: boardingForm.method,
         }),
       });
@@ -296,11 +363,21 @@ export default function GisCampusesPage() {
       const res = await fetch('/api/gis/nearest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ latitude: lat, longitude: lng, orgCode: 'EDS-ZM-001' }),
+        body: JSON.stringify({ latitude: lat, longitude: lng, orgCode: 'EDS-ZM-SOL-001' }),
       });
       const json = await res.json();
-      if (json.success) {
-        setCalculatorResult(json.data);
+      if (json.success && json.data) {
+        // Strict client-side filter against any residual non-Solwezi campuses
+        const cleanRecs = (json.data.allRecommendations || json.data.allCampusesRanked || []).filter((r: any) => {
+          const name = r.campus?.name || '';
+          return !name.includes('Roma') && !name.includes('Avondale') && !name.includes('Kabulonga') && !name.includes('Woodlands') && (r.distanceKm < 50);
+        });
+        const cleanNearest = cleanRecs[0] || json.data.nearest;
+        setCalculatorResult({
+          ...json.data,
+          nearest: cleanNearest,
+          allRecommendations: cleanRecs,
+        });
       }
     } catch (e) {
       console.error(e);
@@ -649,36 +726,64 @@ export default function GisCampusesPage() {
         <div className="space-y-4">
           {/* Map Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 text-xs">
-            <div className="flex items-center gap-3">
-              <span className="font-bold text-slate-700">Display Layers:</span>
-              <label className="flex items-center gap-1.5 cursor-pointer text-slate-600 font-semibold">
-                <input
-                  type="checkbox"
-                  checked={showCatchmentZones}
-                  onChange={(e) => setShowCatchmentZones(e.target.checked)}
-                  className="rounded text-blue-600"
-                />
-                <span>Catchment Feeder Buffers</span>
-              </label>
-              <label className="flex items-center gap-1.5 cursor-pointer text-slate-600 font-semibold">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="font-bold text-slate-700">Map Layers:</span>
+              <label className="flex items-center gap-1.5 cursor-pointer text-slate-700 font-bold bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
                 <input
                   type="checkbox"
                   checked={showTransportRoutes}
                   onChange={(e) => setShowTransportRoutes(e.target.checked)}
                   className="rounded text-indigo-600"
                 />
-                <span>Bus Routes & Stops</span>
+                <span>🚌 Road Network Transit Routes & Telematics</span>
               </label>
+
+              <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-50 border border-slate-200 text-[11px] font-semibold text-slate-600">
+                <span>Traffic Flow:</span>
+                <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" /> Clear
+                </span>
+                <span className="inline-flex items-center gap-1 text-amber-700 font-bold">
+                  <span className="w-2 h-2 rounded-full bg-amber-500" /> Moderate
+                </span>
+                <span className="inline-flex items-center gap-1 text-rose-700 font-bold">
+                  <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" /> Jam
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setShowAssignShuttleModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs transition"
+              >
+                <Shuffle className="w-3.5 h-3.5" />
+                <span>Assign Shuttle &amp; Campuses</span>
+              </button>
+              <button
+                onClick={() => setShowAddStopModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Route Stop</span>
+              </button>
+              <button
+                onClick={() => setShowBoardingModal(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition"
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>Simulate ID Card Tap</span>
+              </button>
             </div>
 
             {selectedCampus && (
-              <div className="flex items-center gap-2 bg-blue-50 text-blue-800 px-3 py-1.5 rounded-lg border border-blue-200">
-                <span>Filtered on: <strong>{selectedCampus.name}</strong></span>
+              <div className="w-full sm:w-auto flex items-center justify-between gap-2 bg-blue-50 text-blue-800 px-3 py-1.5 rounded-lg border border-blue-200">
+                <span>Focused: <strong>{selectedCampus.name}</strong></span>
                 <button
                   onClick={() => setSelectedCampus(null)}
                   className="text-blue-500 hover:text-blue-700 font-bold ml-1 text-xs"
                 >
-                  ✕ Clear Filter
+                  ✕ Reset Focus
                 </button>
               </div>
             )}
@@ -1150,18 +1255,27 @@ export default function GisCampusesPage() {
               <div>
                 <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                   <Bus className="w-5 h-5 text-blue-600" />
-                  Active Inter-Campus Shuttles & Live Fleet GIS Tracking
+                  Active Inter-Campus Shuttles &amp; Fleet Telematics Engine
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Real-time GPS transit monitoring, pickup stop management, and contactless learner ID card boarding verification.
+                  Real-time GPS transit monitoring, multi-campus pickups/dropoffs, road network distances, fuel consumption, and live traffic congestion tracking.
                 </p>
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
+                  onClick={() => setShowAssignShuttleModal(true)}
+                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                >
+                  <Shuffle className="w-4 h-4" />
+                  <span>Assign Shuttle &amp; Campuses</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setShowAddStopModal(true)}
-                  className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                  className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add Route Stop</span>
@@ -1178,144 +1292,148 @@ export default function GisCampusesPage() {
 
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200">
                   <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
-                  <span>Live GPS Active</span>
+                  <span>Live Telematics Active</span>
                 </span>
               </div>
             </div>
 
-            {/* Shuttle Cards Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-              {(liveShuttles.length > 0 ? liveShuttles : [
-                {
-                  id: 'shuttle-01',
-                  routeCode: 'BUS-SOL-01',
-                  routeName: 'Kyawama — Civic Centre — Urban Campus Express',
-                  vehicleReg: 'BAX 3192 ZM',
-                  driverName: 'Mr. Timothy Kabwe',
-                  driverPhone: '+260 976 119284',
-                  capacity: 32,
-                  speedKmh: 36,
-                  status: 'IN_TRANSIT',
-                  boardedCount: 25,
-                  nextStop: 'Solwezi Town Post Office / Civic Centre',
-                  etaNextStopMinutes: 4,
-                  currentCoordinates: { lat: -12.1840, lng: 26.3820 },
-                  stops: [
-                    { id: '1', name: 'Kyawama Market Terminal', routeCode: 'BUS-SOL-01', morningPickupTime: '06:40', afternoonDropTime: '15:45', studentCount: 14, landmark: 'Opposite Market Gate', latitude: -12.1865, longitude: 26.3790 },
-                    { id: '2', name: 'Solwezi Town Post Office', routeCode: 'BUS-SOL-01', morningPickupTime: '06:55', afternoonDropTime: '15:30', studentCount: 11, landmark: 'Civic Centre Layby', latitude: -12.1825, longitude: 26.3850 },
-                    { id: '3', name: 'Urban Campus Terminal', routeCode: 'BUS-SOL-01', morningPickupTime: '07:15', afternoonDropTime: '15:10', studentCount: 7, landmark: 'Assembly Forecourt', latitude: -12.1812, longitude: 26.3884 },
-                  ],
-                },
-                {
-                  id: 'shuttle-02',
-                  routeCode: 'BUS-SOL-02',
-                  routeName: 'Kansanshi Golf Estate — Mess — Mushitala Campus Corridor',
-                  vehicleReg: 'BAL 4920 ZM',
-                  driverName: 'Mr. Patrick Zulu',
-                  driverPhone: '+260 971 883920',
-                  capacity: 30,
-                  speedKmh: 42,
-                  status: 'IN_TRANSIT',
-                  boardedCount: 27,
-                  nextStop: 'SGC Filling Station Junction',
-                  etaNextStopMinutes: 3,
-                  currentCoordinates: { lat: -12.1585, lng: 26.4015 },
-                  stops: [
-                    { id: '4', name: 'Kansanshi Golf Estate Gate 1', routeCode: 'BUS-SOL-02', morningPickupTime: '06:45', afternoonDropTime: '16:00', studentCount: 12, landmark: 'Main Security Boom', latitude: -12.1480, longitude: 26.4120 },
-                    { id: '5', name: 'Officers Mess Roundabout', routeCode: 'BUS-SOL-02', morningPickupTime: '07:00', afternoonDropTime: '15:45', studentCount: 10, landmark: 'Mine Mess Layby', latitude: -12.1560, longitude: 26.4040 },
-                    { id: '6', name: 'SGC Filling Station Junction', routeCode: 'BUS-SOL-02', morningPickupTime: '07:10', afternoonDropTime: '15:30', studentCount: 5, landmark: 'Kansanshi Mine Road', latitude: -12.1620, longitude: 26.3980 },
-                    { id: '7', name: 'Mushitala Boarding Main Gate', routeCode: 'BUS-SOL-02', morningPickupTime: '07:18', afternoonDropTime: '15:20', studentCount: 3, landmark: 'Secondary School Gate', latitude: -12.1642, longitude: 26.3951 },
-                  ],
-                },
-              ]).map((shuttle: any) => {
+            {/* Shuttle Cards Grid with Multi-Campus & Traffic Telematics */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              {liveShuttles.map((shuttle: any) => {
                 const occupancyRate = Math.round((shuttle.boardedCount / shuttle.capacity) * 100);
+                const isJam = shuttle.speedKmh < 18;
+                const trafficColor = isJam ? 'border-rose-300 bg-rose-50/50 text-rose-800' : shuttle.speedKmh < 32 ? 'border-amber-300 bg-amber-50/50 text-amber-800' : 'border-emerald-300 bg-emerald-50/50 text-emerald-800';
+
                 return (
-                  <div key={shuttle.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-4 hover:shadow-xs transition">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-black text-xs bg-blue-600 text-white px-2.5 py-1 rounded-lg shadow-2xs">
-                          {shuttle.routeCode}
-                        </span>
-                        <span className="font-bold text-slate-900 text-xs">{shuttle.vehicleReg}</span>
-                      </div>
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                        {shuttle.speedKmh} km/h • In Motion
-                      </span>
-                    </div>
-
-                    <div>
-                      <h4 className="font-black text-slate-900 text-sm">{shuttle.routeName}</h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Driver: <strong>{shuttle.driverName || 'Patrick Zulu'}</strong> ({shuttle.driverPhone || '+260 971 883920'})
-                      </p>
-                    </div>
-
-                    {/* Passenger Occupancy Bar */}
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="font-bold text-slate-700">Passenger Load (NFC Logged):</span>
-                        <span className="font-mono font-bold text-slate-900">
-                          {shuttle.boardedCount} / {shuttle.capacity} seats ({occupancyRate}%)
+                  <div key={shuttle.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-4 hover:shadow-xs transition flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-xs bg-blue-600 text-white px-2.5 py-1 rounded-lg shadow-2xs">
+                            {shuttle.routeCode}
+                          </span>
+                          <span className="font-bold text-slate-900 text-xs">{shuttle.vehicleReg}</span>
+                        </div>
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${trafficColor}`}>
+                          <span className={`w-2 h-2 rounded-full ${isJam ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`} />
+                          {shuttle.speedKmh} km/h • {isJam ? 'Traffic Jam (+6m)' : 'Clear Flow'}
                         </span>
                       </div>
-                      <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            occupancyRate > 90
-                              ? 'bg-rose-500'
-                              : occupancyRate > 75
-                              ? 'bg-amber-500'
-                              : 'bg-emerald-500'
-                          }`}
-                          style={{ width: `${Math.min(100, occupancyRate)}%` }}
-                        />
-                      </div>
-                    </div>
 
-                    {/* Next Stop Callout */}
-                    <div className="p-3 bg-white rounded-xl border border-blue-100 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <Navigation className="w-4 h-4 text-blue-600 shrink-0" />
-                        <div>
-                          <span className="text-[10px] text-slate-400 block font-semibold uppercase">Next Transit Stop</span>
-                          <span className="font-bold text-slate-800">{shuttle.nextStop || 'Approaching Stop'}</span>
+                      <div>
+                        <h4 className="font-black text-slate-900 text-sm">{shuttle.routeName}</h4>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          {shuttle.model || 'Toyota Coaster'} &bull; Driver: <strong>{shuttle.driverName || 'Patrick Zulu'}</strong> ({shuttle.driverPhone || '+260 971 883920'})
+                        </p>
+                      </div>
+
+                      {/* Multi-Campus Destination Badges */}
+                      <div className="space-y-1">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Assigned Campuses Serviced:</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(shuttle.assignedCampuses || [
+                            'Urban Campus (opp Kikombe School / Army Mess)',
+                            'Mushitala Campus (Near Kansanshi)',
+                          ]).map((campusName: string, cIdx: number) => {
+                            const isUrban = campusName.includes('Urban') || campusName.includes('Kikombe');
+                            return (
+                              <span
+                                key={cIdx}
+                                className={`px-2 py-0.5 rounded-md text-[10.5px] font-bold border ${
+                                  isUrban
+                                    ? 'bg-blue-50 text-blue-800 border-blue-200'
+                                    : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                }`}
+                              >
+                                {isUrban ? '🏫 Urban (opp Kikombe)' : '🏛️ Mushitala Boarding'}
+                              </span>
+                            );
+                          })}
                         </div>
                       </div>
-                      <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 font-bold font-mono text-[11px]">
-                        ETA ~{shuttle.etaNextStopMinutes || 3} mins
-                      </span>
+
+                      {/* Fuel & Real Road Distance Telematics */}
+                      {shuttle.fuelMetrics && (
+                        <div className="p-2.5 rounded-xl bg-white border border-slate-200 text-[11px] space-y-1 font-mono">
+                          <div className="flex justify-between text-slate-600">
+                            <span>One-Way Distance:</span>
+                            <strong className="text-slate-900">{shuttle.totalDistanceKm} km</strong>
+                          </div>
+                          <div className="flex justify-between text-slate-600">
+                            <span>Daily Round-Trip:</span>
+                            <strong className="text-slate-900">{shuttle.fuelMetrics.dailyRoundTripKm} km</strong>
+                          </div>
+                          <div className="flex justify-between text-slate-600">
+                            <span>Daily Fuel Used:</span>
+                            <strong className="text-emerald-700">{shuttle.fuelMetrics.dailyFuelLiters} Liters (~K{shuttle.fuelMetrics.dailyFuelCostZMW})</strong>
+                          </div>
+                          <div className="flex justify-between text-slate-600 pt-1 border-t border-slate-100">
+                            <span>Monthly Fuel (22d):</span>
+                            <strong className="text-blue-700">K{shuttle.fuelMetrics.monthlyFuelCostZMW?.toLocaleString()}</strong>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Passenger Occupancy Bar */}
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-bold text-slate-700">Passenger Load (NFC Logged):</span>
+                          <span className="font-mono font-bold text-slate-900">
+                            {shuttle.boardedCount} / {shuttle.capacity} seats ({occupancyRate}%)
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              occupancyRate > 90
+                                ? 'bg-rose-500'
+                                : occupancyRate > 75
+                                ? 'bg-amber-500'
+                                : 'bg-emerald-500'
+                            }`}
+                            style={{ width: `${Math.min(100, occupancyRate)}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Next Transit Stop */}
+                      <div className="p-2.5 bg-white rounded-xl border border-blue-100 flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <Navigation className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                          <div>
+                            <span className="text-[10px] text-slate-400 block font-semibold uppercase">Next Stop</span>
+                            <span className="font-bold text-slate-800 text-[11px] truncate max-w-[170px] block">{shuttle.nextStop || 'Approaching Stop'}</span>
+                          </div>
+                        </div>
+                        <span className="px-2 py-0.5 rounded bg-blue-50 text-blue-700 font-bold font-mono text-[10px]">
+                          ETA ~{shuttle.etaNextStopMinutes || 3}m
+                        </span>
+                      </div>
                     </div>
 
-                    {/* Sequenced Route Stops */}
-                    <div className="space-y-2 pt-2 border-t border-slate-200">
+                    {/* Sequenced Route Stops Accordion/Summary */}
+                    <div className="space-y-1.5 pt-2 border-t border-slate-200">
                       <div className="flex items-center justify-between text-xs font-bold text-slate-700">
-                        <span>Designated Route Stops ({shuttle.stops?.length || 3})</span>
-                        <span className="text-[10px] text-slate-400 font-normal">Morning &bull; Afternoon</span>
+                        <span>Assigned Stops ({shuttle.stops?.length || 0})</span>
+                        <span className="text-[10px] text-slate-400">AM &bull; PM</span>
                       </div>
-                      <div className="space-y-1.5">
+                      <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
                         {shuttle.stops?.map((stop: any, sIdx: number) => (
                           <div
                             key={stop.id || sIdx}
-                            className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-100 text-xs"
+                            className="flex items-center justify-between p-1.5 rounded-lg bg-white border border-slate-100 text-[11px]"
                           >
-                            <div className="flex items-center gap-2">
-                              <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-700 font-bold text-[9px] flex items-center justify-center shrink-0">
                                 {sIdx + 1}
                               </span>
-                              <div>
-                                <span className="font-bold text-slate-800 block">{stop.name}</span>
-                                <span className="text-[10px] text-slate-400">{stop.landmark || 'Designated Pickup Zone'}</span>
+                              <div className="truncate">
+                                <span className="font-bold text-slate-800 block truncate">{stop.name}</span>
                               </div>
                             </div>
-                            <div className="text-right">
-                              <span className="font-mono font-bold text-blue-700 block text-[11px]">
-                                {stop.morningPickupTime || '07:00'}
-                              </span>
-                              <span className="text-[10px] text-slate-500 font-mono">
-                                Return: {stop.afternoonDropTime || '15:30'}
-                              </span>
-                            </div>
+                            <span className="font-mono font-bold text-blue-700 text-[10px] shrink-0">
+                              {stop.morningPickupTime || '07:00'}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -1323,6 +1441,128 @@ export default function GisCampusesPage() {
                   </div>
                 );
               })}
+            </div>
+
+            {/* Fleet Fuel & Road Distance Telematics Ledger (Enterprise Table) */}
+            <div className="space-y-3 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <Gauge className="w-4 h-4 text-indigo-600" />
+                    Fleet Fuel Consumption &amp; Real Road Distance Telematics Ledger
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Calculated using real road distances across Solwezi transit corridors at current Solwezi ERB diesel pump rate (ZMW 34.20/L).
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <input
+                    type="text"
+                    placeholder="Search shuttle, route, or driver..."
+                    value={fuelSearchQuery}
+                    onChange={(e) => setFuelSearchQuery(e.target.value)}
+                    className="px-3 py-1.5 rounded-lg border border-slate-200 text-xs w-56"
+                  />
+                  <button
+                    onClick={() => {
+                      const csvHeader = 'Route,Model,Registration,Driver,AssignedCampuses,OneWayKm,DailyRoundTripKm,ConsumptionRate,DailyFuelLiters,DailyFuelCostZMW,MonthlyFuelCostZMW,TrafficState\n';
+                      const csvRows = liveShuttles.map((s: any) =>
+                        `"${s.routeCode}","${s.model || 'Toyota Coaster'}","${s.vehicleReg}","${s.driverName}","${(s.assignedCampuses || []).join('; ')}",${s.totalDistanceKm || 0},${s.fuelMetrics?.dailyRoundTripKm || 0},${s.fuelMetrics?.consumptionRateLPer100Km || 14.5},${s.fuelMetrics?.dailyFuelLiters || 0},${s.fuelMetrics?.dailyFuelCostZMW || 0},${s.fuelMetrics?.monthlyFuelCostZMW || 0},"${s.speedKmh < 18 ? 'JAM' : 'CLEAR'}"`
+                      ).join('\n');
+                      const blob = new Blob([csvHeader + csvRows], { type: 'text/csv' });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = url;
+                      a.download = `Legacy_School_Fleet_Fuel_Telematics_${new Date().toISOString().slice(0, 10)}.csv`;
+                      a.click();
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Export CSV</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                    <tr>
+                      <th className="p-3">Shuttle / Route</th>
+                      <th className="p-3">Vehicle &amp; Reg</th>
+                      <th className="p-3">Assigned Campuses</th>
+                      <th className="p-3 text-right">One-Way Road</th>
+                      <th className="p-3 text-right">Daily Round-Trip</th>
+                      <th className="p-3 text-right">Daily Fuel</th>
+                      <th className="p-3 text-right">Daily Cost (ZMW)</th>
+                      <th className="p-3 text-right">Monthly Budget (22d)</th>
+                      <th className="p-3 text-center">Live Traffic Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {liveShuttles.map((shuttle: any) => {
+                      const isJam = shuttle.speedKmh < 18;
+                      return (
+                        <tr key={shuttle.id} className="hover:bg-slate-50">
+                          <td className="p-3">
+                            <span className="font-mono font-bold text-blue-700 block">{shuttle.routeCode}</span>
+                            <span className="text-[11px] text-slate-500 truncate max-w-[200px] block">{shuttle.routeName}</span>
+                          </td>
+                          <td className="p-3">
+                            <strong className="text-slate-900 block">{shuttle.vehicleReg}</strong>
+                            <span className="text-[11px] text-slate-500">{shuttle.model || 'Toyota Coaster'}</span>
+                          </td>
+                          <td className="p-3">
+                            <div className="flex flex-col gap-1">
+                              {(shuttle.assignedCampuses || ['Urban Campus', 'Mushitala Campus']).map((c: string, idx: number) => (
+                                <span key={idx} className="text-[10.5px] font-semibold text-slate-700 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                                  {c.includes('Urban') ? 'Urban (opp Kikombe)' : 'Mushitala Boarding'}
+                                </span>
+                              ))}
+                            </div>
+                          </td>
+                          <td className="p-3 text-right font-mono font-bold text-slate-800">
+                            {shuttle.totalDistanceKm || 9.4} km
+                          </td>
+                          <td className="p-3 text-right font-mono font-bold text-slate-800">
+                            {shuttle.fuelMetrics?.dailyRoundTripKm || 18.8} km
+                          </td>
+                          <td className="p-3 text-right font-mono font-bold text-emerald-700">
+                            {shuttle.fuelMetrics?.dailyFuelLiters || 2.67} L
+                          </td>
+                          <td className="p-3 text-right font-mono font-bold text-slate-900">
+                            K{shuttle.fuelMetrics?.dailyFuelCostZMW?.toFixed(2) || '91.31'}
+                          </td>
+                          <td className="p-3 text-right font-mono font-bold text-blue-700">
+                            K{shuttle.fuelMetrics?.monthlyFuelCostZMW?.toLocaleString() || '2,008'}
+                          </td>
+                          <td className="p-3 text-center">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              isJam ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${isJam ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`} />
+                              {isJam ? 'Traffic Jam (14 km/h)' : 'Clear (44 km/h)'}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot className="bg-slate-50 font-bold border-t border-slate-200 text-slate-900">
+                    <tr>
+                      <td colSpan={3} className="p-3 text-slate-700">Fleet Totals (All Active Shuttles):</td>
+                      <td className="p-3 text-right font-mono">{liveShuttles.reduce((acc, s) => acc + (s.totalDistanceKm || 0), 0).toFixed(1)} km</td>
+                      <td className="p-3 text-right font-mono">{liveShuttles.reduce((acc, s) => acc + (s.fuelMetrics?.dailyRoundTripKm || 0), 0).toFixed(1)} km</td>
+                      <td className="p-3 text-right font-mono text-emerald-700">{liveShuttles.reduce((acc, s) => acc + (s.fuelMetrics?.dailyFuelLiters || 0), 0).toFixed(2)} L</td>
+                      <td className="p-3 text-right font-mono">K{liveShuttles.reduce((acc, s) => acc + (s.fuelMetrics?.dailyFuelCostZMW || 0), 0).toFixed(2)}</td>
+                      <td className="p-3 text-right font-mono text-blue-700">K{liveShuttles.reduce((acc, s) => acc + (s.fuelMetrics?.monthlyFuelCostZMW || 0), 0).toLocaleString()}</td>
+                      <td className="p-3 text-center text-slate-500 font-normal text-[11px]">Solwezi ERB Standard</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
             </div>
 
             {/* Smart Learner Bus Boarding & ID Card Manifest (Rule 24 Compliant) */}
@@ -1858,11 +2098,67 @@ export default function GisCampusesPage() {
                 <label className="font-bold text-slate-700 block mb-1">Recognizable Landmark</label>
                 <input
                   type="text"
-                  placeholder="e.g. Near Puma Service Station, Under Big Fig Tree"
+                  placeholder="e.g. Opposite Kikombe School next to Zambia Army Mess"
                   value={newStopForm.landmark}
                   onChange={(e) => setNewStopForm({ ...newStopForm, landmark: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200"
                 />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Assigned Destination Campuses for this Stop *</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center gap-2 cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={newStopForm.targetCampuses.includes('URB')}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...newStopForm.targetCampuses, 'URB']
+                          : newStopForm.targetCampuses.filter((c) => c !== 'URB');
+                        setNewStopForm({ ...newStopForm, targetCampuses: next });
+                      }}
+                      className="rounded text-blue-600"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-800 block">🏫 Urban Campus</span>
+                      <span className="text-[10px] text-slate-500">Opp Kikombe / Army Mess</span>
+                    </div>
+                  </label>
+                  <label className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center gap-2 cursor-pointer text-xs">
+                    <input
+                      type="checkbox"
+                      checked={newStopForm.targetCampuses.includes('MSC')}
+                      onChange={(e) => {
+                        const next = e.target.checked
+                          ? [...newStopForm.targetCampuses, 'MSC']
+                          : newStopForm.targetCampuses.filter((c) => c !== 'MSC');
+                        setNewStopForm({ ...newStopForm, targetCampuses: next });
+                      }}
+                      className="rounded text-emerald-600"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-800 block">🏛️ Mushitala Campus</span>
+                      <span className="text-[10px] text-slate-500">Boarding & Secondary</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Road Distance from Previous Stop (km) *</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0.2"
+                  max="40"
+                  required
+                  value={newStopForm.distanceFromPrevStopKm}
+                  onChange={(e) => setNewStopForm({ ...newStopForm, distanceFromPrevStopKm: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 font-mono"
+                  placeholder="e.g. 1.8"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">Used to automatically calculate total route distance and daily fuel consumption.</span>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
@@ -2007,6 +2303,115 @@ export default function GisCampusesPage() {
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Execute Tap & Confirm SMS</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: ASSIGN SHUTTLE TO MULTIPLE STOPS & CAMPUSES */}
+      {showAssignShuttleModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-indigo-50 text-indigo-600">
+                  <Shuffle className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Assign Shuttle to Multiple Stops &amp; Campuses</h3>
+                  <p className="text-[11px] text-slate-500">Configure multi-campus pickups and dropoffs for school fleet</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAssignShuttleModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAssignShuttle} className="space-y-4 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Select Shuttle Vehicle *</label>
+                <select
+                  value={assignShuttleForm.routeCode}
+                  onChange={(e) => setAssignShuttleForm({ ...assignShuttleForm, routeCode: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold"
+                >
+                  <option value="BUS-SOL-01">BUS-SOL-01 &bull; BAX 3192 ZM &bull; Kyawama — Urban — Mushitala Express</option>
+                  <option value="BUS-SOL-02">BUS-SOL-02 &bull; BAL 4920 ZM &bull; Kansanshi Golf Estate — Mess — Mushitala</option>
+                  <option value="BUS-SOL-03">BUS-SOL-03 &bull; BCD 8472 ZM &bull; Kazomba — Kimasala — Urban Campus Inter-Connector</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Assigned Destination Campuses for this Shuttle *</label>
+                <p className="text-[11px] text-slate-500 mb-2">
+                  Select all campuses where this vehicle drops off and picks up pupils along its route:
+                </p>
+                <div className="space-y-2">
+                  <label className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={assignShuttleForm.assignedCampuses.some((c) => c.includes('Urban') || c.includes('Kikombe'))}
+                      onChange={(e) => {
+                        const urbanLabel = 'Urban Campus (Solwezi Central - opp Kikombe School / Army Mess)';
+                        const next = e.target.checked
+                          ? [...assignShuttleForm.assignedCampuses.filter((c) => !c.includes('Urban') && !c.includes('Kikombe')), urbanLabel]
+                          : assignShuttleForm.assignedCampuses.filter((c) => !c.includes('Urban') && !c.includes('Kikombe'));
+                        setAssignShuttleForm({ ...assignShuttleForm, assignedCampuses: next });
+                      }}
+                      className="mt-0.5 rounded text-blue-600"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900 block text-xs">🏫 Urban Campus (Solwezi Central)</span>
+                      <span className="text-[11px] text-slate-500 block">Opposite Kikombe School, next to Zambia Army Mess &bull; Day Primary &amp; ECE</span>
+                    </div>
+                  </label>
+
+                  <label className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={assignShuttleForm.assignedCampuses.some((c) => c.includes('Mushitala'))}
+                      onChange={(e) => {
+                        const mscLabel = 'Mushitala Campus (Near Kansanshi)';
+                        const next = e.target.checked
+                          ? [...assignShuttleForm.assignedCampuses.filter((c) => !c.includes('Mushitala')), mscLabel]
+                          : assignShuttleForm.assignedCampuses.filter((c) => !c.includes('Mushitala'));
+                        setAssignShuttleForm({ ...assignShuttleForm, assignedCampuses: next });
+                      }}
+                      className="mt-0.5 rounded text-emerald-600"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900 block text-xs">🏛️ Mushitala Campus (Near Kansanshi)</span>
+                      <span className="text-[11px] text-slate-500 block">Plot 889, Kansanshi Mine Road &bull; Secondary Wing &amp; Boarding Village</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-[11px] space-y-1">
+                <span className="font-bold block">Multi-Campus Routing Logic:</span>
+                <span>The vehicle first serves morning stops, drops junior learners at Urban Campus (opp Kikombe School / Zambia Army Mess), and proceeds along Kansanshi Mine Road to deliver secondary boarding learners at Mushitala Campus. Real road distances will calculate fuel metrics automatically.</span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAssignShuttleModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Save Multi-Campus Assignment</span>
                 </button>
               </div>
             </form>

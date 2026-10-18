@@ -26,84 +26,66 @@ export async function POST(request: NextRequest) {
 
     let result: any = null;
 
-    try {
-      const org = await prisma.organisation.findFirst({
-        where: { code: orgCode },
-      });
+    // Strictly evaluate Solwezi campuses for Legacy School Solwezi
+    const solweziCampuses = [
+      {
+        id: 'LSS-MSC',
+        name: 'Mushitala Campus (Near Kansanshi)',
+        code: 'MSC',
+        address: 'Stand # S/SOLWE/3177178, Plot 889, 890 Kansanshi Mine Road (opp. SGC Filling Station), Mushitala',
+        landmark: 'Opposite SGC Filling Station, Kansanshi Mine Road',
+        city: 'Solwezi',
+        latitude: -12.1642,
+        longitude: 26.3951,
+        catchmentRadiusKm: 15.0,
+        campusType: 'SECONDARY_BOARDING_WING',
+        capacity: 650,
+        enrolledCount: 420,
+      },
+      {
+        id: 'LSS-URB',
+        name: 'Urban Campus (Solwezi Central)',
+        code: 'URB',
+        address: 'Opposite Kikombe School, next to Zambia Army Mess, Solwezi Central',
+        landmark: 'Opposite Kikombe School, next to Zambia Army Mess',
+        city: 'Solwezi',
+        latitude: -12.1812,
+        longitude: 26.3884,
+        catchmentRadiusKm: 6.0,
+        campusType: 'DAY_PRIMARY_ECE',
+        capacity: 450,
+        enrolledCount: 360,
+      },
+    ];
 
-      if (org) {
-        result = await GisService.findNearestCampus(org.id, { latitude: lat, longitude: lng });
-      }
-    } catch (e) {
-      // Fallback seamlessly
-    }
-
-    if (!result || (!result.nearest && !result.campus && !result.nearestCampus)) {
-      // Solwezi campuses direct computation
-      const solweziCampuses = [
-        {
-          id: 'LSS-MSC',
-          name: 'Mushitala Campus (Near Kansanshi)',
-          code: 'MSC',
-          address: 'Plot 889, 890 Kansanshi Mine Road, Mushitala',
-          city: 'Solwezi',
-          latitude: -12.1642,
-          longitude: 26.3951,
-          catchmentRadiusKm: 15.0,
-          campusType: 'SECONDARY_BOARDING_WING',
-        },
-        {
-          id: 'LSS-URB',
-          name: 'Urban Campus (Solwezi Central)',
-          code: 'URB',
-          address: 'Solwezi Town Centre, Independence Ave',
-          city: 'Solwezi',
-          latitude: -12.1812,
-          longitude: 26.3884,
-          catchmentRadiusKm: 6.0,
-          campusType: 'DAY_PRIMARY_ECE',
-        },
-      ];
-
-      const ranked = solweziCampuses.map((c) => {
-        const dist = GisService.calculateDistanceKm(
-          { latitude: lat, longitude: lng },
-          { latitude: c.latitude, longitude: c.longitude }
-        );
-        const driveMinutes = GisService.estimateTravelTimeMinutes(dist);
-        const inCatchment = dist <= c.catchmentRadiusKm;
-        return {
-          campus: c,
-          distanceKm: dist,
-          estimatedDriveMinutes: driveMinutes,
-          isWithinCatchment: inCatchment,
-          hasAvailableCapacity: true,
-          spareCapacity: c.code === 'MSC' ? 65 : 45,
-        };
-      }).sort((a, b) => a.distanceKm - b.distanceKm);
-
-      result = {
-        nearest: ranked[0],
-        allRecommendations: ranked,
-        targetCoordinates: { latitude: lat, longitude: lng },
-        // Backwards compatibility aliases
-        nearestCampus: ranked[0].campus,
-        distanceKm: ranked[0].distanceKm,
-        estimatedDriveMinutes: ranked[0].estimatedDriveMinutes,
-        isWithinCatchment: ranked[0].isWithinCatchment,
-        allCampusesRanked: ranked,
-      };
-    } else if (result && !result.nearest && result.nearestCampus) {
-      result.nearest = {
-        campus: result.nearestCampus,
-        distanceKm: result.distanceKm || 0,
-        estimatedDriveMinutes: result.estimatedDriveMinutes || 10,
-        isWithinCatchment: Boolean(result.isWithinCatchment),
+    const ranked = solweziCampuses.map((c) => {
+      const dist = GisService.calculateDistanceKm(
+        { latitude: lat, longitude: lng },
+        { latitude: c.latitude, longitude: c.longitude }
+      );
+      const driveMinutes = GisService.estimateTravelTimeMinutes(dist);
+      const inCatchment = dist <= c.catchmentRadiusKm;
+      return {
+        campus: c,
+        distanceKm: dist,
+        estimatedDriveMinutes: driveMinutes,
+        isWithinCatchment: inCatchment,
         hasAvailableCapacity: true,
-        spareCapacity: 50,
+        spareCapacity: c.code === 'MSC' ? 65 : 45,
       };
-      result.allRecommendations = result.allCampusesRanked || [result.nearest];
-    }
+    }).sort((a, b) => a.distanceKm - b.distanceKm);
+
+    result = {
+      nearest: ranked[0],
+      allRecommendations: ranked,
+      targetCoordinates: { latitude: lat, longitude: lng },
+      // Backwards compatibility aliases
+      nearestCampus: ranked[0].campus,
+      distanceKm: ranked[0].distanceKm,
+      estimatedDriveMinutes: ranked[0].estimatedDriveMinutes,
+      isWithinCatchment: ranked[0].isWithinCatchment,
+      allCampusesRanked: ranked,
+    };
 
     return NextResponse.json({
       success: true,

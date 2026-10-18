@@ -71,7 +71,7 @@ const SOLWEZI_CAMPUSES_GIS = [
     id: 'LSS-URB',
     name: 'Urban Campus (Solwezi Central)',
     code: 'URB',
-    address: 'Solwezi Urban Educational Corridor, Solwezi Town Center',
+    address: 'Opposite Kikombe School, next to Zambia Army Mess, Solwezi Central',
     city: 'Solwezi Urban, North-Western Province',
     phone: '+260 967 288578',
     isMainCampus: false,
@@ -84,6 +84,7 @@ const SOLWEZI_CAMPUSES_GIS = [
     campusType: 'DAY_PRIMARY_ECE',
     landAreaHectares: 2.1,
     facilities: [
+      'Opposite Kikombe School & Adjacent to Zambia Army Mess',
       'ECE Nursery & Reception Play Park',
       'Junior Computer Laboratory (35 Desktops)',
       'Primary Classrooms (Grades 1 to 7)',
@@ -102,23 +103,26 @@ const SOLWEZI_CAMPUSES_GIS = [
       {
         id: 'rt-01',
         routeCode: 'BUS-SOL-01',
-        routeName: 'Kyawama — Town Centre — Urban Campus Shuttle',
+        routeName: 'Kyawama — Kikombe — Town Centre — Urban & Mushitala Express',
         vehicleReg: 'BAX 3192 ZM',
         driverName: 'Mr. Timothy Kabwe',
         driverPhone: '+260 976 119284',
         capacity: 32,
         fareZMW: 350,
         stops: [
-          { name: 'Kyawama Market', latitude: -12.1865, longitude: 26.3790, morningPickupTime: '06:40', afternoonDropTime: '15:45' },
-          { name: 'Solwezi Town Post Office', latitude: -12.1825, longitude: 26.3850, morningPickupTime: '06:55', afternoonDropTime: '15:30' },
-          { name: 'Urban Campus Terminal', latitude: -12.1812, longitude: 26.3884, morningPickupTime: '07:15', afternoonDropTime: '15:10' },
+          { name: 'Kyawama Market', latitude: -12.1865, longitude: 26.3790, morningPickupTime: '06:35', afternoonDropTime: '15:55' },
+          { name: 'Kikombe Junction (opp Kikombe School / Army Mess)', latitude: -12.1835, longitude: 26.3835, morningPickupTime: '06:48', afternoonDropTime: '15:42' },
+          { name: 'Solwezi Town Post Office', latitude: -12.1825, longitude: 26.3850, morningPickupTime: '07:00', afternoonDropTime: '15:30' },
+          { name: 'Urban Campus Terminal (opp Kikombe School / Army Mess)', latitude: -12.1812, longitude: 26.3884, morningPickupTime: '07:10', afternoonDropTime: '15:15' },
+          { name: 'SGC Filling Station Junction', latitude: -12.1620, longitude: 26.3980, morningPickupTime: '07:22', afternoonDropTime: '15:02' },
+          { name: 'Mushitala Boarding Main Gate', latitude: -12.1642, longitude: 26.3951, morningPickupTime: '07:32', afternoonDropTime: '14:50' },
         ],
       },
     ],
     catchmentZones: [
       {
         id: 'cz-01',
-        zoneName: 'Solwezi Town Central, Kyawama & Urban Catchment',
+        zoneName: 'Solwezi Town Central, Kyawama & Kikombe Urban Catchment',
         radiusKm: 5.0,
         centerLatitude: -12.1812,
         centerLongitude: 26.3884,
@@ -134,14 +138,14 @@ const SOLWEZI_DISTANCE_MATRIX = [
     fromCampusName: 'Mushitala Campus (Near Kansanshi)',
     fromCampusCode: 'MSC',
     toCampusId: 'LSS-URB',
-    toCampusName: 'Urban Campus (Solwezi Central)',
+    toCampusName: 'Urban Campus (Solwezi Central - opp Kikombe School / Army Mess)',
     toCampusCode: 'URB',
     distanceKm: 3.8,
     estimatedDriveMinutes: 7,
   },
   {
     fromCampusId: 'LSS-URB',
-    fromCampusName: 'Urban Campus (Solwezi Central)',
+    fromCampusName: 'Urban Campus (Solwezi Central - opp Kikombe School / Army Mess)',
     fromCampusCode: 'URB',
     toCampusId: 'LSS-MSC',
     toCampusName: 'Mushitala Campus (Near Kansanshi)',
@@ -165,17 +169,29 @@ export async function GET(request: NextRequest) {
       });
 
       if (org) {
-        [campuses, distanceMatrix] = await Promise.all([
+        const [rawCampuses, rawMatrix] = await Promise.all([
           GisService.getCampusesGis(org.id),
           GisService.getCampusDistanceMatrix(org.id),
         ]);
+        // Restrict strictly to Solwezi campuses (latitude > -14)
+        const solweziDb = (rawCampuses || []).filter(
+          (c) => (c.city && c.city.toLowerCase().includes('solwezi')) || (c.latitude && c.latitude > -14)
+        );
+        if (solweziDb.length >= 2) {
+          campuses = solweziDb;
+          const cleanMatrix = (rawMatrix || []).filter((m: any) => m.distanceKm != null && m.distanceKm < 50);
+          distanceMatrix = cleanMatrix.length > 0 ? cleanMatrix : SOLWEZI_DISTANCE_MATRIX;
+        } else {
+          campuses = SOLWEZI_CAMPUSES_GIS;
+          distanceMatrix = SOLWEZI_DISTANCE_MATRIX;
+        }
       }
     } catch (dbErr) {
-      // Fallback seamlessly to rich Solwezi GIS dataset
-      campuses = [];
+      campuses = SOLWEZI_CAMPUSES_GIS;
+      distanceMatrix = SOLWEZI_DISTANCE_MATRIX;
     }
 
-    if (!campuses || campuses.length === 0) {
+    if (!campuses || campuses.length < 2) {
       campuses = SOLWEZI_CAMPUSES_GIS;
       distanceMatrix = SOLWEZI_DISTANCE_MATRIX;
     }

@@ -23,6 +23,10 @@ export async function GET(request: NextRequest) {
       // Fallback seamlessly
     }
 
+    if (matrix && matrix.length > 0) {
+      matrix = matrix.filter((m) => m.distanceKm < 50);
+    }
+
     if (!matrix || matrix.length === 0) {
       matrix = [
         {
@@ -30,14 +34,14 @@ export async function GET(request: NextRequest) {
           fromCampusName: 'Mushitala Campus (Near Kansanshi)',
           fromCampusCode: 'MSC',
           toCampusId: 'LSS-URB',
-          toCampusName: 'Urban Campus (Solwezi Central)',
+          toCampusName: 'Urban Campus (Solwezi Central - opp Kikombe School / Army Mess)',
           toCampusCode: 'URB',
           distanceKm: 3.8,
           estimatedDriveMinutes: 7,
         },
         {
           fromCampusId: 'LSS-URB',
-          fromCampusName: 'Urban Campus (Solwezi Central)',
+          fromCampusName: 'Urban Campus (Solwezi Central - opp Kikombe School / Army Mess)',
           fromCampusCode: 'URB',
           toCampusId: 'LSS-MSC',
           toCampusName: 'Mushitala Campus (Near Kansanshi)',

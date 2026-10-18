@@ -43,13 +43,27 @@ export interface CampusGisItem {
   }>;
 }
 
+export interface TrafficSegmentItem {
+  id: string;
+  name: string;
+  startCoords: [number, number];
+  endCoords: [number, number];
+  distanceKm: number;
+  trafficCondition: 'CLEAR' | 'MODERATE' | 'HEAVY_JAM';
+  speedKmh: number;
+  delayMinutes: number;
+}
+
 export interface LiveShuttleItem {
   id: string;
   routeCode: string;
   routeName: string;
   vehicleReg: string;
+  model?: string;
+  assignedCampuses?: string[];
   currentCoordinates: { lat: number; lng: number };
   speedKmh: number;
+  headingDegrees?: number;
   status: string;
   boardedCount: number;
   capacity: number;
@@ -57,6 +71,28 @@ export interface LiveShuttleItem {
   driverPhone?: string;
   nextStop?: string;
   etaNextStopMinutes?: number;
+  totalDistanceKm?: number;
+  networkPath?: [number, number][];
+  trafficSegments?: TrafficSegmentItem[];
+  stops?: Array<{
+    id?: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+    morningPickupTime?: string;
+    afternoonDropTime?: string;
+    studentCount?: number;
+    landmark?: string;
+    targetCampusCodes?: string[];
+    distanceFromPrevStopKm?: number;
+    trafficCondition?: 'CLEAR' | 'MODERATE' | 'HEAVY_JAM';
+  }>;
+  fuelMetrics?: {
+    dailyRoundTripKm: number;
+    dailyFuelLiters: number;
+    dailyFuelCostZMW: number;
+    monthlyFuelCostZMW: number;
+  };
 }
 
 interface CampusMapProps {
@@ -279,70 +315,135 @@ export default function CampusMap({
 
         marker.addTo(markersLayerRef.current);
 
-        // Catchment Zone Circular Overlay
-        if (showCatchmentZones && campus.catchmentRadiusKm > 0) {
-          const circle = L.circle([lat, lng], {
-            radius: campus.catchmentRadiusKm * 1000,
-            color: color,
-            weight: isSelected ? 2.5 : 1.2,
-            dashArray: isSelected ? undefined : '4, 4',
-            fillColor: color,
-            fillOpacity: isSelected ? 0.16 : 0.08,
-          });
-          circle.bindTooltip(`${campus.name} Catchment Zone (${campus.catchmentRadiusKm} km)`, {
-            sticky: true,
-          });
-          circle.addTo(catchmentLayerRef.current);
-        }
-
-        // Transport routes
-        if (showTransportRoutes && campus.transportRoutes) {
-          campus.transportRoutes.forEach((route, idx) => {
-            if (route.stops && route.stops.length >= 2) {
-              const stopCoords: [number, number][] = route.stops
-                .filter((s) => s.latitude && s.longitude)
-                .map((s) => [s.latitude, s.longitude]);
-
-              if (stopCoords.length >= 2) {
-                const polyline = L.polyline(stopCoords, {
-                  color: '#6366f1',
-                  weight: 3,
-                  opacity: 0.8,
-                  dashArray: '6, 6',
-                });
-                polyline.bindTooltip(`🚌 ${route.routeCode}: ${route.routeName}`, { sticky: true });
-                polyline.addTo(routesLayerRef.current);
-
-                // Bus stop markers
-                route.stops.forEach((stop, sIdx) => {
-                  const stopMarker = L.circleMarker([stop.latitude, stop.longitude], {
-                    radius: 4,
-                    color: '#4338ca',
-                    fillColor: '#ffffff',
-                    fillOpacity: 1,
-                    weight: 2,
-                  });
-                  stopMarker.bindTooltip(`Stop: ${stop.name} (${stop.morningTime || '07:00'})`, {
-                    direction: 'top',
-                  });
-                  stopMarker.addTo(routesLayerRef.current);
-                });
-              }
-            }
-          });
-        }
+        // Isochrones explicitly removed per user directive in favor of clean road network routes
+        // (Do not draw circular catchment overlays)
       });
 
-      // Render active live moving shuttles with real-time speed & passenger badges
+      // Render Active Live Shuttles, Road Network Corridors, Traffic Conditions & Transit Stops
       if (showTransportRoutes && liveShuttles && liveShuttles.length > 0) {
         liveShuttles.forEach((shuttle) => {
+          // 1. Render Uber-style road network traffic segments
+          if (shuttle.trafficSegments && shuttle.trafficSegments.length > 0) {
+            shuttle.trafficSegments.forEach((seg) => {
+              const segColor =
+                seg.trafficCondition === 'HEAVY_JAM'
+                  ? '#ef4444' // Red for traffic jam
+                  : seg.trafficCondition === 'MODERATE'
+                  ? '#f59e0b' // Amber for moderate slow down
+                  : '#10b981'; // Green for clear free-flowing traffic
+
+              const segWeight = seg.trafficCondition === 'HEAVY_JAM' ? 6 : seg.trafficCondition === 'MODERATE' ? 5 : 4;
+
+              const segLine = L.polyline([seg.startCoords, seg.endCoords], {
+                color: segColor,
+                weight: segWeight,
+                opacity: 0.9,
+                dashArray: seg.trafficCondition === 'HEAVY_JAM' ? '4, 4' : undefined,
+              });
+
+              const trafficLabel =
+                seg.trafficCondition === 'HEAVY_JAM'
+                  ? `🔴 TRAFFIC JAM: ${seg.name} (${seg.speedKmh} km/h, +${seg.delayMinutes}m delay)`
+                  : seg.trafficCondition === 'MODERATE'
+                  ? `🟠 MODERATE SLOWDOWN: ${seg.name} (${seg.speedKmh} km/h)`
+                  : `🟢 CLEAR ROAD: ${seg.name} (${seg.speedKmh} km/h)`;
+
+              segLine.bindTooltip(trafficLabel, { sticky: true });
+              segLine.addTo(routesLayerRef.current);
+            });
+          } else if (shuttle.networkPath && shuttle.networkPath.length >= 2) {
+            const pathLine = L.polyline(shuttle.networkPath, {
+              color: '#3b82f6',
+              weight: 4,
+              opacity: 0.85,
+            });
+            pathLine.bindTooltip(`🚌 ${shuttle.routeCode}: ${shuttle.routeName}`, { sticky: true });
+            pathLine.addTo(routesLayerRef.current);
+          }
+
+          // 2. Render Clear Transit Stop Pins with Details
+          if (shuttle.stops && shuttle.stops.length > 0) {
+            shuttle.stops.forEach((stop, sIdx) => {
+              const stopHtml = `
+                <div style="
+                  background: #1e3a8a;
+                  color: white;
+                  border: 2px solid white;
+                  box-shadow: 0 3px 8px rgba(0,0,0,0.35);
+                  border-radius: 50%;
+                  width: 22px;
+                  height: 22px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  font-size: 11px;
+                  font-weight: 800;
+                  transform: translate(-50%, -50%);
+                  cursor: pointer;
+                ">
+                  ${sIdx + 1}
+                </div>
+              `;
+              const stopIcon = L.divIcon({
+                html: stopHtml,
+                className: 'bus-stop-pin',
+                iconSize: [0, 0],
+              });
+
+              const stopMarker = L.marker([stop.latitude, stop.longitude], { icon: stopIcon });
+
+              const targetCampusesBadge = (stop.targetCampusCodes || ['URB', 'MSC'])
+                .map((code) => {
+                  const label = code === 'URB' ? 'Urban Campus (opp Kikombe)' : 'Mushitala Boarding';
+                  const bg = code === 'URB' ? '#dbeafe; color: #1e40af;' : '#dcfce7; color: #166534;';
+                  return `<span style="background: ${bg} padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700;">${label}</span>`;
+                })
+                .join(' ');
+
+              const stopPopup = `
+                <div style="font-family: sans-serif; padding: 6px; min-width: 230px; font-size: 12px; line-height: 1.4;">
+                  <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+                    <strong style="color: #0f172a; font-size: 13px;">Stop ${sIdx + 1}: ${stop.name}</strong>
+                    <span style="background: #e0e7ff; color: #3730a3; padding: 1px 5px; border-radius: 4px; font-weight: 700; font-size: 10px;">${shuttle.routeCode}</span>
+                  </div>
+                  <div style="color: #64748b; font-size: 11px; margin-bottom: 6px;">📍 ${stop.landmark || 'Designated Learner Stop'}</div>
+                  <div style="background: #f8fafc; padding: 6px 8px; border-radius: 6px; margin-bottom: 6px; font-size: 11px;">
+                    <div style="display: flex; justify-content: space-between;">
+                      <span>Morning Pickup:</span>
+                      <strong>${stop.morningPickupTime || '06:45 AM'}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 3px;">
+                      <span>Afternoon Dropoff:</span>
+                      <strong>${stop.afternoonDropTime || '15:30 PM'}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-top: 3px;">
+                      <span>Learners Boarding:</span>
+                      <strong>${stop.studentCount || 8} pupils</strong>
+                    </div>
+                  </div>
+                  <div style="margin-top: 4px;">
+                    <div style="font-size: 10px; color: #64748b; margin-bottom: 3px; font-weight: 600;">DROPOFF DESTINATIONS:</div>
+                    <div style="display: flex; gap: 4px; flex-wrap: wrap;">${targetCampusesBadge}</div>
+                  </div>
+                </div>
+              `;
+              stopMarker.bindPopup(stopPopup);
+              stopMarker.addTo(routesLayerRef.current);
+            });
+          }
+
+          // 3. Render Uber-Style Moving Shuttle Marker with Beacon & Live Traffic Alert
           if (shuttle.currentCoordinates?.lat && shuttle.currentCoordinates?.lng) {
+            const isJam = shuttle.speedKmh < 18;
+            const trafficColor = isJam ? '#ef4444' : shuttle.speedKmh < 32 ? '#f59e0b' : '#10b981';
+            const trafficBadge = isJam ? '🔴 JAM' : shuttle.speedKmh < 32 ? '🟠 SLOW' : '🟢 CLEAR';
+
             const shuttleHtml = `
               <div style="
-                background: #1e40af;
+                background: #0f172a;
                 color: white;
-                border: 2px solid #ffffff;
-                box-shadow: 0 4px 12px rgba(30,64,175,0.55);
+                border: 2px solid ${trafficColor};
+                box-shadow: 0 4px 14px ${trafficColor}60;
                 border-radius: 20px;
                 padding: 4px 10px;
                 display: flex;
@@ -356,8 +457,15 @@ export default function CampusMap({
               ">
                 <span style="font-size: 13px;">🚌</span>
                 <span>${shuttle.routeCode}</span>
-                <span style="background: rgba(255,255,255,0.2); padding: 1px 5px; border-radius: 6px; font-size: 10px;">${shuttle.speedKmh} km/h</span>
-                <span style="background: #10b981; color: white; padding: 1px 5px; border-radius: 6px; font-size: 9px;">${shuttle.boardedCount}/${shuttle.capacity}</span>
+                <span style="background: ${trafficColor}; color: white; padding: 1px 5px; border-radius: 6px; font-size: 10px; font-weight: 900;">
+                  ${shuttle.speedKmh} km/h
+                </span>
+                <span style="background: rgba(255,255,255,0.15); padding: 1px 5px; border-radius: 6px; font-size: 10px;">
+                  ${trafficBadge}
+                </span>
+                <span style="background: #3b82f6; color: white; padding: 1px 5px; border-radius: 6px; font-size: 9px;">
+                  ${shuttle.boardedCount}/${shuttle.capacity}
+                </span>
               </div>
             `;
             const shuttleIcon = L.divIcon({
@@ -371,20 +479,38 @@ export default function CampusMap({
               { icon: shuttleIcon }
             );
 
+            const campusesServed = (shuttle.assignedCampuses || [
+              'Urban Campus (opp Kikombe School / Army Mess)',
+              'Mushitala Campus',
+            ])
+              .map((c) => `<li style="margin-left: 14px;">${c}</li>`)
+              .join('');
+
+            const fuelText = shuttle.fuelMetrics
+              ? `<div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 6px; padding: 6px 8px; margin-top: 6px; font-size: 11px; color: #065f46;">
+                  <div style="font-weight: 700; margin-bottom: 2px;">⛽ Fuel & Road Distance Telematics:</div>
+                  <div>Daily Round-Trip: <strong>${shuttle.fuelMetrics.dailyRoundTripKm} km</strong></div>
+                  <div>Daily Fuel Used: <strong>${shuttle.fuelMetrics.dailyFuelLiters} L (~K${shuttle.fuelMetrics.dailyFuelCostZMW})</strong></div>
+                  <div>Monthly Fuel Budget: <strong>K${shuttle.fuelMetrics.monthlyFuelCostZMW.toLocaleString()}</strong> (22 school days)</div>
+                </div>`
+              : '';
+
             const popupContent = `
-              <div style="font-family: sans-serif; padding: 6px; max-width: 240px; font-size: 12px;">
-                <div style="font-weight: 800; color: #1e3a8a; font-size: 13px; margin-bottom: 2px;">
-                  🚌 ${shuttle.routeCode} &mdash; ${shuttle.routeName}
+              <div style="font-family: sans-serif; padding: 6px; max-width: 270px; font-size: 12px; line-height: 1.4;">
+                <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+                  <strong style="color: #0f172a; font-size: 13px;">🚌 ${shuttle.routeCode} &mdash; ${shuttle.model || 'Toyota Coaster'}</strong>
                 </div>
                 <div style="color: #64748b; font-size: 11px; margin-bottom: 6px;">
-                  Vehicle: <strong>${shuttle.vehicleReg}</strong> &bull; ${shuttle.status.replace(/_/g, ' ')}
+                  Reg: <strong>${shuttle.vehicleReg}</strong> &bull; Status: <strong style="color: ${trafficColor};">${isJam ? 'Traffic Jam Encountered' : 'Road Clear'}</strong>
                 </div>
-                <div style="background: #f1f5f9; padding: 6px 8px; border-radius: 8px; margin-bottom: 6px;">
-                  <div>Driver: <strong>${shuttle.driverName || 'Patrick Zulu'}</strong></div>
-                  <div>Phone: <strong>${shuttle.driverPhone || '+260 971 883920'}</strong></div>
+                <div style="background: #f1f5f9; padding: 6px 8px; border-radius: 8px; margin-bottom: 6px; font-size: 11px;">
+                  <div>Driver: <strong>${shuttle.driverName || 'Patrick Zulu'}</strong> (${shuttle.driverPhone || '+260 971 883920'})</div>
                   <div>Passengers: <strong>${shuttle.boardedCount} / ${shuttle.capacity} Learners Boarded</strong></div>
-                  <div>Next Stop: <strong>${shuttle.nextStop || 'Next Transit Stop'}</strong> (${shuttle.etaNextStopMinutes || 4} mins)</div>
+                  <div>Next Transit Stop: <strong>${shuttle.nextStop || 'Next Transit Stop'}</strong> (~${shuttle.etaNextStopMinutes || 4} mins)</div>
+                  <div style="margin-top: 4px; font-weight: 600; color: #334155;">Delivers to Campuses:</div>
+                  <ul style="margin: 0; padding: 0; font-size: 10.5px; color: #475569;">${campusesServed}</ul>
                 </div>
+                ${fuelText}
               </div>
             `;
             shuttleMarker.bindPopup(popupContent);
