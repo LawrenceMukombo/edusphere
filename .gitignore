@@ -30,3 +30,6 @@ next-env.d.ts
 
 # Temporary PRD extracted text
 PRD_EXTRACTED.txt
+
+# Scratch generated images
+Gemini_Generated_Image*
