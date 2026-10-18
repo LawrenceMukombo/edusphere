@@ -100,7 +100,48 @@ export default function FinancePage() {
     }
   });
 
-  const [ledgerEntries, setLedgerEntries] = useState<any[]>([]);
+  // Synchronous initial ledger baseline so Inflows tab is NEVER blank or empty
+  const [ledgerEntries, setLedgerEntries] = useState<any[]>(() => {
+    try {
+      const learners = generateLegacyLearners(780);
+      const list: any[] = [];
+      learners.forEach((l, idx) => {
+        l.feeHistory?.forEach((f, fIdx) => {
+          if (f.amountPaid > 0) {
+            list.push({
+              id: f.id || `txn-${l.studentNumber}-${fIdx}`,
+              organisationId: 'EDS-ZM-SOL-001',
+              learnerId: l.studentNumber,
+              entryType: 'CREDIT_PAYMENT',
+              amount: f.amountPaid,
+              balanceAfter: f.balanceRemaining,
+              description: `${f.category === 'BOARDING_AND_TUITION' ? 'Term 1 Boarding & Tuition' : 'Term 1 Primary Day Tuition'} (${f.termLabel}) — ${f.paymentMethod} (Ref: ${f.referenceNumber})`,
+              postedById: 'Mr. C. Mulenga (Bursar)',
+              postedAt: `${f.paymentDate}T10:00:00Z`,
+              payment: {
+                paymentNumber: `PAY-${f.academicYear}-${String((idx * 7 + fIdx) % 8999 + 1000)}`,
+                referenceNumber: f.referenceNumber,
+                amount: f.amountPaid,
+                paymentMethod: f.paymentMethod.toUpperCase().replace(/\s+/g, '_'),
+                receivedDate: f.paymentDate,
+                receipt: {
+                  receiptNumber: f.receiptNumber,
+                },
+              },
+              learnerName: l.learnerName,
+              studentNumber: l.studentNumber,
+              campusName: l.campusName,
+              gradeName: l.className,
+            });
+          }
+        });
+      });
+      list.sort((a, b) => new Date(b.postedAt).getTime() - new Date(a.postedAt).getTime());
+      return list;
+    } catch (e) {
+      return [];
+    }
+  });
   const [expenditures, setExpenditures] = useState<ExpenditureRecord[]>(LEGACY_EXPENDITURES);
   const [reportsData, setReportsData] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -215,6 +256,19 @@ export default function FinancePage() {
     }
     return list;
   }, [learnerBalances, selectedCampus, statusFilter, selectedChartClass]);
+
+  // Scoped inflows ledger entries reflecting active campus
+  const displayedLedgerEntries = useMemo(() => {
+    let list = ledgerEntries;
+    if (selectedCampus && selectedCampus !== 'ALL') {
+      if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
+        list = list.filter((e) => (e.campusName && (e.campusName.includes('Mushitala') || e.campusName.includes('Kansanshi'))) || e.campusId === 'LSS-MSC');
+      } else if (selectedCampus === 'URBAN') {
+        list = list.filter((e) => (e.campusName && e.campusName.includes('Urban')) || e.campusId === 'LSS-URB');
+      }
+    }
+    return list;
+  }, [ledgerEntries, selectedCampus]);
 
   // Collections vs Billed by Class for Interactive Chart
   const collectionsChartData = useMemo(() => {
@@ -838,7 +892,7 @@ export default function FinancePage() {
           <ReceiptIcon className="w-4 h-4" />
           <span>Transparent Inflows Ledger</span>
           <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded text-[10px]">
-            {ledgerEntries.length} Inflows
+            {displayedLedgerEntries.length} Inflows
           </span>
         </button>
 
@@ -899,7 +953,7 @@ export default function FinancePage() {
       {activeTab === 'ledger' && (
         <div className="space-y-4">
           <EnterpriseTable
-            data={ledgerEntries}
+            data={displayedLedgerEntries}
             columns={ledgerColumns}
             title="Institutional Inflows & Official Receipt Journal"
             description="Real-time multi-channel deposits reconciled into the General Ledger."

@@ -26,8 +26,14 @@ import {
   Phone,
   Mail,
   Info,
+  Radio,
+  CreditCard,
+  QrCode,
+  BellRing,
+  Clock,
+  Sparkles,
 } from 'lucide-react';
-import { CampusGisItem } from '@/components/gis/CampusMap';
+import { CampusGisItem, LiveShuttleItem } from '@/components/gis/CampusMap';
 import { useCampus } from '@/components/CampusContext';
 
 // Dynamically import Leaflet Map to avoid SSR errors
@@ -65,6 +71,38 @@ export default function GisCampusesPage() {
   const [showCatchmentZones, setShowCatchmentZones] = useState(true);
   const [showTransportRoutes, setShowTransportRoutes] = useState(true);
   const [pickedLocation, setPickedLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  // Live Transport & Shuttle GPS Tracking State
+  const [liveShuttles, setLiveShuttles] = useState<LiveShuttleItem[]>([]);
+  const [boardingLogs, setBoardingLogs] = useState<any[]>([]);
+  const [showAddStopModal, setShowAddStopModal] = useState(false);
+  const [showBoardingModal, setShowBoardingModal] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const [newStopForm, setNewStopForm] = useState({
+    routeCode: 'BUS-SOL-02',
+    name: '',
+    latitude: '-12.1600',
+    longitude: '26.4000',
+    morningPickupTime: '06:50',
+    afternoonDropTime: '15:35',
+    studentCount: '6',
+    landmark: '',
+  });
+
+  const [boardingForm, setBoardingForm] = useState({
+    studentNumber: 'LSS-2026-0042',
+    studentName: 'Bupe Mwewa',
+    className: 'Form 2 Green',
+    routeCode: 'BUS-SOL-02',
+    stopName: 'Kansanshi Golf Estate Gate 1',
+    method: 'NFC_MIFARE_CARD' as 'NFC_MIFARE_CARD' | 'QR_CODE_SCAN',
+  });
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4500);
+  };
 
   // Synchronize map selection with top navigation campus switcher
   useEffect(() => {
@@ -160,9 +198,96 @@ export default function GisCampusesPage() {
     }
   };
 
+  const fetchTransportData = async () => {
+    try {
+      const res = await fetch('/api/gis/transport');
+      const json = await res.json();
+      if (json.success && json.data) {
+        setLiveShuttles(json.data.shuttles);
+        setBoardingLogs(json.data.boardingLogs);
+      }
+    } catch (e) {
+      // Keep existing state
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    fetchTransportData();
+    const interval = setInterval(() => {
+      fetchTransportData();
+    }, 4000);
+    return () => clearInterval(interval);
   }, []);
+
+  const handleAddStop = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/gis/transport', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'ADD_STOP',
+          routeCode: newStopForm.routeCode,
+          name: newStopForm.name,
+          latitude: Number(newStopForm.latitude),
+          longitude: Number(newStopForm.longitude),
+          morningPickupTime: newStopForm.morningPickupTime,
+          afternoonDropTime: newStopForm.afternoonDropTime,
+          studentCount: Number(newStopForm.studentCount),
+          landmark: newStopForm.landmark,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(json.message);
+        setShowAddStopModal(false);
+        setNewStopForm({
+          routeCode: 'BUS-SOL-02',
+          name: '',
+          latitude: '-12.1600',
+          longitude: '26.4000',
+          morningPickupTime: '06:50',
+          afternoonDropTime: '15:35',
+          studentCount: '6',
+          landmark: '',
+        });
+        fetchTransportData();
+        fetchData();
+      } else {
+        alert(json.message || 'Failed to add route stop');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error communicating with transport service');
+    }
+  };
+
+  const handleBoardStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/gis/transport', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'BOARD_STUDENT',
+          studentNumber: boardingForm.studentNumber,
+          routeCode: boardingForm.routeCode,
+          stopName: boardingForm.stopName,
+          method: boardingForm.method,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast(`✔ Tap Verified: ${json.data.log.studentName} boarded ${json.data.log.routeCode}. SMS sent to guardian.`);
+        setShowBoardingModal(false);
+        fetchTransportData();
+      } else {
+        alert(json.message || 'Boarding log error');
+      }
+    } catch (err: any) {
+      alert(err.message || 'Error processing student ID card');
+    }
+  };
 
   // Nearest Campus calculation trigger
   const runNearestCalculation = async (lat: number, lng: number) => {
@@ -559,16 +684,25 @@ export default function GisCampusesPage() {
             )}
           </div>
 
-          {/* Leaflet Map Component */}
-          <CampusMap
-            campuses={campuses}
-            selectedCampusId={selectedCampus?.id || null}
-            onSelectCampus={(c) => setSelectedCampus(c)}
-            pickedLocation={pickedLocation}
-            onPickLocation={handlePickMapLocation}
-            showCatchmentZones={showCatchmentZones}
-            showTransportRoutes={showTransportRoutes}
-          />
+      {/* Toast Notification Popup */}
+      {toastMessage && (
+        <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700 animate-in slide-in-from-top-4">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          <span className="text-xs font-semibold">{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Leaflet Map Component */}
+      <CampusMap
+        campuses={campuses}
+        selectedCampusId={selectedCampus?.id || null}
+        onSelectCampus={(c) => setSelectedCampus(c)}
+        pickedLocation={pickedLocation}
+        onPickLocation={handlePickMapLocation}
+        showCatchmentZones={showCatchmentZones}
+        showTransportRoutes={showTransportRoutes}
+        liveShuttles={liveShuttles}
+      />
 
           {/* Quick Details of Selected Campus */}
           {selectedCampus && (
@@ -1010,28 +1144,311 @@ export default function GisCampusesPage() {
             </div>
           </div>
 
-          {/* Active Bus Shuttles List */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
-            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-              <Bus className="w-4 h-4 text-blue-600" />
-              Active Inter-Campus Transport Shuttles
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {campuses.flatMap((c) =>
-                c.transportRoutes.map((r) => (
-                  <div key={r.id} className="p-4 rounded-xl border border-slate-200 bg-slate-50/50 space-y-2">
+          {/* Active Bus Shuttles & Live Route Management */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Bus className="w-5 h-5 text-blue-600" />
+                  Active Inter-Campus Shuttles & Live Fleet GIS Tracking
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Real-time GPS transit monitoring, pickup stop management, and contactless learner ID card boarding verification.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setShowAddStopModal(true)}
+                  className="px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Route Stop</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowBoardingModal(true)}
+                  className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  <span>Simulate Student ID Card Tap</span>
+                </button>
+
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200">
+                  <Radio className="w-3.5 h-3.5 text-emerald-500 animate-pulse" />
+                  <span>Live GPS Active</span>
+                </span>
+              </div>
+            </div>
+
+            {/* Shuttle Cards Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {(liveShuttles.length > 0 ? liveShuttles : [
+                {
+                  id: 'shuttle-01',
+                  routeCode: 'BUS-SOL-01',
+                  routeName: 'Kyawama — Civic Centre — Urban Campus Express',
+                  vehicleReg: 'BAX 3192 ZM',
+                  driverName: 'Mr. Timothy Kabwe',
+                  driverPhone: '+260 976 119284',
+                  capacity: 32,
+                  speedKmh: 36,
+                  status: 'IN_TRANSIT',
+                  boardedCount: 25,
+                  nextStop: 'Solwezi Town Post Office / Civic Centre',
+                  etaNextStopMinutes: 4,
+                  currentCoordinates: { lat: -12.1840, lng: 26.3820 },
+                  stops: [
+                    { id: '1', name: 'Kyawama Market Terminal', routeCode: 'BUS-SOL-01', morningPickupTime: '06:40', afternoonDropTime: '15:45', studentCount: 14, landmark: 'Opposite Market Gate', latitude: -12.1865, longitude: 26.3790 },
+                    { id: '2', name: 'Solwezi Town Post Office', routeCode: 'BUS-SOL-01', morningPickupTime: '06:55', afternoonDropTime: '15:30', studentCount: 11, landmark: 'Civic Centre Layby', latitude: -12.1825, longitude: 26.3850 },
+                    { id: '3', name: 'Urban Campus Terminal', routeCode: 'BUS-SOL-01', morningPickupTime: '07:15', afternoonDropTime: '15:10', studentCount: 7, landmark: 'Assembly Forecourt', latitude: -12.1812, longitude: 26.3884 },
+                  ],
+                },
+                {
+                  id: 'shuttle-02',
+                  routeCode: 'BUS-SOL-02',
+                  routeName: 'Kansanshi Golf Estate — Mess — Mushitala Campus Corridor',
+                  vehicleReg: 'BAL 4920 ZM',
+                  driverName: 'Mr. Patrick Zulu',
+                  driverPhone: '+260 971 883920',
+                  capacity: 30,
+                  speedKmh: 42,
+                  status: 'IN_TRANSIT',
+                  boardedCount: 27,
+                  nextStop: 'SGC Filling Station Junction',
+                  etaNextStopMinutes: 3,
+                  currentCoordinates: { lat: -12.1585, lng: 26.4015 },
+                  stops: [
+                    { id: '4', name: 'Kansanshi Golf Estate Gate 1', routeCode: 'BUS-SOL-02', morningPickupTime: '06:45', afternoonDropTime: '16:00', studentCount: 12, landmark: 'Main Security Boom', latitude: -12.1480, longitude: 26.4120 },
+                    { id: '5', name: 'Officers Mess Roundabout', routeCode: 'BUS-SOL-02', morningPickupTime: '07:00', afternoonDropTime: '15:45', studentCount: 10, landmark: 'Mine Mess Layby', latitude: -12.1560, longitude: 26.4040 },
+                    { id: '6', name: 'SGC Filling Station Junction', routeCode: 'BUS-SOL-02', morningPickupTime: '07:10', afternoonDropTime: '15:30', studentCount: 5, landmark: 'Kansanshi Mine Road', latitude: -12.1620, longitude: 26.3980 },
+                    { id: '7', name: 'Mushitala Boarding Main Gate', routeCode: 'BUS-SOL-02', morningPickupTime: '07:18', afternoonDropTime: '15:20', studentCount: 3, landmark: 'Secondary School Gate', latitude: -12.1642, longitude: 26.3951 },
+                  ],
+                },
+              ]).map((shuttle: any) => {
+                const occupancyRate = Math.round((shuttle.boardedCount / shuttle.capacity) * 100);
+                return (
+                  <div key={shuttle.id} className="p-5 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-4 hover:shadow-xs transition">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-blue-700 text-xs bg-blue-100 px-2 py-0.5 rounded">{r.routeCode}</span>
-                      <span className="text-[11px] text-slate-500 font-mono">{r.vehicleReg || 'BAX 2939 ZM'}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-black text-xs bg-blue-600 text-white px-2.5 py-1 rounded-lg shadow-2xs">
+                          {shuttle.routeCode}
+                        </span>
+                        <span className="font-bold text-slate-900 text-xs">{shuttle.vehicleReg}</span>
+                      </div>
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                        {shuttle.speedKmh} km/h • In Motion
+                      </span>
                     </div>
-                    <div className="font-bold text-slate-900 text-xs">{r.routeName}</div>
-                    <div className="text-[11px] text-slate-600 space-y-1">
-                      <div>Capacity: <strong>{r.capacity} seats</strong></div>
-                      <div>Stops Count: <strong>{r.stops?.length || 4} transit stops</strong></div>
+
+                    <div>
+                      <h4 className="font-black text-slate-900 text-sm">{shuttle.routeName}</h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Driver: <strong>{shuttle.driverName || 'Patrick Zulu'}</strong> ({shuttle.driverPhone || '+260 971 883920'})
+                      </p>
+                    </div>
+
+                    {/* Passenger Occupancy Bar */}
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-bold text-slate-700">Passenger Load (NFC Logged):</span>
+                        <span className="font-mono font-bold text-slate-900">
+                          {shuttle.boardedCount} / {shuttle.capacity} seats ({occupancyRate}%)
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-500 ${
+                            occupancyRate > 90
+                              ? 'bg-rose-500'
+                              : occupancyRate > 75
+                              ? 'bg-amber-500'
+                              : 'bg-emerald-500'
+                          }`}
+                          style={{ width: `${Math.min(100, occupancyRate)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Next Stop Callout */}
+                    <div className="p-3 bg-white rounded-xl border border-blue-100 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <Navigation className="w-4 h-4 text-blue-600 shrink-0" />
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-semibold uppercase">Next Transit Stop</span>
+                          <span className="font-bold text-slate-800">{shuttle.nextStop || 'Approaching Stop'}</span>
+                        </div>
+                      </div>
+                      <span className="px-2 py-1 rounded bg-blue-50 text-blue-700 font-bold font-mono text-[11px]">
+                        ETA ~{shuttle.etaNextStopMinutes || 3} mins
+                      </span>
+                    </div>
+
+                    {/* Sequenced Route Stops */}
+                    <div className="space-y-2 pt-2 border-t border-slate-200">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-700">
+                        <span>Designated Route Stops ({shuttle.stops?.length || 3})</span>
+                        <span className="text-[10px] text-slate-400 font-normal">Morning &bull; Afternoon</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {shuttle.stops?.map((stop: any, sIdx: number) => (
+                          <div
+                            key={stop.id || sIdx}
+                            className="flex items-center justify-between p-2 rounded-lg bg-white border border-slate-100 text-xs"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-700 font-bold text-[10px] flex items-center justify-center shrink-0">
+                                {sIdx + 1}
+                              </span>
+                              <div>
+                                <span className="font-bold text-slate-800 block">{stop.name}</span>
+                                <span className="text-[10px] text-slate-400">{stop.landmark || 'Designated Pickup Zone'}</span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-mono font-bold text-blue-700 block text-[11px]">
+                                {stop.morningPickupTime || '07:00'}
+                              </span>
+                              <span className="text-[10px] text-slate-500 font-mono">
+                                Return: {stop.afternoonDropTime || '15:30'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                ))
-              )}
+                );
+              })}
+            </div>
+
+            {/* Smart Learner Bus Boarding & ID Card Manifest (Rule 24 Compliant) */}
+            <div className="space-y-3 pt-4 border-t border-slate-200">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                    Today's Real-Time Learner Boarding Manifest (NFC / QR Scans)
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Live scan log from in-bus contactless reader terminal. Automated SMS sent to parents on tap.
+                  </p>
+                </div>
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  {boardingLogs.length} Verified Taps Today
+                </span>
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+                    <tr>
+                      <th className="p-3">Student Number</th>
+                      <th className="p-3">Learner Name</th>
+                      <th className="p-3">Class Cohort</th>
+                      <th className="p-3">Bus Route</th>
+                      <th className="p-3">Boarding Stop</th>
+                      <th className="p-3">Tap Time</th>
+                      <th className="p-3">Parent Notification</th>
+                      <th className="p-3">Scan Method</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {boardingLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="p-6 text-center text-slate-400">
+                          No boarding scans recorded yet today. Click "Simulate Student ID Card Tap" above.
+                        </td>
+                      </tr>
+                    ) : (
+                      boardingLogs.map((log: any) => (
+                        <tr key={log.id} className="hover:bg-slate-50">
+                          <td className="p-3 font-mono font-bold text-blue-700">{log.studentNumber}</td>
+                          <td className="p-3 font-bold text-slate-900">{log.studentName}</td>
+                          <td className="p-3 text-slate-700">{log.className}</td>
+                          <td className="p-3">
+                            <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold font-mono text-[10px]">
+                              {log.routeCode}
+                            </span>
+                          </td>
+                          <td className="p-3 text-slate-700 font-semibold">{log.stopName}</td>
+                          <td className="p-3 font-mono text-slate-600">
+                            {new Date(log.tapTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                          </td>
+                          <td className="p-3">
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3" /> SMS Delivered ({log.guardianPhone})
+                            </span>
+                          </td>
+                          <td className="p-3">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                              {log.boardingMethod === 'NFC_MIFARE_CARD' ? '💳 NFC MIFARE' : '📱 2D QR Code'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Strategic Technical Advisory: Learner ID Card Bus Boarding */}
+            <div className="p-5 rounded-2xl bg-linear-to-br from-indigo-50/60 to-blue-50/60 border border-indigo-200 space-y-3">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-indigo-600" />
+                <h4 className="font-bold text-sm text-indigo-950">
+                  Strategic Advisory for Executive Management: Smart Transport & ID Card Boarding Architecture
+                </h4>
+              </div>
+              <p className="text-xs text-indigo-900/90 leading-relaxed">
+                As requested, here is the enterprise architectural blueprint for implementing contactless student ID card boarding across Legacy School's Solwezi shuttle fleet:
+              </p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 text-xs pt-1">
+                <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-2xs space-y-1">
+                  <div className="font-bold text-indigo-950 flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5 text-blue-600" />
+                    <span>1. ID Card Technology</span>
+                  </div>
+                  <p className="text-slate-600 text-[11px] leading-snug">
+                    Standardize on <strong>MIFARE Classic 1K / DESFire 13.56 MHz NFC PVC cards</strong> with 2D QR code fallback. Dual-technology allows tap-to-board, library checkout, and cashless tuckshop purchases on one student badge.
+                  </p>
+                </div>
+
+                <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-2xs space-y-1">
+                  <div className="font-bold text-indigo-950 flex items-center gap-1.5">
+                    <Radio className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>2. In-Bus Validator Hardware</span>
+                  </div>
+                  <p className="text-slate-600 text-[11px] leading-snug">
+                    Mount a rugged <strong>7-inch Android In-Vehicle Telematics Tablet (NFC + GPS + 4G LTE)</strong> on the bus entrance stanchion. The tablet beeps green on tap, shows student photo, and alerts if a child boards the wrong shuttle.
+                  </p>
+                </div>
+
+                <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-2xs space-y-1">
+                  <div className="font-bold text-indigo-950 flex items-center gap-1.5">
+                    <BellRing className="w-3.5 h-3.5 text-amber-600" />
+                    <span>3. Instant Guardian Alerts</span>
+                  </div>
+                  <p className="text-slate-600 text-[11px] leading-snug">
+                    Upon successful tap-in, EduSphere dispatches an <strong>instant automated SMS and WhatsApp notification</strong> to parents with exact timestamp, bus ID, and pickup stop, eliminating parental anxiety.
+                  </p>
+                </div>
+
+                <div className="p-3 bg-white rounded-xl border border-indigo-100 shadow-2xs space-y-1">
+                  <div className="font-bold text-indigo-950 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-purple-600" />
+                    <span>4. Offline-First Resilience</span>
+                  </div>
+                  <p className="text-slate-600 text-[11px] leading-snug">
+                    Full offline store-and-forward capability: if the shuttle passes through low-signal pockets along Kansanshi Mine Road, taps are cached in encrypted local SQLite and automatically synced when back in 4G coverage.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1335,6 +1752,261 @@ export default function GisCampusesPage() {
                   className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xs"
                 >
                   {editingCampus ? 'Update GIS' : 'Create Branch'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* MODAL 1: ADD ROUTE STOP */}
+      {showAddStopModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                  <MapPin className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Add Learner Route Transit Stop</h3>
+                  <p className="text-[11px] text-slate-500">Expand feeder pickup coverage in Solwezi</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddStopModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleAddStop} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Target Bus Shuttle Route *</label>
+                <select
+                  value={newStopForm.routeCode}
+                  onChange={(e) => setNewStopForm({ ...newStopForm, routeCode: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold text-blue-900"
+                >
+                  <option value="BUS-SOL-01">BUS-SOL-01 (Kyawama — Urban Campus Express)</option>
+                  <option value="BUS-SOL-02">BUS-SOL-02 (Kansanshi Golf Estate — Mushitala Campus)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Stop / Station Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Solwezi Airport Junction / Chawama Turnoff"
+                  value={newStopForm.name}
+                  onChange={(e) => setNewStopForm({ ...newStopForm, name: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Latitude (-90 to +90) *</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    required
+                    value={newStopForm.latitude}
+                    onChange={(e) => setNewStopForm({ ...newStopForm, latitude: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Longitude (-180 to +180) *</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    required
+                    value={newStopForm.longitude}
+                    onChange={(e) => setNewStopForm({ ...newStopForm, longitude: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Morning Pickup Time *</label>
+                  <input
+                    type="time"
+                    required
+                    value={newStopForm.morningPickupTime}
+                    onChange={(e) => setNewStopForm({ ...newStopForm, morningPickupTime: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Afternoon Dropoff Time *</label>
+                  <input
+                    type="time"
+                    required
+                    value={newStopForm.afternoonDropTime}
+                    onChange={(e) => setNewStopForm({ ...newStopForm, afternoonDropTime: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Recognizable Landmark</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Near Puma Service Station, Under Big Fig Tree"
+                  value={newStopForm.landmark}
+                  onChange={(e) => setNewStopForm({ ...newStopForm, landmark: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddStopModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-xs"
+                >
+                  Add Stop to Route
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: SIMULATE STUDENT ID CARD TAP */}
+      {showBoardingModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                  <CreditCard className="w-5 h-5" />
+                </span>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Learner Bus ID Card Tap Simulator</h3>
+                  <p className="text-[11px] text-slate-500">Contactless NFC / Barcode In-Bus Check-in</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBoardingModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-lg"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleBoardStudent} className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Select Student to Tap In *</label>
+                <select
+                  value={boardingForm.studentNumber}
+                  onChange={(e) => {
+                    const sn = e.target.value;
+                    const sampleNames: Record<string, { name: string; class: string }> = {
+                      'LSS-2026-0042': { name: 'Bupe Mwewa', class: 'Form 2 Green' },
+                      'LSS-2026-0043': { name: 'Mulenga Chanda', class: 'Form 2 Green' },
+                      'LSS-2026-0044': { name: 'Zondani Phiri', class: 'Form 2 Green' },
+                      'LSS-2026-0045': { name: 'Chilufya Tembo', class: 'Form 2 Green' },
+                      'LSS-2026-0155': { name: 'Kondwani Mwewa', class: 'Grade 6 Silver' },
+                      'LSS-2026-0198': { name: 'Natasha Mwewa', class: 'Reception Stars' },
+                    };
+                    const s = sampleNames[sn] || { name: 'Learner', class: 'Form 1 Alpha' };
+                    setBoardingForm({
+                      ...boardingForm,
+                      studentNumber: sn,
+                      studentName: s.name,
+                      className: s.class,
+                    });
+                  }}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-bold"
+                >
+                  <option value="LSS-2026-0042">LSS-2026-0042 &bull; Bupe Mwewa (Form 2 Green)</option>
+                  <option value="LSS-2026-0043">LSS-2026-0043 &bull; Mulenga Chanda (Form 2 Green)</option>
+                  <option value="LSS-2026-0044">LSS-2026-0044 &bull; Zondani Phiri (Form 2 Green)</option>
+                  <option value="LSS-2026-0045">LSS-2026-0045 &bull; Chilufya Tembo (Form 2 Green)</option>
+                  <option value="LSS-2026-0155">LSS-2026-0155 &bull; Kondwani Mwewa (Grade 6 Silver)</option>
+                  <option value="LSS-2026-0198">LSS-2026-0198 &bull; Natasha Mwewa (Reception Stars)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Bus Route *</label>
+                <select
+                  value={boardingForm.routeCode}
+                  onChange={(e) => setBoardingForm({ ...boardingForm, routeCode: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                >
+                  <option value="BUS-SOL-02">BUS-SOL-02 &bull; Kansanshi — Mushitala Corridor</option>
+                  <option value="BUS-SOL-01">BUS-SOL-01 &bull; Kyawama — Urban Campus Express</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Boarding Stop Location *</label>
+                <input
+                  type="text"
+                  required
+                  value={boardingForm.stopName}
+                  onChange={(e) => setBoardingForm({ ...boardingForm, stopName: e.target.value })}
+                  placeholder="e.g. Kansanshi Golf Estate Gate 1"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Card Verification Mechanism</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={boardingForm.method === 'NFC_MIFARE_CARD'}
+                      onChange={() => setBoardingForm({ ...boardingForm, method: 'NFC_MIFARE_CARD' })}
+                    />
+                    <span className="font-bold text-slate-800">💳 NFC MIFARE</span>
+                  </label>
+                  <label className="p-2.5 rounded-xl border border-slate-200 bg-slate-50 flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      checked={boardingForm.method === 'QR_CODE_SCAN'}
+                      onChange={() => setBoardingForm({ ...boardingForm, method: 'QR_CODE_SCAN' })}
+                    />
+                    <span className="font-bold text-slate-800">📱 2D QR Code</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 text-[11px] space-y-1">
+                <span className="font-bold block">Automated Safeguarding Protocol:</span>
+                <span>Tapping will verify passenger entitlement, increment the onboard bus manifest count, and trigger an automated SMS confirmation to the learner's guardian (+260 977 889900).</span>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowBoardingModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-xs flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Execute Tap & Confirm SMS</span>
                 </button>
               </div>
             </form>

@@ -43,6 +43,22 @@ export interface CampusGisItem {
   }>;
 }
 
+export interface LiveShuttleItem {
+  id: string;
+  routeCode: string;
+  routeName: string;
+  vehicleReg: string;
+  currentCoordinates: { lat: number; lng: number };
+  speedKmh: number;
+  status: string;
+  boardedCount: number;
+  capacity: number;
+  driverName?: string;
+  driverPhone?: string;
+  nextStop?: string;
+  etaNextStopMinutes?: number;
+}
+
 interface CampusMapProps {
   campuses: CampusGisItem[];
   selectedCampusId: string | null;
@@ -51,6 +67,7 @@ interface CampusMapProps {
   onPickLocation?: (coords: { latitude: number; longitude: number }) => void;
   showCatchmentZones?: boolean;
   showTransportRoutes?: boolean;
+  liveShuttles?: LiveShuttleItem[];
 }
 
 export default function CampusMap({
@@ -61,6 +78,7 @@ export default function CampusMap({
   onPickLocation,
   showCatchmentZones = true,
   showTransportRoutes = true,
+  liveShuttles = [],
 }: CampusMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<any>(null);
@@ -314,6 +332,66 @@ export default function CampusMap({
           });
         }
       });
+
+      // Render active live moving shuttles with real-time speed & passenger badges
+      if (showTransportRoutes && liveShuttles && liveShuttles.length > 0) {
+        liveShuttles.forEach((shuttle) => {
+          if (shuttle.currentCoordinates?.lat && shuttle.currentCoordinates?.lng) {
+            const shuttleHtml = `
+              <div style="
+                background: #1e40af;
+                color: white;
+                border: 2px solid #ffffff;
+                box-shadow: 0 4px 12px rgba(30,64,175,0.55);
+                border-radius: 20px;
+                padding: 4px 10px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 11px;
+                font-weight: 800;
+                transform: translate(-50%, -50%);
+                cursor: pointer;
+                transition: transform 0.3s ease;
+              ">
+                <span style="font-size: 13px;">🚌</span>
+                <span>${shuttle.routeCode}</span>
+                <span style="background: rgba(255,255,255,0.2); padding: 1px 5px; border-radius: 6px; font-size: 10px;">${shuttle.speedKmh} km/h</span>
+                <span style="background: #10b981; color: white; padding: 1px 5px; border-radius: 6px; font-size: 9px;">${shuttle.boardedCount}/${shuttle.capacity}</span>
+              </div>
+            `;
+            const shuttleIcon = L.divIcon({
+              html: shuttleHtml,
+              className: 'live-shuttle-marker',
+              iconSize: [0, 0],
+            });
+
+            const shuttleMarker = L.marker(
+              [shuttle.currentCoordinates.lat, shuttle.currentCoordinates.lng],
+              { icon: shuttleIcon }
+            );
+
+            const popupContent = `
+              <div style="font-family: sans-serif; padding: 6px; max-width: 240px; font-size: 12px;">
+                <div style="font-weight: 800; color: #1e3a8a; font-size: 13px; margin-bottom: 2px;">
+                  🚌 ${shuttle.routeCode} &mdash; ${shuttle.routeName}
+                </div>
+                <div style="color: #64748b; font-size: 11px; margin-bottom: 6px;">
+                  Vehicle: <strong>${shuttle.vehicleReg}</strong> &bull; ${shuttle.status.replace(/_/g, ' ')}
+                </div>
+                <div style="background: #f1f5f9; padding: 6px 8px; border-radius: 8px; margin-bottom: 6px;">
+                  <div>Driver: <strong>${shuttle.driverName || 'Patrick Zulu'}</strong></div>
+                  <div>Phone: <strong>${shuttle.driverPhone || '+260 971 883920'}</strong></div>
+                  <div>Passengers: <strong>${shuttle.boardedCount} / ${shuttle.capacity} Learners Boarded</strong></div>
+                  <div>Next Stop: <strong>${shuttle.nextStop || 'Next Transit Stop'}</strong> (${shuttle.etaNextStopMinutes || 4} mins)</div>
+                </div>
+              </div>
+            `;
+            shuttleMarker.bindPopup(popupContent);
+            shuttleMarker.addTo(routesLayerRef.current);
+          }
+        });
+      }
 
       // Render picked target location marker
       if (pickedLocation) {
