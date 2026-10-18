@@ -49,8 +49,8 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings>(loadAppSettings());
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
   const [activeTab, setActiveTab] = useState<
-    'modules' | 'infrastructure' | 'finance' | 'compliance' | 'storage' | 'audit'
-  >('modules');
+    'licensing' | 'modules' | 'infrastructure' | 'finance' | 'compliance' | 'storage' | 'audit'
+  >('licensing');
   const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [dbStatus, setDbStatus] = useState<{ connected: boolean; stores: string[] }>({
@@ -215,6 +215,7 @@ export default function SettingsPage() {
         {/* Navigation Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto pt-6 mt-6 border-t border-white/10 scrollbar-none">
           {[
+            { id: 'licensing', label: 'Subscription & Licensing', icon: Sparkles },
             { id: 'modules', label: 'Modules & Strict Rules', icon: Sliders },
             { id: 'infrastructure', label: 'Campuses & Infrastructure', icon: Building2 },
             { id: 'finance', label: 'Mobile Money & Arrears Gate', icon: DollarSign },
@@ -242,6 +243,303 @@ export default function SettingsPage() {
           })}
         </div>
       </div>
+
+      {/* TAB 0: INSTITUTIONAL SUBSCRIPTION & MODULE LICENSING */}
+      {activeTab === 'licensing' && (
+        <div className="space-y-6 animate-in fade-in-50 duration-200">
+          {/* Institutional Subscription Tier & Quotas */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center border border-amber-200">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">
+                    Institutional Subscription Tier & Licensing
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Manage your institution plan tier, student quota limits, and per-module licensing authorizations.
+                  </p>
+                </div>
+              </div>
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider border ${
+                settings.subscription.status === 'ACTIVE'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  : 'bg-amber-50 text-amber-800 border-amber-200'
+              }`}>
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                Plan Status: {settings.subscription.status}
+              </span>
+            </div>
+
+            {/* Plan Tier Selection Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                {
+                  tier: 'STARTER' as const,
+                  name: 'Starter Academic',
+                  desc: 'Core Attendance, School Calendar, and Academic Gradebook records for small single-campus schools.',
+                  badge: 'Entry Tier',
+                  includedModules: ['attendance', 'calendar', 'academics'],
+                },
+                {
+                  tier: 'PROFESSIONAL' as const,
+                  name: 'Professional SMIS',
+                  desc: 'Includes Boarding Houses, Teacher Workspace, and Complete Fee Inflows & Arrears Debtors Ledger.',
+                  badge: 'Most Popular',
+                  includedModules: ['attendance', 'calendar', 'academics', 'boarding', 'fees', 'teacher'],
+                },
+                {
+                  tier: 'SOVEREIGN_ENTERPRISE' as const,
+                  name: 'Sovereign Enterprise',
+                  desc: 'Full institutional suite: HR TCZ compliance, Solwezi GIS GPS tracking, Admissions SIS, and Parent Portal.',
+                  badge: 'Complete Suite',
+                  includedModules: ['attendance', 'calendar', 'academics', 'boarding', 'fees', 'teacher', 'hr', 'gis', 'admissions', 'parentPortal'],
+                },
+              ].map((p) => {
+                const isCurrent = settings.subscription.planTier === p.tier;
+                return (
+                  <div
+                    key={p.tier}
+                    onClick={() => {
+                      const newLicensed = { ...settings.subscription.licensedModules };
+                      if (p.tier === 'STARTER') {
+                        Object.keys(newLicensed).forEach((k) => {
+                          (newLicensed as any)[k] = p.includedModules.includes(k);
+                        });
+                      } else if (p.tier === 'PROFESSIONAL') {
+                        Object.keys(newLicensed).forEach((k) => {
+                          (newLicensed as any)[k] = p.includedModules.includes(k);
+                        });
+                      } else {
+                        Object.keys(newLicensed).forEach((k) => {
+                          (newLicensed as any)[k] = true;
+                        });
+                      }
+
+                      setSettings({
+                        ...settings,
+                        subscription: {
+                          ...settings.subscription,
+                          planTier: p.tier,
+                          licensedModules: newLicensed,
+                        },
+                      });
+                    }}
+                    className={`p-5 rounded-2xl border cursor-pointer transition-all ${
+                      isCurrent
+                        ? 'border-blue-900 bg-blue-50/50 ring-2 ring-blue-900/20 shadow-md'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-bold uppercase tracking-wider text-blue-900">
+                        {p.badge}
+                      </span>
+                      {isCurrent && (
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-900 text-white">
+                          Active Plan ✓
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-base font-black text-slate-900">{p.name}</h3>
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">{p.desc}</p>
+                    <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold">
+                      <span className="text-slate-500">Modules:</span>
+                      <span className="font-mono text-blue-900">{p.includedModules.length} Licensed</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Quotas & Expiry Parameters */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-100 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Enrolled Learners Quota</label>
+                <input
+                  type="number"
+                  value={settings.subscription.maxLearners}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      subscription: {
+                        ...settings.subscription,
+                        maxLearners: Number(e.target.value),
+                      },
+                    })
+                  }
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Subscription Expiry Date</label>
+                <input
+                  type="date"
+                  value={settings.subscription.expiryDate}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      subscription: {
+                        ...settings.subscription,
+                        expiryDate: e.target.value,
+                      },
+                    })
+                  }
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-mono font-bold"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Institutional Entitlement Status</label>
+                <select
+                  value={settings.subscription.status}
+                  onChange={(e: any) =>
+                    setSettings({
+                      ...settings,
+                      subscription: {
+                        ...settings.subscription,
+                        status: e.target.value,
+                      },
+                    })
+                  }
+                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 font-bold"
+                >
+                  <option value="ACTIVE">ACTIVE — Certified Institutional Access</option>
+                  <option value="TRIAL">TRIAL — 30-Day Evaluation Period</option>
+                  <option value="PAST_DUE">PAST DUE — Renewal Pending</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Master Module Licensing & Operational Switch Matrix */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                  <Layers className="w-5 h-5 text-blue-700" />
+                  <span>Master Module Licensing & Operational Access Matrix</span>
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Control whether each module is licensed for your institution AND whether it is enabled by the school administrator.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleSave('Subscription & Module Licenses')}
+                disabled={isSaving}
+                className="px-4 py-2 bg-blue-900 text-white rounded-xl text-xs font-bold hover:bg-blue-800 transition shadow-xs disabled:opacity-50"
+              >
+                {isSaving ? 'Saving...' : 'Save Licensing Rules'}
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                  <tr>
+                    <th className="p-3">Module Name</th>
+                    <th className="p-3">Scope & Workflows</th>
+                    <th className="p-3 text-center">Institution Subscribed</th>
+                    <th className="p-3 text-center">Operational Switch</th>
+                    <th className="p-3 text-right">Access Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {[
+                    { key: 'attendance', name: 'Operations & Attendance Register', desc: 'Roll-call audits, future month blocking, absentee SMS, MoE Form 12A.', modKey: 'attendance' },
+                    { key: 'calendar', name: 'School Calendar & Birthday Roster', desc: 'Term dates, public holidays, staff & pupil birthday alerts.', modKey: 'calendar' },
+                    { key: 'boarding', name: 'Boarding Houses & Kansanshi Village', desc: 'Dormitory bed allocations, 20:30 curfew roll-call, exeat passes.', modKey: 'boarding' },
+                    { key: 'fees', name: 'Fees Management & Expenditure Control', desc: 'Zanaco/Stanbic EFT, Mobile Money, daily cashbook, aged debtors.', modKey: 'fees' },
+                    { key: 'hr', name: 'Staff HR & TCZ Certification Suite', desc: 'Teaching Council compliance, biometric clock-in, leave accrual.', modKey: 'hr' },
+                    { key: 'gis', name: 'Solwezi GIS & Campus Fleet Tracking', desc: 'Mushitala geofences, minibus GPS tracking, SOS emergency alerts.', modKey: 'gis' },
+                    { key: 'admissions', name: 'Admissions & SIS Student Information', desc: 'Online applications, student enrollment numbers, NRC/birth cert verification.', modKey: 'sis' },
+                    { key: 'academics', name: 'Academics & ECZ Gradebook Reports', desc: 'Assessment scores, 3-tier moderation, automated terminal report cards.', modKey: 'academics' },
+                    { key: 'teacher', name: 'Teacher Workspace & Lesson Plans', desc: 'Scheme of work, syllabus pacing, pupil remarks, homework portal.', modKey: 'teacher' },
+                    { key: 'parentPortal', name: 'Parent Portal & WhatsApp Alerts', desc: 'Mobile fee receipts, real-time attendance alerts, report card downloads.', modKey: 'parentPortal' },
+                  ].map((row) => {
+                    const isLicensed = settings.subscription.licensedModules[row.key as keyof typeof settings.subscription.licensedModules] ?? true;
+                    const modConfig = (settings.modules as any)[row.modKey];
+                    const isEnabled = modConfig ? modConfig.enabled : true;
+
+                    return (
+                      <tr key={row.key} className="hover:bg-slate-50">
+                        <td className="p-3 font-bold text-slate-900">{row.name}</td>
+                        <td className="p-3 text-slate-500 max-w-xs">{row.desc}</td>
+                        <td className="p-3 text-center">
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={isLicensed}
+                              onChange={(e) => {
+                                setSettings({
+                                  ...settings,
+                                  subscription: {
+                                    ...settings.subscription,
+                                    licensedModules: {
+                                      ...settings.subscription.licensedModules,
+                                      [row.key]: e.target.checked,
+                                    },
+                                  },
+                                });
+                              }}
+                              className="sr-only peer"
+                            />
+                            <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+                          </label>
+                        </td>
+                        <td className="p-3 text-center">
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={isEnabled}
+                              onChange={(e) => {
+                                const currentMod = (settings.modules as any)[row.modKey] || {};
+                                setSettings({
+                                  ...settings,
+                                  modules: {
+                                    ...settings.modules,
+                                    [row.modKey]: {
+                                      ...currentMod,
+                                      enabled: e.target.checked,
+                                    },
+                                  },
+                                });
+                              }}
+                              className="sr-only peer"
+                            />
+                            <div className="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-900"></div>
+                          </label>
+                        </td>
+                        <td className="p-3 text-right">
+                          {!isLicensed ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-300">
+                              <Lock className="w-3 h-3 text-amber-600" />
+                              Not Subscribed
+                            </span>
+                          ) : !isEnabled ? (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-600 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-300">
+                              Switched Off
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-300">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              Active & Licensed
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* TAB 1: MODULES & STRICT DATA VALIDATIONS */}
       {activeTab === 'modules' && (

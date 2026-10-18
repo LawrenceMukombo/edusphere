@@ -150,6 +150,26 @@ export interface AppSettings {
     };
   };
 
+  // Institutional Subscription & Module Entitlements
+  subscription: {
+    planTier: 'STARTER' | 'PROFESSIONAL' | 'SOVEREIGN_ENTERPRISE';
+    status: 'ACTIVE' | 'TRIAL' | 'PAST_DUE';
+    expiryDate: string;
+    maxLearners: number;
+    licensedModules: {
+      attendance: boolean;
+      calendar: boolean;
+      boarding: boolean;
+      fees: boolean;
+      hr: boolean;
+      gis: boolean;
+      admissions: boolean;
+      academics: boolean;
+      teacher: boolean;
+      parentPortal: boolean;
+    };
+  };
+
   // Statutory MoE & ECZ Compliance
   compliance: {
     moeRegistrationNumber: string;
@@ -290,6 +310,24 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
       swiftCode: 'ZNCOZMLU',
     },
   },
+  subscription: {
+    planTier: 'SOVEREIGN_ENTERPRISE',
+    status: 'ACTIVE',
+    expiryDate: '2027-12-31',
+    maxLearners: 1200,
+    licensedModules: {
+      attendance: true,
+      calendar: true,
+      boarding: true,
+      fees: true,
+      hr: true,
+      gis: true,
+      admissions: true,
+      academics: true,
+      teacher: true,
+      parentPortal: true,
+    },
+  },
   compliance: {
     moeRegistrationNumber: 'MOE/NWP/SOL/SEC/2026/044',
     eczCentreCode: 'ECZ/CENTRE/044/SOL',
@@ -400,6 +438,8 @@ export function saveAppSettings(settings: AppSettings, logAction?: string, modul
       };
       saveAdminAuditLogs([newLog, ...logs.slice(0, 49)]);
     }
+
+    window.dispatchEvent(new CustomEvent('edusphere:settings-updated'));
   } catch (err) {
     console.warn('[AppSettings] Error saving settings to localStorage:', err);
   }
@@ -409,6 +449,7 @@ export function resetAppSettings(): AppSettings {
   if (typeof window !== 'undefined') {
     try {
       localStorage.removeItem(SETTINGS_STORAGE_KEY);
+      window.dispatchEvent(new CustomEvent('edusphere:settings-updated'));
     } catch {}
   }
   return DEFAULT_APP_SETTINGS;
@@ -433,4 +474,34 @@ export function saveAdminAuditLogs(logs: AdminAuditLog[]): void {
   } catch (err) {
     console.warn('[AppSettings] Error saving audit logs:', err);
   }
+}
+
+export function checkModuleEntitlement(
+  moduleKey: string,
+  settings: AppSettings = loadAppSettings()
+): { isSubscribed: boolean; isEnabled: boolean; canAccess: boolean; message?: string } {
+  const licensed = settings.subscription?.licensedModules?.[moduleKey as keyof typeof settings.subscription.licensedModules] ?? true;
+  const targetKey = moduleKey === 'admissions' ? 'sis' : moduleKey;
+  const modSettings = (settings.modules as any)?.[targetKey];
+  const enabled = modSettings ? modSettings.enabled : true;
+
+  if (!licensed) {
+    return {
+      isSubscribed: false,
+      isEnabled: enabled,
+      canAccess: false,
+      message: `Your institution is currently on the ${settings.subscription?.planTier || 'STARTER'} tier which does not license the ${moduleKey.toUpperCase()} module. Please upgrade your institutional subscription.`,
+    };
+  }
+
+  if (!enabled) {
+    return {
+      isSubscribed: true,
+      isEnabled: false,
+      canAccess: false,
+      message: `The ${moduleKey.toUpperCase()} module has been switched OFF by the system administrator in System Settings.`,
+    };
+  }
+
+  return { isSubscribed: true, isEnabled: true, canAccess: true };
 }
