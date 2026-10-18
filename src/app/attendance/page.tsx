@@ -246,10 +246,29 @@ export default function AttendancePage() {
   const [calendarBirthdaySearch, setCalendarBirthdaySearch] = useState('');
 
   // Multi-Horizon Matrix State (Daily, Weekly, Monthly, Termly)
-  const [matrixClass, setMatrixClass] = useState('Form 4 Green');
+  const [matrixClass, setMatrixClass] = useState('Grade 1 Gold');
   const [matrixSearch, setMatrixSearch] = useState('');
   const [matrixStatusFilter, setMatrixStatusFilter] = useState<'ALL' | 'ABSENT_TODAY' | 'LATE_TODAY' | 'CHRONIC' | 'BOARDERS' | 'DAY_SCHOLARS'>('ALL');
   const [selectedLearnerForCard, setSelectedLearnerForCard] = useState<StudentRosterItem | null>(null);
+
+  // Synchronize default classroom cohort when user switches campus in the header
+  useEffect(() => {
+    if (selectedCampus === 'URBAN') {
+      if (matrixClass.startsWith('Form')) {
+        setMatrixClass('Grade 1 Gold');
+      }
+      if (selectedClass.startsWith('Form')) {
+        setSelectedClass('Grade 1 Gold');
+      }
+    } else if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
+      if (matrixClass.startsWith('Grade') || matrixClass.includes('Class') || matrixClass.includes('Stars')) {
+        setMatrixClass('Form 4 Green');
+      }
+      if (selectedClass.startsWith('Grade') || selectedClass.includes('Class') || selectedClass.includes('Stars')) {
+        setSelectedClass('Form 4 Green');
+      }
+    }
+  }, [selectedCampus]);
 
   // Check if selectedDate is a statutory Zambian public holiday
   const selectedDateHoliday = useMemo(() => {
@@ -338,11 +357,18 @@ export default function AttendancePage() {
     setTimeout(() => setToastMessage(null), 3500);
   };
 
-  // Filter roster by selected campus
+  // Filter roster by selected campus or specific class
   const filteredRoster = roster.filter((r) => {
-    if ((selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') && !r.campusName.includes('Mushitala') && !r.campusName.includes('Kansanshi')) return false;
-    if (selectedCampus === 'URBAN' && !r.campusName.includes('Urban')) return false;
-    if (selectedClass !== 'ALL' && r.className !== selectedClass) return false;
+    if (selectedClass !== 'ALL') {
+      const matches =
+        r.className === selectedClass ||
+        r.className.toLowerCase().includes(selectedClass.toLowerCase()) ||
+        selectedClass.toLowerCase().includes(r.className.toLowerCase());
+      if (!matches) return false;
+    } else {
+      if ((selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') && !r.campusName.includes('Mushitala') && !r.campusName.includes('Kansanshi')) return false;
+      if (selectedCampus === 'URBAN' && !r.campusName.includes('Urban')) return false;
+    }
     return true;
   });
 
@@ -366,12 +392,19 @@ export default function AttendancePage() {
 
   // Multi-Horizon Matrix: Filtered Learners for the active classroom
   const matrixLearners = roster.filter((r) => {
-    // Campus scope
-    if ((selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') && !r.campusName.includes('Mushitala') && !r.campusName.includes('Kansanshi')) return false;
-    if (selectedCampus === 'URBAN' && !r.campusName.includes('Urban')) return false;
-
-    // Classroom scope
-    if (matrixClass !== 'ALL' && r.className !== matrixClass) return false;
+    // If a specific classroom is selected, prioritize showing that classroom's learners!
+    // (Never let a conflicting global campus filter hide the selected classroom's learners)
+    if (matrixClass !== 'ALL') {
+      const matchesClass =
+        r.className === matrixClass ||
+        r.className.toLowerCase().includes(matrixClass.toLowerCase()) ||
+        matrixClass.toLowerCase().includes(r.className.toLowerCase());
+      if (!matchesClass) return false;
+    } else {
+      // If ALL cohorts is selected, then respect campus scope
+      if ((selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') && !r.campusName.includes('Mushitala') && !r.campusName.includes('Kansanshi')) return false;
+      if (selectedCampus === 'URBAN' && !r.campusName.includes('Urban')) return false;
+    }
 
     // Search query
     if (matrixSearch.trim()) {
@@ -393,7 +426,18 @@ export default function AttendancePage() {
   });
 
   // Classroom aggregate metrics across all 4 time horizons
-  const currentClassroomLearners = roster.filter((r) => matrixClass === 'ALL' || r.className === matrixClass);
+  const currentClassroomLearners = roster.filter((r) => {
+    if (matrixClass === 'ALL') {
+      if ((selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') && !r.campusName.includes('Mushitala') && !r.campusName.includes('Kansanshi')) return false;
+      if (selectedCampus === 'URBAN' && !r.campusName.includes('Urban')) return false;
+      return true;
+    }
+    return (
+      r.className === matrixClass ||
+      r.className.toLowerCase().includes(matrixClass.toLowerCase()) ||
+      matrixClass.toLowerCase().includes(r.className.toLowerCase())
+    );
+  });
   const classTotal = currentClassroomLearners.length || 1;
   const classPresentToday = currentClassroomLearners.filter((r) => r.status === 'PRESENT').length;
   const classAbsentToday = currentClassroomLearners.filter((r) => r.status === 'ABSENT').length;
@@ -1227,21 +1271,28 @@ export default function AttendancePage() {
                 >
                   <option value="ALL">All Cohorts (Consolidated)</option>
                   <optgroup label="Urban Campus (Solwezi Central - opp Kikombe School)">
-                    <option value="Reception Stars">Reception Stars (Urban Campus)</option>
-                    <option value="Grade 1 Gold">Grade 1 Gold (Urban Campus)</option>
-                    <option value="Grade 2 Silver">Grade 2 Silver (Urban Campus)</option>
-                    <option value="Grade 3 Bronze">Grade 3 Bronze (Urban Campus)</option>
-                    <option value="Grade 4 Emerald">Grade 4 Emerald (Urban Campus)</option>
-                    <option value="Grade 5 Blue">Grade 5 Blue (Urban Campus)</option>
-                    <option value="Grade 6 Silver">Grade 6 Silver (Urban Campus)</option>
-                    <option value="Grade 7 Topaz">Grade 7 Topaz (Urban Campus)</option>
+                    <option value="Baby Class (Little Stars)">Baby Class (Little Stars)</option>
+                    <option value="Middle Class">Middle Class</option>
+                    <option value="Reception Stars">Reception Stars</option>
+                    <option value="Grade 1 Gold">Grade 1 Gold</option>
+                    <option value="Grade 2 Emerald">Grade 2 Emerald</option>
+                    <option value="Grade 3 Diamond">Grade 3 Diamond</option>
+                    <option value="Grade 4 Ruby">Grade 4 Ruby</option>
+                    <option value="Grade 5 Blue">Grade 5 Blue</option>
+                    <option value="Grade 6 Silver">Grade 6 Silver</option>
+                    <option value="Grade 7 Top (Candidates)">Grade 7 Top (Candidates)</option>
                   </optgroup>
                   <optgroup label="Mushitala Campus (Secondary & Boarding - Near Kansanshi)">
-                    <option value="Form 1 Alpha">Form 1 Alpha (Mushitala Campus)</option>
-                    <option value="Form 2 Gold">Form 2 Gold (Mushitala Campus)</option>
-                    <option value="Form 3 Blue">Form 3 Blue (Mushitala Campus)</option>
-                    <option value="Form 4 Green">Form 4 Green (Mushitala Campus)</option>
-                    <option value="Form 5 Sciences">Form 5 Sciences (Mushitala Campus)</option>
+                    <option value="Form 1 Alpha">Form 1 Alpha</option>
+                    <option value="Form 1 Beta">Form 1 Beta</option>
+                    <option value="Form 2 Gold (ECZ Candidates)">Form 2 Gold (ECZ Candidates)</option>
+                    <option value="Form 2 Green">Form 2 Green</option>
+                    <option value="Form 3 Blue">Form 3 Blue</option>
+                    <option value="Form 3 Red">Form 3 Red</option>
+                    <option value="Form 4 Green">Form 4 Green</option>
+                    <option value="Form 4 Gold">Form 4 Gold</option>
+                    <option value="Form 5 Sciences (Senior Candidates)">Form 5 Sciences (Senior Candidates)</option>
+                    <option value="Form 5 Arts & Commerce">Form 5 Arts & Commerce</option>
                   </optgroup>
                 </select>
               </div>
@@ -1340,21 +1391,28 @@ export default function AttendancePage() {
                 >
                   <option value="ALL">All Cohorts (Consolidated View)</option>
                   <optgroup label="Urban Campus (Solwezi Central - opp Kikombe School)">
-                    <option value="Reception Stars">Reception Stars (Urban Campus)</option>
-                    <option value="Grade 1 Gold">Grade 1 Gold (Urban Campus)</option>
-                    <option value="Grade 2 Silver">Grade 2 Silver (Urban Campus)</option>
-                    <option value="Grade 3 Bronze">Grade 3 Bronze (Urban Campus)</option>
-                    <option value="Grade 4 Emerald">Grade 4 Emerald (Urban Campus)</option>
-                    <option value="Grade 5 Blue">Grade 5 Blue (Urban Campus)</option>
-                    <option value="Grade 6 Silver">Grade 6 Silver (Urban Campus)</option>
-                    <option value="Grade 7 Topaz">Grade 7 Topaz (Urban Campus)</option>
+                    <option value="Baby Class (Little Stars)">Baby Class (Little Stars)</option>
+                    <option value="Middle Class">Middle Class</option>
+                    <option value="Reception Stars">Reception Stars</option>
+                    <option value="Grade 1 Gold">Grade 1 Gold</option>
+                    <option value="Grade 2 Emerald">Grade 2 Emerald</option>
+                    <option value="Grade 3 Diamond">Grade 3 Diamond</option>
+                    <option value="Grade 4 Ruby">Grade 4 Ruby</option>
+                    <option value="Grade 5 Blue">Grade 5 Blue</option>
+                    <option value="Grade 6 Silver">Grade 6 Silver</option>
+                    <option value="Grade 7 Top (Candidates)">Grade 7 Top (Candidates)</option>
                   </optgroup>
                   <optgroup label="Mushitala Campus (Secondary & Boarding - Near Kansanshi)">
-                    <option value="Form 1 Alpha">Form 1 Alpha (Mushitala Campus)</option>
-                    <option value="Form 2 Gold">Form 2 Gold (Mushitala Campus)</option>
-                    <option value="Form 3 Blue">Form 3 Blue (Mushitala Campus)</option>
-                    <option value="Form 4 Green">Form 4 Green (Mushitala Campus)</option>
-                    <option value="Form 5 Sciences">Form 5 Sciences (Mushitala Campus)</option>
+                    <option value="Form 1 Alpha">Form 1 Alpha</option>
+                    <option value="Form 1 Beta">Form 1 Beta</option>
+                    <option value="Form 2 Gold (ECZ Candidates)">Form 2 Gold (ECZ Candidates)</option>
+                    <option value="Form 2 Green">Form 2 Green</option>
+                    <option value="Form 3 Blue">Form 3 Blue</option>
+                    <option value="Form 3 Red">Form 3 Red</option>
+                    <option value="Form 4 Green">Form 4 Green</option>
+                    <option value="Form 4 Gold">Form 4 Gold</option>
+                    <option value="Form 5 Sciences (Senior Candidates)">Form 5 Sciences (Senior Candidates)</option>
+                    <option value="Form 5 Arts & Commerce">Form 5 Arts & Commerce</option>
                   </optgroup>
                 </select>
               </div>
