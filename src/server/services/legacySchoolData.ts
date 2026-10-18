@@ -1278,6 +1278,7 @@ export interface LegacyLearnerBalance {
   studentNumber: string;
   learnerName: string;
   gender: 'MALE' | 'FEMALE';
+  dateOfBirth?: string;
   className: string;
   stage: string;
   campusName: string;
@@ -1371,6 +1372,13 @@ export function generateLegacyLearners(totalCount = 780): LegacyLearnerBalance[]
         : FIRST_NAMES_FEMALE[(studentIndex * 3 + i) % FIRST_NAMES_FEMALE.length];
       const lastName = LAST_NAMES[(studentIndex * 7 + i) % LAST_NAMES.length];
       const studentNumber = `LSS-2026-${String(studentIndex).padStart(4, '0')}`;
+
+      // Deterministic Date of Birth matching stage & year level
+      const birthYear = 2026 - Math.max(4, c.yearLevel + 6);
+      const birthMonth = ((studentIndex * 7 + i) % 12) + 1;
+      const daysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][birthMonth - 1];
+      const birthDay = ((studentIndex * 13 + i) % daysInMonth) + 1;
+      const dateOfBirth = `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`;
 
       // Boarding designation: 75% of secondary students are boarders (~315 total: ~158 boys, ~157 girls)
       let studentType: 'DAY_SCHOLAR' | 'BOARDER' = 'DAY_SCHOLAR';
@@ -1702,6 +1710,7 @@ export function generateLegacyLearners(totalCount = 780): LegacyLearnerBalance[]
         studentNumber,
         learnerName: `${firstName} ${lastName}`,
         gender: isMale ? 'MALE' : 'FEMALE',
+        dateOfBirth,
         className: c.name,
         stage: c.stage,
         campusName: c.campus,

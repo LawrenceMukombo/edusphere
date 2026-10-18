@@ -15,6 +15,7 @@ import {
   ShieldCheck,
   Compass,
   CalendarCheck,
+  Calendar,
   Building2,
   DollarSign,
   Bed,
@@ -24,6 +25,7 @@ import { useCampus } from './CampusContext';
 const NAV_ITEMS = [
   { href: '/', label: 'Executive Dashboard', icon: LayoutDashboard },
   { href: '/attendance', label: 'Operations & Attendance', icon: CalendarCheck, badge: 'Live' },
+  { href: '/calendar', label: 'School Calendar & Birthdays', icon: Calendar, badge: '2026' },
   { href: '/boarding', label: 'Boarding Houses & Village', icon: Bed, badge: 'Village' },
   { href: '/finance', label: 'Fees & Expenditures', icon: DollarSign, badge: 'Ledger' },
   { href: '/hr', label: 'Staff & HR Suite', icon: Briefcase, badge: 'TCZ' },

@@ -1,7 +1,7 @@
 // src/app/attendance/page.tsx — Operations & Attendance Command Center for Legacy School Solwezi
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   CalendarCheck,
   Users,
@@ -35,6 +35,11 @@ import {
   Eye,
   Maximize2,
   UserCheck,
+  Cake,
+  PartyPopper,
+  Flag,
+  Gift,
+  BookOpen,
 } from 'lucide-react';
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { useCampus } from '@/components/CampusContext';
@@ -45,11 +50,21 @@ import {
   BoardingExeatRecord,
   generateLegacyLearners,
 } from '@/server/services/legacySchoolData';
+import {
+  ZAMBIAN_PUBLIC_HOLIDAYS_2026,
+  ACADEMIC_TERMS_2026,
+  SCHOOL_EVENTS_2026,
+  getAllLearnerBirthdays,
+  getTodayBirthdays,
+  generateSmsBirthdayWish,
+  LearnerBirthdayProfile,
+} from '@/server/services/schoolCalendarData';
 
 interface StudentRosterItem {
   id: string;
   studentNumber: string;
   learnerName: string;
+  dateOfBirth?: string;
   className: string;
   campusName: string;
   studentType: 'DAY_SCHOLAR' | 'BOARDER';
@@ -197,6 +212,7 @@ const GENERATED_ROSTER: StudentRosterItem[] = generateLegacyLearners(780).map((l
   id: l.id,
   studentNumber: l.studentNumber,
   learnerName: l.learnerName,
+  dateOfBirth: l.dateOfBirth,
   className: l.className,
   campusName: l.campusName,
   studentType: l.studentType,
@@ -215,7 +231,7 @@ const GENERATED_ROSTER: StudentRosterItem[] = generateLegacyLearners(780).map((l
 
 export default function AttendancePage() {
   const { selectedCampus, campusInfo } = useCampus();
-  const [activeTab, setActiveTab] = useState<'REGISTER' | 'MATRIX' | 'BOARDING_ROLLCALL' | 'EXEATS' | 'ANALYTICS'>('REGISTER');
+  const [activeTab, setActiveTab] = useState<'REGISTER' | 'MATRIX' | 'CALENDAR' | 'BOARDING_ROLLCALL' | 'EXEATS' | 'ANALYTICS'>('REGISTER');
 
   // Roster state
   const [roster, setRoster] = useState<StudentRosterItem[]>(GENERATED_ROSTER);
@@ -223,11 +239,55 @@ export default function AttendancePage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Calendar & Birthdays tab state
+  const [calendarHolidaysSearch, setCalendarHolidaysSearch] = useState('');
+  const [calendarBirthdayMonth, setCalendarBirthdayMonth] = useState(10);
+  const [calendarBirthdayClass, setCalendarBirthdayClass] = useState('ALL');
+  const [calendarBirthdaySearch, setCalendarBirthdaySearch] = useState('');
+
   // Multi-Horizon Matrix State (Daily, Weekly, Monthly, Termly)
   const [matrixClass, setMatrixClass] = useState('Form 4 Green');
   const [matrixSearch, setMatrixSearch] = useState('');
   const [matrixStatusFilter, setMatrixStatusFilter] = useState<'ALL' | 'ABSENT_TODAY' | 'LATE_TODAY' | 'CHRONIC' | 'BOARDERS' | 'DAY_SCHOLARS'>('ALL');
   const [selectedLearnerForCard, setSelectedLearnerForCard] = useState<StudentRosterItem | null>(null);
+
+  // Check if selectedDate is a statutory Zambian public holiday
+  const selectedDateHoliday = useMemo(() => {
+    return ZAMBIAN_PUBLIC_HOLIDAYS_2026.find((h) => h.date === selectedDate || h.observedDate === selectedDate);
+  }, [selectedDate]);
+
+  // Today's birthdays in active cohort
+  const classBirthdaysToday = useMemo(() => {
+    const todayBirthdays = getTodayBirthdays(selectedDate).birthdays;
+    if (selectedClass === 'ALL') return todayBirthdays;
+    return todayBirthdays.filter((b) => b.className === selectedClass);
+  }, [selectedDate, selectedClass]);
+
+  // All birthdays for attendance calendar tab
+  const allBirthdaysList = useMemo(() => {
+    return getAllLearnerBirthdays();
+  }, []);
+
+  const filteredCalendarBirthdays = useMemo(() => {
+    return allBirthdaysList.filter((b: LearnerBirthdayProfile) => {
+      if (calendarBirthdayMonth !== 0 && b.birthMonth !== calendarBirthdayMonth) return false;
+      if (calendarBirthdayClass !== 'ALL' && b.className !== calendarBirthdayClass) return false;
+      if (calendarBirthdaySearch) {
+        const q = calendarBirthdaySearch.toLowerCase();
+        return (
+          b.learnerName.toLowerCase().includes(q) ||
+          b.studentNumber.toLowerCase().includes(q) ||
+          b.guardianName.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [allBirthdaysList, calendarBirthdayMonth, calendarBirthdayClass, calendarBirthdaySearch]);
+
+  // Distinct classes for calendar birthday filter
+  const distinctBirthdayClasses = useMemo(() => {
+    return Array.from(new Set(allBirthdaysList.map((b: LearnerBirthdayProfile) => b.className))).sort();
+  }, [allBirthdaysList]);
 
   // Live Roll-Call Mode State
   const [showLiveRollCallModal, setShowLiveRollCallModal] = useState(false);
@@ -1010,6 +1070,22 @@ export default function AttendancePage() {
 
         <button
           type="button"
+          onClick={() => setActiveTab('CALENDAR')}
+          className={`pb-3 border-b-2 transition flex items-center gap-2 whitespace-nowrap ${
+            activeTab === 'CALENDAR'
+              ? 'border-amber-600 text-amber-700 font-black'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Cake className="w-4 h-4 text-amber-600" />
+          <span>School Calendar, Zambia Holidays & Birthdays</span>
+          <span className="px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded text-[10px] font-bold flex items-center gap-1">
+            <Flag className="w-2.5 h-2.5 text-emerald-700" /> 15 Holidays
+          </span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setActiveTab('BOARDING_ROLLCALL')}
           className={`pb-3 border-b-2 transition flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'BOARDING_ROLLCALL'
@@ -1057,6 +1133,54 @@ export default function AttendancePage() {
       {/* TAB 1: CLASSROOM REGISTER */}
       {activeTab === 'REGISTER' && (
         <div className="space-y-4">
+          {/* Zambian Public Holiday Notification Banner if selected date is holiday */}
+          {selectedDateHoliday && (
+            <div className="bg-emerald-800 text-white p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs border border-emerald-700">
+              <div className="flex items-center gap-2.5">
+                <Flag className="w-5 h-5 text-emerald-300 shrink-0" />
+                <div>
+                  <span className="font-bold text-xs block">
+                    🇿🇲 Gazetted Zambian Public Holiday: {selectedDateHoliday.name} ({selectedDateHoliday.dayOfWeek})
+                  </span>
+                  <span className="text-[11px] text-emerald-100">
+                    {selectedDateHoliday.significance} Official mandatory closure under Zambian statutory law — no learners marked absent.
+                  </span>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 bg-white text-emerald-950 rounded-lg text-[10px] font-black uppercase shrink-0">
+                Mandatory Closure
+              </span>
+            </div>
+          )}
+
+          {/* Today's Birthday Banner for Active Classroom */}
+          {classBirthdaysToday.length > 0 && (
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <Cake className="w-5 h-5 text-yellow-200 shrink-0" />
+                <div>
+                  <span className="font-bold text-xs block">
+                    🎉 Learner Birthday Alert ({classBirthdaysToday.length} Celebrant{classBirthdaysToday.length > 1 ? 's' : ''})
+                  </span>
+                  <span className="text-[11px] text-amber-100">
+                    {classBirthdaysToday.map((b: LearnerBirthdayProfile) => `${b.learnerName} (${b.className}, turning ${b.turningAge})`).join(' • ')} — Commend their milestone during morning roll-call!
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const b = classBirthdaysToday[0];
+                  setToastMessage(`SMS Birthday Greeting queued to ${b.guardianName} (${b.guardianPhone}) for ${b.learnerName}! 🎂`);
+                }}
+                className="px-3 py-1.5 bg-white text-amber-900 hover:bg-amber-50 rounded-xl text-xs font-bold shrink-0 transition flex items-center gap-1.5"
+              >
+                <Send className="w-3 h-3 text-amber-700" />
+                <span>Send Birthday SMS</span>
+              </button>
+            </div>
+          )}
+
           {/* Multi-Horizon Switch Banner */}
           <div className="bg-gradient-to-r from-emerald-900 to-teal-950 text-white p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
             <div className="flex items-center gap-2.5">
@@ -1155,6 +1279,54 @@ export default function AttendancePage() {
       {/* TAB: MULTI-HORIZON ATTENDANCE MATRIX (Daily, Weekly, Monthly, Termly) */}
       {activeTab === 'MATRIX' && (
         <div className="space-y-5">
+          {/* Zambian Public Holiday Notification Banner if selected date is holiday */}
+          {selectedDateHoliday && (
+            <div className="bg-emerald-800 text-white p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs border border-emerald-700">
+              <div className="flex items-center gap-2.5">
+                <Flag className="w-5 h-5 text-emerald-300 shrink-0" />
+                <div>
+                  <span className="font-bold text-xs block">
+                    🇿🇲 Gazetted Zambian Public Holiday: {selectedDateHoliday.name} ({selectedDateHoliday.dayOfWeek})
+                  </span>
+                  <span className="text-[11px] text-emerald-100">
+                    {selectedDateHoliday.significance} Official mandatory closure under Zambian statutory law — no learners marked absent.
+                  </span>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 bg-white text-emerald-950 rounded-lg text-[10px] font-black uppercase shrink-0">
+                Mandatory Closure
+              </span>
+            </div>
+          )}
+
+          {/* Today's Birthday Banner for Active Classroom in Matrix */}
+          {classBirthdaysToday.length > 0 && (
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-3.5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-2.5">
+                <Cake className="w-5 h-5 text-yellow-200 shrink-0" />
+                <div>
+                  <span className="font-bold text-xs block">
+                    🎉 Learner Birthday Alert ({classBirthdaysToday.length} Celebrant{classBirthdaysToday.length > 1 ? 's' : ''})
+                  </span>
+                  <span className="text-[11px] text-amber-100">
+                    {classBirthdaysToday.map((b: LearnerBirthdayProfile) => `${b.learnerName} (${b.className}, turning ${b.turningAge})`).join(' • ')} — Commend their milestone during morning roll-call!
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const b = classBirthdaysToday[0];
+                  setToastMessage(`SMS Birthday Greeting queued to ${b.guardianName} (${b.guardianPhone}) for ${b.learnerName}! 🎂`);
+                }}
+                className="px-3 py-1.5 bg-white text-amber-900 hover:bg-amber-50 rounded-xl text-xs font-bold shrink-0 transition flex items-center gap-1.5"
+              >
+                <Send className="w-3 h-3 text-amber-700" />
+                <span>Send Birthday SMS</span>
+              </button>
+            </div>
+          )}
+
           {/* Controls Bar: Classroom, Status Filter, Search, and Action */}
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/90 flex flex-wrap items-center justify-between gap-4 text-xs">
             <div className="flex flex-wrap items-center gap-3">
@@ -1620,6 +1792,307 @@ export default function AttendancePage() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: SCHOOL CALENDAR, ZAMBIA PUBLIC HOLIDAYS & LEARNER BIRTHDAYS */}
+      {activeTab === 'CALENDAR' && (
+        <div className="space-y-6">
+          {/* Banner with Link to Full Screen Calendar */}
+          <div className="bg-gradient-to-r from-slate-900 to-indigo-950 text-white rounded-2xl p-5 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="p-3 bg-amber-500/20 rounded-xl text-amber-400">
+                <Cake className="w-6 h-6" />
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-black text-white">
+                    Official School Calendar, Zambian Public Holidays & Learner Birthdays
+                  </h3>
+                  <span className="px-2 py-0.5 bg-emerald-700 text-white rounded-full text-[10px] font-bold">
+                    MoE Zambia Tri-Term
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-0.5">
+                  Automated synchronization with Zambia statutory public holidays, MoE term instruction days, and 780 learner birthday milestones.
+                </p>
+              </div>
+            </div>
+
+            <a
+              href="/calendar"
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl transition flex items-center gap-1.5 shadow-xs shrink-0"
+            >
+              <Calendar className="w-4 h-4" />
+              <span>Open Interactive Month Grid</span>
+            </a>
+          </div>
+
+          {/* Quick Metrics */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+              <div className="flex items-center justify-between text-slate-500 mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider">Statutory Holidays</span>
+                <Flag className="w-4 h-4 text-emerald-600" />
+              </div>
+              <div className="text-2xl font-black text-slate-900">15 Days</div>
+              <p className="text-[10px] text-emerald-700 font-semibold mt-0.5">Gazetted School Closures</p>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+              <div className="flex items-center justify-between text-slate-500 mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider">Academic Structure</span>
+                <BookOpen className="w-4 h-4 text-blue-600" />
+              </div>
+              <div className="text-2xl font-black text-slate-900">3 Terms</div>
+              <p className="text-[10px] text-blue-700 font-semibold mt-0.5">187 Teaching Days (39 Wks)</p>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+              <div className="flex items-center justify-between text-slate-500 mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider">ECZ National Exams</span>
+                <Award className="w-4 h-4 text-purple-600" />
+              </div>
+              <div className="text-2xl font-black text-purple-900">26 Oct - 27 Nov</div>
+              <p className="text-[10px] text-purple-700 font-semibold mt-0.5">Grades 7, 9 & 12</p>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 shadow-xs">
+              <div className="flex items-center justify-between text-amber-800 mb-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider">Today's Birthdays</span>
+                <Cake className="w-4 h-4 text-amber-600" />
+              </div>
+              <div className="text-2xl font-black text-amber-950">
+                {getTodayBirthdays().count} Celebrants
+              </div>
+              <p className="text-[10px] text-amber-700 font-semibold mt-0.5">Active across all grades</p>
+            </div>
+          </div>
+
+          {/* Section 1: Zambian Statutory Public Holidays Table */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden space-y-3 p-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <Flag className="w-4 h-4 text-emerald-600" />
+                  <span>Republic of Zambia Gazetted Public Holidays (2026)</span>
+                </h4>
+                <p className="text-xs text-slate-500">
+                  Statutory non-instructional days. The attendance register automatically accounts for these dates.
+                </p>
+              </div>
+
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Filter public holidays..."
+                  value={calendarHolidaysSearch}
+                  onChange={(e) => setCalendarHolidaysSearch(e.target.value)}
+                  className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-hidden w-52 font-semibold"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-900 text-white font-bold text-[11px] uppercase tracking-wider">
+                  <tr>
+                    <th className="py-2.5 px-3">Gazetted Holiday</th>
+                    <th className="py-2.5 px-3">Date (2026)</th>
+                    <th className="py-2.5 px-3">Day</th>
+                    <th className="py-2.5 px-3">Category</th>
+                    <th className="py-2.5 px-3">Attendance Impact</th>
+                    <th className="py-2.5 px-3">National Significance</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  {ZAMBIAN_PUBLIC_HOLIDAYS_2026.filter((h) =>
+                    calendarHolidaysSearch
+                      ? h.name.toLowerCase().includes(calendarHolidaysSearch.toLowerCase()) ||
+                        h.date.includes(calendarHolidaysSearch)
+                      : true
+                  ).map((h) => (
+                    <tr key={h.id} className="hover:bg-slate-50 transition">
+                      <td className="py-2.5 px-3 font-bold text-slate-900 flex items-center gap-1.5">
+                        <Flag className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>{h.name}</span>
+                      </td>
+                      <td className="py-2.5 px-3 font-mono font-bold text-blue-900">{h.date}</td>
+                      <td className="py-2.5 px-3 font-semibold text-slate-800">{h.dayOfWeek}</td>
+                      <td className="py-2.5 px-3">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-slate-100 text-slate-800">
+                          {h.category.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          Mandatory School Closure
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-xs text-slate-600 max-w-sm truncate" title={h.significance}>
+                        {h.significance}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Section 2: MoE 2026 Academic Terms Grid */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-xs p-5 space-y-4">
+            <div>
+              <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-blue-600" />
+                <span>Ministry of Education (MoE) 2026 Tri-Term Academic Framework</span>
+              </h4>
+              <p className="text-xs text-slate-500">
+                Statutory term boundaries, mid-term breaks, and vacation schedules for North-Western Province.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {ACADEMIC_TERMS_2026.map((term) => (
+                <div key={term.termNumber} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                    <span className="text-xs font-black text-slate-900">{term.termLabel}</span>
+                    <span className="text-[10px] font-bold bg-blue-100 text-blue-900 px-2 py-0.5 rounded-md">
+                      {term.teachingWeeks} Wks ({term.totalTeachingDays} Days)
+                    </span>
+                  </div>
+                  <div className="text-xs space-y-1">
+                    <div className="flex justify-between text-slate-600">
+                      <span>Term Dates:</span>
+                      <strong className="text-slate-900">{term.startDate} to {term.endDate}</strong>
+                    </div>
+                    <div className="flex justify-between text-purple-700">
+                      <span>Mid-Term Exeat:</span>
+                      <strong>{term.midTermBreak.startDate} - {term.midTermBreak.endDate}</strong>
+                    </div>
+                    {term.eczExamWindow && (
+                      <div className="flex justify-between text-amber-800 font-bold pt-1 border-t border-slate-200">
+                        <span>ECZ Exam Window:</span>
+                        <span>{term.eczExamWindow.startDate} to {term.eczExamWindow.endDate}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Section 3: Learner Birthdays Showcase */}
+          <div className="bg-white border border-slate-200 rounded-2xl shadow-xs p-5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                  <Cake className="w-4 h-4 text-amber-600" />
+                  <span>Learner Birthdays Registry (780 Enrolled Students)</span>
+                </h4>
+                <p className="text-xs text-slate-500">
+                  Track and celebrate student milestones during morning roll-call with automated SMS birthday greetings.
+                </p>
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <select
+                  value={calendarBirthdayMonth}
+                  onChange={(e) => setCalendarBirthdayMonth(parseInt(e.target.value, 10))}
+                  className="font-bold bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-slate-800"
+                >
+                  <option value={0}>All Months</option>
+                  <option value={1}>January</option>
+                  <option value={2}>February</option>
+                  <option value={3}>March</option>
+                  <option value={4}>April</option>
+                  <option value={5}>May</option>
+                  <option value={6}>June</option>
+                  <option value={7}>July</option>
+                  <option value={8}>August</option>
+                  <option value={9}>September</option>
+                  <option value={10}>October</option>
+                  <option value={11}>November</option>
+                  <option value={12}>December</option>
+                </select>
+
+                <select
+                  value={calendarBirthdayClass}
+                  onChange={(e) => setCalendarBirthdayClass(e.target.value)}
+                  className="font-bold bg-slate-50 border border-slate-300 rounded-lg px-2 py-1 text-slate-800 max-w-[140px]"
+                >
+                  <option value="ALL">All Classes</option>
+                  {distinctBirthdayClasses.map((c: string) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+
+                <input
+                  type="text"
+                  placeholder="Search name, ID..."
+                  value={calendarBirthdaySearch}
+                  onChange={(e) => setCalendarBirthdaySearch(e.target.value)}
+                  className="px-2.5 py-1 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:outline-hidden w-36 font-semibold"
+                />
+              </div>
+            </div>
+
+            <div className="overflow-x-auto max-h-[360px] overflow-y-auto border border-slate-100 rounded-xl">
+              <table className="w-full text-left text-xs">
+                <thead className="sticky top-0 bg-slate-900 text-white font-bold text-[11px] uppercase">
+                  <tr>
+                    <th className="py-2.5 px-3">Learner Name</th>
+                    <th className="py-2.5 px-3">Class & Campus</th>
+                    <th className="py-2.5 px-3">Date of Birth</th>
+                    <th className="py-2.5 px-3">Age</th>
+                    <th className="py-2.5 px-3">Guardian</th>
+                    <th className="py-2.5 px-3 text-center">SMS Greeting</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  {filteredCalendarBirthdays.slice(0, 50).map((b: LearnerBirthdayProfile) => (
+                    <tr key={b.id} className="hover:bg-slate-50 transition">
+                      <td className="py-2.5 px-3 font-bold text-slate-900 flex items-center gap-1.5">
+                        <Cake className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                        <span>{b.learnerName}</span>
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <strong className="text-slate-800 block">{b.className}</strong>
+                        <span className="text-[10px] text-slate-400">{b.campusName}</span>
+                      </td>
+                      <td className="py-2.5 px-3 font-mono font-bold text-slate-800">{b.dateOfBirth}</td>
+                      <td className="py-2.5 px-3">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-blue-100 text-blue-900">
+                          {b.turningAge} Yrs
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-[11px]">
+                        <strong className="text-slate-800 block">{b.guardianName}</strong>
+                        <span className="text-blue-700 font-mono text-[10px]">{b.guardianPhone}</span>
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setToastMessage(`SMS Birthday Blessing dispatched to ${b.guardianName} (${b.guardianPhone}) for ${b.learnerName}! 🎂`);
+                          }}
+                          className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] rounded-lg transition inline-flex items-center gap-1"
+                        >
+                          <Send className="w-2.5 h-2.5" />
+                          <span>Wish</span>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="text-[11px] text-slate-400 text-right">
+              Showing {Math.min(50, filteredCalendarBirthdays.length)} of {filteredCalendarBirthdays.length} matching learner birthdays.
+            </div>
           </div>
         </div>
       )}
