@@ -13,8 +13,8 @@ function getOrInitMemoryStudent(learnerId: string) {
     return memoryStudentsMap.get(learnerId);
   }
 
-  const all478 = generateLegacyLearners(478);
-  const found = all478.find((l) => l.id === learnerId || l.studentNumber === learnerId);
+  const all780 = generateLegacyLearners(780);
+  const found = all780.find((l) => l.id === learnerId || l.studentNumber === learnerId);
   if (!found) return null;
 
   const isSec = found.className.includes('Form');

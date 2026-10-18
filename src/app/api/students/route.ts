@@ -39,9 +39,9 @@ export async function GET(req: Request) {
       }
     }
 
-    if (!students || students.length === 0) {
-      const all478 = generateLegacyLearners(478);
-      let mapped = all478.map((l) => ({
+    if (!students || students.length < 50) {
+      const all780 = generateLegacyLearners(780);
+      let mapped = all780.map((l) => ({
         id: l.id,
         studentNumber: l.studentNumber,
         firstName: l.learnerName.split(' ')[0],

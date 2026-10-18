@@ -140,7 +140,7 @@ import { generateLegacyLearners } from '@/server/services/legacySchoolData';
 let cachedLearners: any[] | null = null;
 function getLearnersList() {
   if (!cachedLearners) {
-    cachedLearners = generateLegacyLearners(478);
+    cachedLearners = generateLegacyLearners(780);
   }
   return cachedLearners;
 }
@@ -176,7 +176,7 @@ export async function GET(req: Request) {
       }
     }
 
-    if (!balances || balances.length === 0) {
+    if (!balances || balances.length < 50) {
       let result = [...getLearnersList()];
       if (campus && campus !== 'ALL') {
         if (campus === 'MUSHITALA' || campus === 'KANSANSHI' || campus === 'LSS-MSC' || campus === 'LSS-KBC') {

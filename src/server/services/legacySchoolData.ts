@@ -1330,54 +1330,53 @@ const LAST_NAMES = [
 
 const GUARDIAN_TITLES = ['Eng.', 'Dr.', 'Mr.', 'Mrs.', 'Capt.', 'Rev.', 'Prof.', 'Director'];
 
-export function generateLegacyLearners(totalCount = 478): LegacyLearnerBalance[] {
+export function generateLegacyLearners(totalCount = 780): LegacyLearnerBalance[] {
   const learners: LegacyLearnerBalance[] = [];
 
-  // Complete spectrum of all grades across both campuses
+  // Complete spectrum of all grades across both campuses (360 Urban + 420 Mushitala = 780 Total)
   const classesConfig = [
-    // --- Urban Campus (ECE & Primary Day School — Solwezi Central) ---
-    { name: 'Baby Class (Little Stars)', stage: 'EARLY_CHILDHOOD', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2400, count: 18, yearLevel: 0 },
-    { name: 'Middle Class', stage: 'EARLY_CHILDHOOD', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2400, count: 20, yearLevel: 0 },
-    { name: 'Reception Stars', stage: 'EARLY_CHILDHOOD', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2600, count: 24, yearLevel: 0 },
-    { name: 'Grade 1 Gold', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 22, yearLevel: 1 },
-    { name: 'Grade 1 Blue', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 22, yearLevel: 1 },
-    { name: 'Grade 2 Emerald', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 22, yearLevel: 2 },
-    { name: 'Grade 3 Diamond', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 22, yearLevel: 3 },
-    { name: 'Grade 4 Ruby', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 22, yearLevel: 4 },
-    { name: 'Grade 5 Blue', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 22, yearLevel: 5 },
-    { name: 'Grade 6 Silver', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2900, count: 22, yearLevel: 6 },
-    { name: 'Grade 7 Top (Candidates)', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 3100, count: 24, yearLevel: 7 },
+    // --- Urban Campus (ECE & Primary Day School — Solwezi Central) (360 Pupils) ---
+    { name: 'Baby Class (Little Stars)', stage: 'EARLY_CHILDHOOD', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2400, count: 30, yearLevel: 0 },
+    { name: 'Middle Class', stage: 'EARLY_CHILDHOOD', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2400, count: 30, yearLevel: 0 },
+    { name: 'Reception Stars', stage: 'EARLY_CHILDHOOD', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2600, count: 40, yearLevel: 0 },
+    { name: 'Grade 1 Gold', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 38, yearLevel: 1 },
+    { name: 'Grade 2 Emerald', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 38, yearLevel: 2 },
+    { name: 'Grade 3 Diamond', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 38, yearLevel: 3 },
+    { name: 'Grade 4 Ruby', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 38, yearLevel: 4 },
+    { name: 'Grade 5 Blue', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2800, count: 36, yearLevel: 5 },
+    { name: 'Grade 6 Silver', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 2900, count: 36, yearLevel: 6 },
+    { name: 'Grade 7 Top (Candidates)', stage: 'PRIMARY', campus: 'Urban Campus (Solwezi Central)', isSecondary: false, fee: 3100, count: 36, yearLevel: 7 },
 
-    // --- Mushitala Campus (Secondary & Boarding Wing — Near Kansanshi Mine) ---
-    { name: 'Form 1 Alpha', stage: 'JUNIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 28, yearLevel: 8 },
-    { name: 'Form 1 Beta', stage: 'JUNIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 26, yearLevel: 8 },
-    { name: 'Form 2 Gold (ECZ Candidates)', stage: 'JUNIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 28, yearLevel: 9 },
-    { name: 'Form 2 Green', stage: 'JUNIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 26, yearLevel: 9 },
-    { name: 'Form 3 Blue', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 26, yearLevel: 10 },
-    { name: 'Form 3 Red', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 24, yearLevel: 10 },
-    { name: 'Form 4 Green', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 26, yearLevel: 11 },
-    { name: 'Form 4 Gold', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 24, yearLevel: 11 },
-    { name: 'Form 5 Sciences (Senior Candidates)', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 26, yearLevel: 12 },
-    { name: 'Form 5 Arts & Commerce', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 24, yearLevel: 12 },
+    // --- Mushitala Campus (Secondary & Boarding Wing — Near Kansanshi Mine) (420 Pupils) ---
+    { name: 'Form 1 Alpha', stage: 'JUNIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 42, yearLevel: 8 },
+    { name: 'Form 1 Beta', stage: 'JUNIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 42, yearLevel: 8 },
+    { name: 'Form 2 Gold (ECZ Candidates)', stage: 'JUNIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 44, yearLevel: 9 },
+    { name: 'Form 2 Green', stage: 'JUNIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 44, yearLevel: 9 },
+    { name: 'Form 3 Blue', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 42, yearLevel: 10 },
+    { name: 'Form 3 Red', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 42, yearLevel: 10 },
+    { name: 'Form 4 Green', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 42, yearLevel: 11 },
+    { name: 'Form 4 Gold', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 40, yearLevel: 11 },
+    { name: 'Form 5 Sciences (Senior Candidates)', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 42, yearLevel: 12 },
+    { name: 'Form 5 Arts & Commerce', stage: 'SENIOR_SECONDARY', campus: 'Mushitala Campus (Near Kansanshi)', isSecondary: true, fee: 10400, count: 40, yearLevel: 12 },
   ];
 
   let studentIndex = 1;
 
   for (const c of classesConfig) {
     for (let i = 0; i < c.count; i++) {
-      const isMale = (studentIndex + i) % 2 === 0;
+      const isMale = studentIndex % 2 === 1;
       const firstName = isMale
         ? FIRST_NAMES_MALE[(studentIndex * 3 + i) % FIRST_NAMES_MALE.length]
         : FIRST_NAMES_FEMALE[(studentIndex * 3 + i) % FIRST_NAMES_FEMALE.length];
       const lastName = LAST_NAMES[(studentIndex * 7 + i) % LAST_NAMES.length];
       const studentNumber = `LSS-2026-${String(studentIndex).padStart(4, '0')}`;
 
-      // Boarding designation: 70% of secondary students are boarders; 30% are day scholars
+      // Boarding designation: 75% of secondary students are boarders (~315 total: ~158 boys, ~157 girls)
       let studentType: 'DAY_SCHOLAR' | 'BOARDER' = 'DAY_SCHOLAR';
       let hallName: string | undefined = undefined;
 
       if (c.isSecondary) {
-        const isBoarder = (studentIndex + i) % 10 < 7; // 70% Boarders
+        const isBoarder = studentIndex % 4 !== 0; // 75% Boarders
         if (isBoarder) {
           studentType = 'BOARDER';
           hallName = isMale ? 'Kansanshi Boys Boarding Hall' : 'Kalumbila Girls Boarding Hall';
@@ -1570,27 +1569,114 @@ export function generateLegacyLearners(totalCount = 478): LegacyLearnerBalance[]
       const acadYears = c.yearLevel >= 11 ? ['2024', '2025', '2026'] : c.yearLevel >= 9 ? ['2025', '2026'] : ['2026'];
 
       acadYears.forEach((yr, yIdx) => {
-        const avg = Math.min(96, Math.max(58, baseScore + yIdx * 2.5));
-        const div: 'Division 1' | 'Division 2' | 'Division 3' = avg >= 75 ? 'Division 1' : avg >= 60 ? 'Division 2' : 'Division 3';
+        const base = Math.min(96, Math.max(55, baseScore + yIdx * 2.5));
         const pos = `${Math.floor(((studentIndex * 3) % 15) + 1)} out of ${c.count}`;
 
-        const subjects: HistoricalAcademicSubject[] = [
-          { subjectName: 'Mathematics', code: 'MATH', score: Math.round(avg + ((studentIndex % 7) - 3)), eczGrade: avg >= 80 ? '1 (Distinction)' : '2 (Distinction)', teacherRemark: 'Superb algebraic problem-solving.' },
-          { subjectName: 'English Language', code: 'ENG', score: Math.round(avg + ((studentIndex % 5) - 2)), eczGrade: avg >= 75 ? '2 (Distinction)' : '3 (Merit)', teacherRemark: 'Articulate essay writing and comprehension.' },
-          { subjectName: c.isSecondary ? 'Integrated Science' : 'Environmental Science', code: 'SCI', score: Math.round(avg + 2), eczGrade: '1 (Distinction)', teacherRemark: 'Inquisitive scientific methodology in lab experiments.' },
-          { subjectName: 'Computer Studies', code: 'CS', score: Math.round(avg + 4), eczGrade: '1 (Distinction)', teacherRemark: 'Advanced practical coding and digital literacy.' },
-          { subjectName: 'Social Studies / History', code: 'SS', score: Math.round(avg - 1), eczGrade: '2 (Distinction)', teacherRemark: 'Deep grasp of Zambian governance and history.' },
-        ];
+        const getGrade = (s: number) => {
+          if (s >= 85) return '1 (Distinction)';
+          if (s >= 75) return '2 (Distinction)';
+          if (s >= 70) return '3 (Merit)';
+          if (s >= 65) return '4 (Merit)';
+          if (s >= 60) return '5 (Credit)';
+          if (s >= 55) return '6 (Credit)';
+          if (s >= 50) return '7 (Satisfactory)';
+          if (s >= 45) return '8 (Satisfactory)';
+          return '9 (Unsatisfactory)';
+        };
+
+        let subjects: HistoricalAcademicSubject[] = [];
+
+        if (c.yearLevel >= 10) {
+          // Senior Secondary (Forms 3 - 5): Full 10 to 12 Subject Spectrum
+          const isScienceStream = c.name.includes('Science') || (studentIndex % 2 === 0);
+          const rawScores = [
+            { name: 'Mathematics', code: 'MATH', delta: (studentIndex % 7) - 2, remark: 'Superb algebraic problem-solving and calculus comprehension.' },
+            { name: 'English Language', code: 'ENG', delta: (studentIndex % 5) - 1, remark: 'Articulate essay writing, formal rhetoric, and comprehension.' },
+            { name: 'Biology', code: 'BIO', delta: isScienceStream ? 4 : -2, remark: 'Thorough biological experimental write-ups and genetics grasp.' },
+            { name: 'Chemistry', code: 'CHEM', delta: isScienceStream ? 3 : -3, remark: 'Strong stoichiometry, chemical titrations, and organic analysis.' },
+            { name: 'Physics', code: 'PHY', delta: isScienceStream ? 2 : -4, remark: 'Solid mechanics, optics, and electrical circuit experimentation.' },
+            { name: 'Computer Studies / ICT', code: 'COMP', delta: 5, remark: 'Advanced practical coding, algorithm design, and digital literacy.' },
+            { name: 'Civic Education', code: 'CIV', delta: 1, remark: 'Exemplary understanding of constitution, civic duty, and human rights.' },
+            { name: 'Geography', code: 'GEO', delta: 0, remark: 'Proficient topographical map reading and regional economic geostudies.' },
+            { name: 'History', code: 'HIST', delta: -1, remark: 'In-depth analysis of African independence movements and world history.' },
+            { name: 'Commerce & Accounts', code: 'COMM', delta: !isScienceStream ? 4 : 0, remark: 'Accurate double-entry bookkeeping and business operations acumen.' },
+            { name: 'Religious Education (2046)', code: 'RE', delta: 3, remark: 'Thoughtful ethical discussions and moral philosophy appreciation.' },
+            { name: 'Zambian Languages (Icibemba / Kiikaonde)', code: 'ZAM', delta: 2, remark: 'Fluent vernacular literature appreciation and cultural proverbs.' },
+          ];
+
+          subjects = rawScores.map((s) => {
+            const finalScore = Math.max(40, Math.min(99, Math.round(base + s.delta)));
+            return {
+              subjectName: s.name,
+              code: s.code,
+              score: finalScore,
+              eczGrade: getGrade(finalScore),
+              teacherRemark: s.remark,
+            };
+          });
+        } else if (c.isSecondary) {
+          // Junior Secondary (Forms 1 - 2): Complete Junior ECZ Curriculum
+          const rawJunior = [
+            { name: 'Mathematics', code: 'MATH', delta: (studentIndex % 6) - 2, remark: 'Fluent algebraic geometry and arithmetic principles.' },
+            { name: 'English Language', code: 'ENG', delta: (studentIndex % 4) - 1, remark: 'Strong grammar, creative writing, and comprehension.' },
+            { name: 'Integrated Science', code: 'SCI', delta: 3, remark: 'Inquisitive scientific methodology and laboratory observations.' },
+            { name: 'Computer Studies', code: 'COMP', delta: 4, remark: 'Hands-on computer hardware, word processing, and digital skills.' },
+            { name: 'Social Studies', code: 'SOC', delta: 1, remark: 'Sound grasp of Zambian geography, history, and development.' },
+            { name: 'Civic Education', code: 'CIV', delta: 0, remark: 'Active participation in civic principles and governance debates.' },
+            { name: 'Business Studies', code: 'BUS', delta: 2, remark: 'Good understanding of basic commercial transactions and enterprise.' },
+            { name: 'Religious Education', code: 'RE', delta: 2, remark: 'Respectful and engaged engagement in moral lessons.' },
+            { name: 'Zambian Languages (Kiikaonde / Icibemba)', code: 'ZAM', delta: 1, remark: 'Commendable grammar and vocabulary in Zambian language.' },
+            { name: 'Physical Education & Health', code: 'PE', delta: 5, remark: 'High physical stamina, teamwork, and athletic dedication.' },
+          ];
+
+          subjects = rawJunior.map((s) => {
+            const finalScore = Math.max(42, Math.min(98, Math.round(base + s.delta)));
+            return {
+              subjectName: s.name,
+              code: s.code,
+              score: finalScore,
+              eczGrade: getGrade(finalScore),
+              teacherRemark: s.remark,
+            };
+          });
+        } else {
+          // Primary Education (Grades 1 - 7): Full Zambian Primary Curriculum
+          const rawPrimary = [
+            { name: 'Mathematics', code: 'MATH', delta: (studentIndex % 5) - 1, remark: 'Great number sense and foundational arithmetic mastery.' },
+            { name: 'English Literacy & Language', code: 'ENG', delta: 2, remark: 'Expressive reading aloud and creative sentence structure.' },
+            { name: 'Integrated Science', code: 'SCI', delta: 1, remark: 'Keen interest in living things and environment exploration.' },
+            { name: 'Social Studies', code: 'SOC', delta: 0, remark: 'Good knowledge of community, culture, and family life.' },
+            { name: 'Creative & Technology Studies (CTS)', code: 'CTS', delta: 4, remark: 'Artistic talent, craft work, and introductory technology skills.' },
+            { name: 'Home Economics', code: 'HE', delta: 2, remark: 'Neat personal hygiene, nutrition, and food preparation.' },
+            { name: 'Zambian Languages', code: 'ZAM', delta: 1, remark: 'Clear vernacular pronunciation and storytelling.' },
+            { name: 'Physical Education', code: 'PE', delta: 5, remark: 'Energetic participation in drills and games.' },
+          ];
+
+          subjects = rawPrimary.map((s) => {
+            const finalScore = Math.max(45, Math.min(98, Math.round(base + s.delta)));
+            return {
+              subjectName: s.name,
+              code: s.code,
+              score: finalScore,
+              eczGrade: getGrade(finalScore),
+              teacherRemark: s.remark,
+            };
+          });
+        }
+
+        const calculatedAvg = Number((subjects.reduce((sum, s) => sum + s.score, 0) / subjects.length).toFixed(1));
+        const div: 'Division 1' | 'Division 2' | 'Division 3' =
+          calculatedAvg >= 75 ? 'Division 1' : calculatedAvg >= 60 ? 'Division 2' : 'Division 3';
 
         performanceHistory.push({
           academicYear: yr,
           term: 'Term 1',
           termLabel: `${yr} Term 1`,
           className: c.name,
-          averageScore: Number(avg.toFixed(1)),
+          averageScore: calculatedAvg,
           positionInClass: pos,
           eczDivision: div,
-          conductGrade: 'A (Exemplary)',
+          conductGrade: calculatedAvg >= 80 ? 'A (Exemplary)' : 'B (Good)',
           principalRemarks: 'Approved for commendation. Displays moral and intellectual distinction.',
           subjects,
         });
@@ -1646,7 +1732,7 @@ export function generateLegacyLearners(totalCount = 478): LegacyLearnerBalance[]
 }
 
 // Full Spectrum of Seeded Learners across all grades (with Boarding & Day histories)
-export const LEGACY_SOLWEZI_BALANCES = generateLegacyLearners(478);
+export const LEGACY_SOLWEZI_BALANCES = generateLegacyLearners(780);
 
 
 // ----------------------------------------------------------------------------

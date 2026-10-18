@@ -50,7 +50,7 @@ interface StudentRosterItem {
   alertSent: boolean;
 }
 
-const GENERATED_ROSTER: StudentRosterItem[] = generateLegacyLearners(478).map((l) => ({
+const GENERATED_ROSTER: StudentRosterItem[] = generateLegacyLearners(780).map((l) => ({
   id: l.id,
   studentNumber: l.studentNumber,
   learnerName: l.learnerName,
