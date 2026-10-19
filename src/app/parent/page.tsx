@@ -447,7 +447,9 @@ export default function ParentPortalPage() {
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
               <span className="text-xs font-semibold text-slate-500">Official Report Status</span>
               <p className="text-xl font-black text-emerald-700 mt-1">Published</p>
-              <span className="text-[11px] text-slate-500 font-semibold">Class Position: 1st in Cohort</span>
+              <span className="text-[11px] text-slate-500 font-semibold">
+                Class Position: {currentChild.reportCards?.[0]?.positionInClass || '1st in Cohort'}
+              </span>
             </div>
           </div>
 

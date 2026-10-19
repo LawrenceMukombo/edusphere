@@ -35,6 +35,7 @@ import {
   RotateCcw,
   Clock,
   Eye,
+  Table as TableIcon,
 } from 'lucide-react';
 import { LegacyLogo } from '@/components/LegacyLogo';
 import {
@@ -66,6 +67,11 @@ export interface ArchivedDocumentRecord {
   subjectLine: string;
   paragraphs: string[];
   requirementsList?: string[];
+  tabularData?: {
+    headers: string[];
+    rows: string[][];
+    footers?: string[];
+  };
 }
 
 const INITIAL_ARCHIVED_LETTERS: ArchivedDocumentRecord[] = [
@@ -111,65 +117,27 @@ const INITIAL_ARCHIVED_LETTERS: ArchivedDocumentRecord[] = [
   },
 ];
 
-const SAMPLE_LEARNERS: DocumentLearnerProfile[] = [
-  {
-    studentNumber: 'LS-2026-0042',
-    learnerName: 'Bupe Mwewa',
-    className: 'Grade 10A Science',
-    campusName: 'Kansanshi Boarding Campus',
-    studentType: 'FULL_BOARDER',
-    gender: 'MALE',
-    dateOfBirth: '14th August 2010',
-    guardianName: 'Mrs. Natasha Mwewa',
-    guardianPhone: '+260 97 782 1904',
-    guardianEmail: 'natasha.mwewa@gmail.com',
-    hallName: 'Kansanshi Boys Residential Hall',
-    dormRoom: 'Block A, Cubicle 4',
-    bedNumber: 'Bed #08',
-    totalBilled: 14000,
-    totalPaid: 14000,
-    balance: 0,
-    conductRating: 'Exemplary (A+)',
-    academicAverage: 84.5,
-  },
-  {
-    studentNumber: 'LS-2026-0118',
-    learnerName: 'Kondwani Phiri',
-    className: 'Grade 7 Blue',
-    campusName: 'Mushitala Day Campus',
-    studentType: 'DAY_SCHOLAR',
-    gender: 'MALE',
-    dateOfBirth: '22nd January 2013',
-    guardianName: 'Mr. Godfrey Phiri',
-    guardianPhone: '+260 95 541 0092',
-    guardianEmail: 'godfrey.phiri@outlook.com',
-    totalBilled: 8000,
-    totalPaid: 8000,
-    balance: 0,
-    conductRating: 'Very Good (A)',
-    academicAverage: 78.2,
-  },
-  {
-    studentNumber: 'LS-2026-0089',
-    learnerName: 'Natasha Chileshe',
-    className: 'Grade 11 Commerce',
-    campusName: 'Kansanshi Boarding Campus',
-    studentType: 'BOARDER',
-    gender: 'FEMALE',
-    dateOfBirth: '3rd November 2009',
-    guardianName: 'Eng. Patrick Chileshe',
-    guardianPhone: '+260 96 677 1209',
-    guardianEmail: 'patrick.chileshe@firstquantum.com',
-    hallName: 'Kalumbila Girls Residential Hall',
-    dormRoom: 'Block C, Room 12',
-    bedNumber: 'Bed #02',
-    totalBilled: 14000,
-    totalPaid: 14000,
-    balance: 0,
-    conductRating: 'Exemplary (A+)',
-    academicAverage: 89.1,
-  },
-];
+const ALL_LEARNERS: DocumentLearnerProfile[] = generateLegacyLearners(780).map((l) => ({
+  studentNumber: l.studentNumber,
+  learnerName: l.learnerName,
+  className: l.className,
+  campusName: l.campusName,
+  studentType: l.studentType === 'BOARDER' ? 'FULL_BOARDER' : 'DAY_SCHOLAR',
+  gender: l.gender,
+  dateOfBirth: l.studentType === 'BOARDER' ? '14th August 2010' : '22nd March 2017',
+  guardianName: l.guardian.name,
+  guardianPhone: l.guardian.phone,
+  guardianEmail: l.guardian.email,
+  residentialAddress: l.campusName.includes('Urban') ? 'Solwezi Central Urban Township' : 'Kansanshi Mine Road Educational Corridor',
+  hallName: l.studentType === 'BOARDER' ? (l.gender === 'MALE' ? 'Kansanshi Boys Residential Hall' : 'Kalumbila Girls Residential Hall') : undefined,
+  dormRoom: l.studentType === 'BOARDER' ? (l.gender === 'MALE' ? 'Block A, Cubicle 4' : 'Kwacha Wing, Room 12') : undefined,
+  bedNumber: l.studentType === 'BOARDER' ? `Bed #${(parseInt(l.studentNumber.slice(-2)) % 24) + 1}` : undefined,
+  totalBilled: l.studentType === 'BOARDER' ? 14500 : 6900,
+  totalPaid: l.studentType === 'BOARDER' ? 14500 : 6900,
+  balance: 0,
+  conductRating: 'Exemplary (A+)',
+  academicAverage: 84.5,
+}));
 
 export default function DocumentGeneratorPage() {
   // Recipient Category: Learners vs Staff
@@ -177,7 +145,7 @@ export default function DocumentGeneratorPage() {
 
   // Learner Selection & Templates
   const [selectedType, setSelectedType] = useState<DocumentType>('OFFER_LETTER');
-  const [selectedLearner, setSelectedLearner] = useState<DocumentLearnerProfile>(SAMPLE_LEARNERS[0]);
+  const [selectedLearner, setSelectedLearner] = useState<DocumentLearnerProfile>(ALL_LEARNERS[0]);
   const [learnerSearch, setLearnerSearch] = useState('');
 
   // Staff Selection & Templates
@@ -198,12 +166,32 @@ export default function DocumentGeneratorPage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // In-Place Authorized Content Editing ("Allow users with relevant rights to edit the letters")
-  const [isEditingContent, setIsEditingContent] = useState(false);
+  const [isEditingContent, setIsEditingContent] = useState(true);
   const [userRole, setUserRole] = useState<'PRINCIPAL' | 'DEPUTY' | 'BURSAR' | 'REGISTRAR'>('PRINCIPAL');
   const [customSubject, setCustomSubject] = useState<string>('');
   const [customSalutation, setCustomSalutation] = useState<string>('');
   const [customParagraphs, setCustomParagraphs] = useState<string[]>([]);
   const [hasCustomEdits, setHasCustomEdits] = useState(false);
+
+  // Table Breakdown Editing
+  const [includeTable, setIncludeTable] = useState<boolean>(true);
+  const [customTableHeaders, setCustomTableHeaders] = useState<string[]>([
+    'Statutory / Operational Component',
+    'Description',
+    'Amount (ZMW)',
+  ]);
+  const [customTableRows, setCustomTableRows] = useState<string[][]>([
+    ['Tuition & Educational Materials', 'Termly Academic Fee (Grade 10A Science)', 'K 6,500.00'],
+    ['Boarding & Nutritional Rations', 'Full Hall Accommodation, Hot Water & Catering', 'K 5,500.00'],
+    ['Examination Council & CA Assessment', 'ECZ Continuous Assessment Registration & Lab Consumables', 'K 600.00'],
+    ['Student Uniform & Physical Attire', '2x Daily Sets, 1x Formal Blazer, 1x Sports Kit', 'K 1,400.00'],
+    ['Caution Deposit (Refundable)', 'Escrowed Security Deposit (Refundable upon graduation or clearance)', 'K 500.00'],
+  ]);
+  const [customTableFooters, setCustomTableFooters] = useState<string[]>([
+    'Total Initial Termly Obligation',
+    'All inclusive statutory tuition & boarding package',
+    'K 14,500.00',
+  ]);
 
   // Archived Copies with Exact Timestamp ("Copies of generated letter for staff or learners must leave copies with timestamp")
   const [archivedLetters, setArchivedLetters] = useState<ArchivedDocumentRecord[]>(() => {
@@ -220,13 +208,15 @@ export default function DocumentGeneratorPage() {
 
   // Filter learners
   const filteredLearners = useMemo(() => {
-    if (!learnerSearch) return SAMPLE_LEARNERS;
-    return SAMPLE_LEARNERS.filter(
+    if (!learnerSearch) return ALL_LEARNERS.slice(0, 30);
+    const q = learnerSearch.toLowerCase();
+    return ALL_LEARNERS.filter(
       (l) =>
-        l.learnerName.toLowerCase().includes(learnerSearch.toLowerCase()) ||
-        l.studentNumber.toLowerCase().includes(learnerSearch.toLowerCase()) ||
-        l.className.toLowerCase().includes(learnerSearch.toLowerCase())
-    );
+        l.learnerName.toLowerCase().includes(q) ||
+        l.studentNumber.toLowerCase().includes(q) ||
+        l.className.toLowerCase().includes(q) ||
+        l.campusName.toLowerCase().includes(q)
+    ).slice(0, 50);
   }, [learnerSearch]);
 
   // Filter staff
@@ -360,18 +350,61 @@ export default function DocumentGeneratorPage() {
     setCustomSubject(baselineDoc.subjectLine);
     setCustomSalutation(baselineDoc.salutation);
     setCustomParagraphs([...baselineDoc.paragraphs]);
+
+    if ((baselineDoc as any).tabularData) {
+      setIncludeTable(true);
+      setCustomTableHeaders([...(baselineDoc as any).tabularData.headers]);
+      setCustomTableRows((baselineDoc as any).tabularData.rows.map((r: any[]) => [...r]));
+      setCustomTableFooters(
+        (baselineDoc as any).tabularData.footers ? [...(baselineDoc as any).tabularData.footers] : []
+      );
+    } else {
+      setIncludeTable(false);
+      setCustomTableHeaders(['Statutory / Operational Component', 'Description', 'Amount (ZMW)']);
+      setCustomTableRows([
+        ['Tuition & Educational Materials', `Termly Academic Fee (${selectedLearner?.className || 'Standard'})`, selectedLearner?.studentType === 'FULL_BOARDER' ? 'K 6,500.00' : 'K 3,200.00'],
+        ['Continuous Assessment / Lab Levy', 'ECZ Continuous Assessment Registration & Science Lab Consumables', 'K 600.00'],
+      ]);
+      setCustomTableFooters([
+        'Total Initial Termly Obligation',
+        'All inclusive statutory tuition package',
+        selectedLearner?.studentType === 'FULL_BOARDER' ? 'K 7,100.00' : 'K 3,800.00',
+      ]);
+    }
     setHasCustomEdits(false);
   }, [baselineDoc]);
 
   // Active Document reflects custom edits if made
   const activeDocument = useMemo(() => {
-    return {
+    const doc = {
       ...baselineDoc,
       salutation: hasCustomEdits ? customSalutation : baselineDoc.salutation,
       subjectLine: hasCustomEdits ? customSubject : baselineDoc.subjectLine,
       paragraphs: hasCustomEdits ? customParagraphs : baselineDoc.paragraphs,
     };
-  }, [baselineDoc, hasCustomEdits, customSalutation, customSubject, customParagraphs]);
+
+    if (includeTable && customTableRows.length > 0) {
+      (doc as any).tabularData = {
+        headers: customTableHeaders,
+        rows: customTableRows,
+        footers: customTableFooters.length > 0 ? customTableFooters : undefined,
+      };
+    } else {
+      delete (doc as any).tabularData;
+    }
+
+    return doc;
+  }, [
+    baselineDoc,
+    hasCustomEdits,
+    customSalutation,
+    customSubject,
+    customParagraphs,
+    includeTable,
+    customTableHeaders,
+    customTableRows,
+    customTableFooters,
+  ]);
 
   // Save current generated document to the timestamped archive
   const handleSaveAndArchive = () => {
@@ -401,6 +434,7 @@ export default function DocumentGeneratorPage() {
       title: activeDocument.title,
       subjectLine: activeDocument.subjectLine,
       paragraphs: [...activeDocument.paragraphs],
+      tabularData: (activeDocument as any).tabularData,
     };
 
     const updated = [newRecord, ...archivedLetters];
@@ -424,9 +458,17 @@ export default function DocumentGeneratorPage() {
   };
 
   const handleCopyText = () => {
+    const tableText = (activeDocument as any).tabularData
+      ? '\n\n' +
+        (activeDocument as any).tabularData.headers.join(' | ') +
+        '\n' +
+        (activeDocument as any).tabularData.rows.map((r: string[]) => r.join(' | ')).join('\n') +
+        ((activeDocument as any).tabularData.footers ? '\n' + (activeDocument as any).tabularData.footers.join(' | ') : '')
+      : '';
+
     const plainText = `${activeDocument.title}\n${activeDocument.referenceNumber}\nDate: ${activeDocument.issueDate}\n\n${activeDocument.subjectLine}\n\n${activeDocument.salutation}\n\n${activeDocument.paragraphs.join(
       '\n\n'
-    )}\n\nSignatory: ${activeDocument.signatoryName} (${activeDocument.signatoryTitle})`;
+    )}${tableText}\n\nSignatory: ${activeDocument.signatoryName} (${activeDocument.signatoryTitle})`;
     navigator.clipboard.writeText(plainText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -435,6 +477,14 @@ export default function DocumentGeneratorPage() {
   const handleRestoreArchivedCopy = (archive: ArchivedDocumentRecord) => {
     setCustomSubject(archive.subjectLine);
     setCustomParagraphs([...archive.paragraphs]);
+    if (archive.tabularData) {
+      setIncludeTable(true);
+      setCustomTableHeaders([...archive.tabularData.headers]);
+      setCustomTableRows(archive.tabularData.rows.map((r) => [...r]));
+      setCustomTableFooters(archive.tabularData.footers ? [...archive.tabularData.footers] : []);
+    } else {
+      setIncludeTable(false);
+    }
     setHasCustomEdits(true);
     setToastMessage(`Restored archived snapshot ${archive.id} (Issued: ${archive.timestamp}) into live preview.`);
     setTimeout(() => setToastMessage(null), 4000);
@@ -972,6 +1022,253 @@ export default function DocumentGeneratorPage() {
                     <span>Add New Paragraph</span>
                   </button>
                 </div>
+
+                {/* INTERACTIVE TABLE BUILDER & ROW-BY-ROW CELL EDITOR */}
+                <div className="space-y-3 pt-3 border-t border-amber-300">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-amber-950 uppercase tracking-wide flex items-center gap-1.5">
+                      <TableIcon className="w-4 h-4 text-amber-700" />
+                      <span>Itemized Table Breakdown / Fee Schedule</span>
+                    </span>
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-amber-900 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={includeTable}
+                        onChange={(e) => {
+                          setIncludeTable(e.target.checked);
+                          setHasCustomEdits(true);
+                        }}
+                        className="rounded border-amber-300 text-amber-600 focus:ring-amber-500 w-4 h-4"
+                      />
+                      <span>Include Table in Letter</span>
+                    </label>
+                  </div>
+
+                  {includeTable && (
+                    <div className="bg-amber-100/40 p-3.5 rounded-2xl border border-amber-200/80 space-y-3">
+                      {/* Column Headers */}
+                      <div>
+                        <label className="block text-[10px] font-black uppercase tracking-wider text-amber-900 mb-1">
+                          Table Column Headers
+                        </label>
+                        <div className="grid grid-cols-12 gap-1.5">
+                          <div className="col-span-5">
+                            <input
+                              type="text"
+                              value={customTableHeaders[0] || ''}
+                              onChange={(e) => {
+                                const updated = [...customTableHeaders];
+                                updated[0] = e.target.value;
+                                setCustomTableHeaders(updated);
+                                setHasCustomEdits(true);
+                              }}
+                              placeholder="Header 1 (e.g. Component)"
+                              className="w-full bg-white border border-amber-300 rounded-lg p-2 text-xs font-bold text-slate-900"
+                            />
+                          </div>
+                          <div className="col-span-4">
+                            <input
+                              type="text"
+                              value={customTableHeaders[1] || ''}
+                              onChange={(e) => {
+                                const updated = [...customTableHeaders];
+                                updated[1] = e.target.value;
+                                setCustomTableHeaders(updated);
+                                setHasCustomEdits(true);
+                              }}
+                              placeholder="Header 2 (e.g. Description)"
+                              className="w-full bg-white border border-amber-300 rounded-lg p-2 text-xs font-bold text-slate-900"
+                            />
+                          </div>
+                          <div className="col-span-3">
+                            <input
+                              type="text"
+                              value={customTableHeaders[2] || ''}
+                              onChange={(e) => {
+                                const updated = [...customTableHeaders];
+                                updated[2] = e.target.value;
+                                setCustomTableHeaders(updated);
+                                setHasCustomEdits(true);
+                              }}
+                              placeholder="Header 3 (e.g. Amount)"
+                              className="w-full bg-white border border-amber-300 rounded-lg p-2 text-xs font-bold text-slate-900 text-right"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Line Item Rows */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-amber-900">
+                          <span>Editable Table Rows ({customTableRows.length} Items)</span>
+                          <span className="text-slate-500 font-normal">Edit text or numbers in any cell</span>
+                        </div>
+                        {customTableRows.map((row, rIdx) => (
+                          <div
+                            key={rIdx}
+                            className="grid grid-cols-12 gap-1.5 items-center bg-white p-1.5 rounded-xl border border-amber-200/60 shadow-2xs"
+                          >
+                            <div className="col-span-5">
+                              <input
+                                type="text"
+                                value={row[0] || ''}
+                                onChange={(e) => {
+                                  const updated = customTableRows.map((r, i) =>
+                                    i === rIdx ? [e.target.value, r[1] || '', r[2] || ''] : r
+                                  );
+                                  setCustomTableRows(updated);
+                                  setHasCustomEdits(true);
+                                }}
+                                placeholder="Component / Fee Name"
+                                className="w-full bg-slate-50/70 border border-slate-200 rounded-lg p-1.5 text-xs font-bold text-slate-900"
+                              />
+                            </div>
+                            <div className="col-span-4">
+                              <input
+                                type="text"
+                                value={row[1] || ''}
+                                onChange={(e) => {
+                                  const updated = customTableRows.map((r, i) =>
+                                    i === rIdx ? [r[0] || '', e.target.value, r[2] || ''] : r
+                                  );
+                                  setCustomTableRows(updated);
+                                  setHasCustomEdits(true);
+                                }}
+                                placeholder="Details & Description"
+                                className="w-full bg-slate-50/70 border border-slate-200 rounded-lg p-1.5 text-xs text-slate-700"
+                              />
+                            </div>
+                            <div className="col-span-2">
+                              <input
+                                type="text"
+                                value={row[2] || ''}
+                                onChange={(e) => {
+                                  const updated = customTableRows.map((r, i) =>
+                                    i === rIdx ? [r[0] || '', r[1] || '', e.target.value] : r
+                                  );
+                                  setCustomTableRows(updated);
+                                  setHasCustomEdits(true);
+                                }}
+                                placeholder="Amount"
+                                className="w-full bg-slate-50/70 border border-slate-200 rounded-lg p-1.5 text-xs font-mono font-bold text-blue-900 text-right"
+                              />
+                            </div>
+                            <div className="col-span-1 flex justify-center">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = customTableRows.filter((_, i) => i !== rIdx);
+                                  setCustomTableRows(updated);
+                                  setHasCustomEdits(true);
+                                }}
+                                title="Remove Row"
+                                className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Add Row & Auto-Sum Action Buttons */}
+                      <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomTableRows([
+                              ...customTableRows,
+                              ['New Educational Levy', 'Curriculum resources and structured provision', 'K 1,000.00'],
+                            ]);
+                            setHasCustomEdits(true);
+                          }}
+                          className="px-3 py-1.5 bg-amber-200 hover:bg-amber-300 text-amber-950 font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-2xs"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>Add Row to Table</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            let sum = 0;
+                            customTableRows.forEach((r) => {
+                              const cleaned = (r[2] || '').replace(/[^0-9.]/g, '');
+                              const num = parseFloat(cleaned);
+                              if (!isNaN(num)) sum += num;
+                            });
+                            const formattedSum = `K ${sum.toLocaleString('en-US', {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}`;
+                            setCustomTableFooters([
+                              'Total Initial Termly Obligation',
+                              'All inclusive statutory tuition & boarding package',
+                              formattedSum,
+                            ]);
+                            setHasCustomEdits(true);
+                            setToastMessage(`Auto-calculated total sum: ${formattedSum}`);
+                          }}
+                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold rounded-xl text-xs flex items-center gap-1.5 transition border border-blue-200"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-blue-600" />
+                          <span>Auto-Sum Totals</span>
+                        </button>
+                      </div>
+
+                      {/* Table Summary Footer Row */}
+                      <div className="pt-2 border-t border-amber-200 space-y-1">
+                        <label className="block text-[10px] font-black uppercase tracking-wider text-amber-900">
+                          Total Summary Footer Row (Optional)
+                        </label>
+                        <div className="grid grid-cols-12 gap-1.5 items-center">
+                          <div className="col-span-5">
+                            <input
+                              type="text"
+                              value={customTableFooters[0] || ''}
+                              onChange={(e) => {
+                                const updated = [...customTableFooters];
+                                updated[0] = e.target.value;
+                                setCustomTableFooters(updated);
+                                setHasCustomEdits(true);
+                              }}
+                              placeholder="Total Summary Label"
+                              className="w-full bg-white border border-amber-300 rounded-lg p-1.5 text-xs font-bold text-slate-900"
+                            />
+                          </div>
+                          <div className="col-span-4">
+                            <input
+                              type="text"
+                              value={customTableFooters[1] || ''}
+                              onChange={(e) => {
+                                const updated = [...customTableFooters];
+                                updated[1] = e.target.value;
+                                setCustomTableFooters(updated);
+                                setHasCustomEdits(true);
+                              }}
+                              placeholder="Total Note / Details"
+                              className="w-full bg-white border border-amber-300 rounded-lg p-1.5 text-xs text-slate-700"
+                            />
+                          </div>
+                          <div className="col-span-3">
+                            <input
+                              type="text"
+                              value={customTableFooters[2] || ''}
+                              onChange={(e) => {
+                                const updated = [...customTableFooters];
+                                updated[2] = e.target.value;
+                                setCustomTableFooters(updated);
+                                setHasCustomEdits(true);
+                              }}
+                              placeholder="Total Amount"
+                              className="w-full bg-white border border-amber-300 rounded-lg p-1.5 text-xs font-mono font-black text-blue-900 text-right"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -1094,14 +1391,19 @@ export default function DocumentGeneratorPage() {
                 </h2>
               </div>
 
-              {/* Tabular Data (if present and learner mode) */}
-              {recipientCategory === 'LEARNER' && (activeDocument as any).tabularData && (
+              {/* Tabular Data (Real-time editable breakdown table) */}
+              {(activeDocument as any).tabularData && (
                 <div className="mt-4 border border-slate-300 rounded-lg overflow-hidden text-[11px] font-sans">
-                  <table className="w-full">
+                  <table className="w-full border-collapse">
                     <thead>
                       <tr className="bg-slate-100 border-b border-slate-300">
                         {(activeDocument as any).tabularData.headers.map((h: string, idx: number) => (
-                          <th key={idx} className="px-3 py-1.5 text-left font-bold text-slate-800 text-[10px] uppercase">
+                          <th
+                            key={idx}
+                            className={`px-3 py-2 text-left font-bold text-slate-800 text-[10px] uppercase ${
+                              idx === (activeDocument as any).tabularData.headers.length - 1 ? 'text-right' : ''
+                            }`}
+                          >
                             {h}
                           </th>
                         ))}
@@ -1111,13 +1413,36 @@ export default function DocumentGeneratorPage() {
                       {(activeDocument as any).tabularData.rows.map((row: any[], rIdx: number) => (
                         <tr key={rIdx} className={rIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
                           {row.map((cell: any, cIdx: number) => (
-                            <td key={cIdx} className="px-3 py-1.5 border-b border-slate-200 text-slate-900">
+                            <td
+                              key={cIdx}
+                              className={`px-3 py-1.5 border-b border-slate-200 text-slate-900 ${
+                                cIdx === row.length - 1 ? 'text-right font-mono font-bold text-blue-950' : ''
+                              }`}
+                            >
                               {cell}
                             </td>
                           ))}
                         </tr>
                       ))}
                     </tbody>
+                    {(activeDocument as any).tabularData.footers && (activeDocument as any).tabularData.footers.length > 0 && (
+                      <tfoot>
+                        <tr className="bg-slate-100/90 font-bold border-t-2 border-slate-400">
+                          {(activeDocument as any).tabularData.footers.map((f: string, fIdx: number) => (
+                            <td
+                              key={fIdx}
+                              className={`px-3 py-2 text-slate-950 text-[11px] ${
+                                fIdx === (activeDocument as any).tabularData.footers.length - 1
+                                  ? 'text-right font-mono font-black text-blue-900'
+                                  : 'font-bold'
+                              }`}
+                            >
+                              {f}
+                            </td>
+                          ))}
+                        </tr>
+                      </tfoot>
+                    )}
                   </table>
                 </div>
               )}
