@@ -154,7 +154,25 @@ export function EnterpriseTable<T extends { id?: string | number }>({
         if (!filterVal || filterVal === 'ALL') continue;
         const col = columns.find((c) => c.key === key);
         const cellValue = col?.accessor ? col.accessor(row) : row[key];
-        if (String(cellValue) !== filterVal) return false;
+        const strCell = String(cellValue || '').toLowerCase().trim();
+        const strFilter = String(filterVal).toLowerCase().trim();
+        const isMatch =
+          strCell === strFilter ||
+          strCell.includes(strFilter) ||
+          strFilter.includes(strCell) ||
+          (strFilter.startsWith('grade 1') && strCell.includes('grade 1')) ||
+          (strFilter.startsWith('grade 2') && strCell.includes('grade 2')) ||
+          (strFilter.startsWith('grade 3') && strCell.includes('grade 3')) ||
+          (strFilter.startsWith('grade 4') && strCell.includes('grade 4')) ||
+          (strFilter.startsWith('grade 5') && strCell.includes('grade 5')) ||
+          (strFilter.startsWith('grade 6') && strCell.includes('grade 6')) ||
+          (strFilter.startsWith('grade 7') && strCell.includes('grade 7')) ||
+          (strFilter.startsWith('form 1') && strCell.includes('form 1')) ||
+          (strFilter.startsWith('form 2') && strCell.includes('form 2')) ||
+          (strFilter.startsWith('form 3') && strCell.includes('form 3')) ||
+          (strFilter.startsWith('form 4') && strCell.includes('form 4')) ||
+          (strFilter.startsWith('form 5') && strCell.includes('form 5'));
+        if (!isMatch) return false;
       }
 
       return true;
@@ -300,31 +318,43 @@ export function EnterpriseTable<T extends { id?: string | number }>({
       </div>
 
       {/* Filter Chips Bar if any filters exist */}
-      {columns.some((c) => c.filterable && c.filterOptions) && (
+      {columns.some((c) => c.filterable) && (
         <div className="px-5 py-2.5 bg-slate-50 border-b border-slate-100 flex flex-wrap items-center gap-2">
           <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1">
             <Filter className="w-3 h-3 text-slate-400" /> Filters:
           </span>
           {columns
-            .filter((c) => c.filterable && c.filterOptions)
-            .map((col) => (
-              <select
-                key={col.key}
-                value={activeFilters[col.key] || 'ALL'}
-                onChange={(e) => {
-                  setActiveFilters((prev) => ({ ...prev, [col.key]: e.target.value }));
-                  setCurrentPage(1);
-                }}
-                className="text-xs bg-white border border-slate-200 rounded-md px-2 py-1 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="ALL">All {col.header}s</option>
-                {col.filterOptions?.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-            ))}
+            .filter((c) => c.filterable)
+            .map((col) => {
+              const options =
+                col.filterOptions && col.filterOptions.length > 0
+                  ? col.filterOptions
+                  : Array.from(
+                      new Set(
+                        data
+                          .map((r: any) => (col.accessor ? col.accessor(r) : r[col.key]))
+                          .filter(Boolean)
+                      )
+                    ).sort();
+              return (
+                <select
+                  key={col.key}
+                  value={activeFilters[col.key] || 'ALL'}
+                  onChange={(e) => {
+                    setActiveFilters((prev) => ({ ...prev, [col.key]: e.target.value }));
+                    setCurrentPage(1);
+                  }}
+                  className="text-xs bg-white border border-slate-200 rounded-md px-2 py-1 text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="ALL">All {col.header}s</option>
+                  {options.map((opt: any) => (
+                    <option key={String(opt)} value={String(opt)}>
+                      {String(opt)}
+                    </option>
+                  ))}
+                </select>
+              );
+            })}
           {Object.values(activeFilters).some((v) => v && v !== 'ALL') && (
             <button
               onClick={() => {

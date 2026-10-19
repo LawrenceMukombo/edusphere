@@ -2,7 +2,7 @@
 // Enterprise-grade In-App Messaging Service for Legacy School Solwezi
 // Connecting Teachers, Parents, Boarding Pastoral Staff, and School Administration
 
-export type MessageRole = 'TEACHER' | 'PARENT' | 'ADMIN' | 'BOARDING_MASTER' | 'BURSAR';
+export type MessageRole = 'TEACHER' | 'PARENT' | 'ADMIN' | 'BOARDING_MASTER' | 'BURSAR' | 'LEARNER';
 
 export interface ChatParticipant {
   id: string;
@@ -47,10 +47,10 @@ export interface ChatMessage {
 
 export interface ChatConversation {
   id: string;
-  type: 'DIRECT_PARENT_TEACHER' | 'STAFF_ROOM' | 'BOARDING_PASTORAL' | 'BROADCAST_ANNOUNCEMENT';
+  type: 'DIRECT_PARENT_TEACHER' | 'STAFF_ROOM' | 'BOARDING_PASTORAL' | 'BROADCAST_ANNOUNCEMENT' | 'DIRECT_LEARNER';
   title: string;
   subtitle: string;
-  category: 'PARENTS' | 'STAFF' | 'BROADCASTS';
+  category: 'PARENTS' | 'STAFF' | 'LEARNERS' | 'BROADCASTS';
   participant: ChatParticipant;
   unreadCount: number;
   lastMessage: {
