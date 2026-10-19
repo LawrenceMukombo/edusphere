@@ -11,6 +11,7 @@ export function ServiceWorkerRegistration() {
           .register('/sw.js')
           .then((registration) => {
             console.log('[EduSphere] ServiceWorker registered with scope:', registration.scope);
+            registration.update().catch(() => {});
 
             // Periodic updates check
             registration.onupdatefound = () => {

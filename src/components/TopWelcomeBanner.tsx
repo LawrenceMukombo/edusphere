@@ -97,8 +97,8 @@ export function TopWelcomeBanner() {
   };
 
   return (
-    <div className="w-full bg-slate-950 text-white border-b border-slate-800 text-xs py-2 px-4 sm:px-6 lg:px-8 select-none z-50 sticky top-0 shadow-md">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2.5">
+    <div className="w-full bg-slate-950 text-white border-b border-slate-800 text-xs py-1.5 px-3 sm:px-6 lg:px-8 select-none z-30 relative shadow-sm">
+      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
         
         {/* Left: Institutional Welcome & Full Logged-in User Identity */}
         <div className="flex items-center gap-3 flex-wrap">

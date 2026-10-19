@@ -1,6 +1,6 @@
 // public/sw.js — Service Worker for Legacy School Solwezi (EduSphere SMIS)
-const CACHE_NAME = 'edusphere-cache-v1.0.1';
-const DYNAMIC_CACHE = 'edusphere-dynamic-v1.0.1';
+const CACHE_NAME = 'edusphere-cache-v1.0.2';
+const DYNAMIC_CACHE = 'edusphere-dynamic-v1.0.2';
 
 const STATIC_PRECACHE = [
   '/',
