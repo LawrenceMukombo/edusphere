@@ -500,21 +500,146 @@ def create_deck():
              subtitle="Seamless Distribution", accent_color=C_GOLD)
 
     # =========================================================================
-    # SLIDE 13: COMMERCIAL PRICING & INVESTMENT BREAKDOWN (COST OF APP)
+    # SLIDE 13: INSTITUTIONAL SUBSCRIPTION TIERS & MODULE LICENSING
     # =========================================================================
     slide13 = prs.slides.add_slide(blank_layout)
     set_slide_background(slide13)
-    add_header(slide13, "Commercial Investment Breakdown: Turnkey Software, IoT Hardware & Support")
+    add_header(slide13, "Institutional Subscription Tiers & Licensing Architecture")
+
+    tiers_data = [
+        (
+            "Starter Academic",
+            "ENTRY TIER",
+            "ZMW 24,000 / year",
+            "$925 / year  •  ZMW 8,000 / term",
+            "Quota: Up to 350 Enrolled Learners",
+            "Core modules for small single-campus primary or secondary day schools:",
+            [
+                "Operations & Attendance Register (Daily roll-call, MoE Form 12A)",
+                "School Calendar & Birthday Roster (Term dates, holiday tracking)",
+                "Academics & ECZ Gradebook Reports (Assessments, report cards)"
+            ],
+            C_DEEP_BLUE,
+            False
+        ),
+        (
+            "Professional SMIS",
+            "MOST POPULAR",
+            "ZMW 42,000 / year",
+            "$1,615 / year  •  ZMW 14,000 / term",
+            "Quota: Up to 750 Enrolled Learners",
+            "Adds Boarding, Finance Inflows, and Teacher Workspaces:",
+            [
+                "All Starter Academic Core Modules (Attendance, Calendar, Academics)",
+                "Boarding Houses & Kansanshi Village (Bed allocations, 21:00 curfew, exeats)",
+                "Fees Management & Expenditure Control (Mobile Money, cashbook, debtors ledger)",
+                "Teacher Workspace & Lesson Plans (Syllabus pacing, pupil remarks)"
+            ],
+            C_EMERALD,
+            False
+        ),
+        (
+            "Sovereign Enterprise",
+            "COMPLETE SUITE • ACTIVE TIER",
+            "ZMW 65,000 / year",
+            "$2,500 / year  •  ZMW 21,667 / term",
+            "Quota: 1,200+ Learners (Multi-Campus)",
+            "Complete institutional suite deployed for Legacy School Solwezi:",
+            [
+                "All Professional SMIS Modules (Attendance, Boarding, Fees, Academics)",
+                "Staff HR & Teaching Council of Zambia (TCZ) Compliance Suite",
+                "Solwezi GIS & Campus Fleet Tracking (Minibus GPS telematics)",
+                "Admissions SIS & Official Document Generator (Letters with QR stamp)",
+                "Parent Portal Family Center & Automated WhatsApp/SMS Alerts",
+                "Fixed Asset Management & Inventory Ledger",
+                "Native Android Mobile APK (com.legacyschool.edusphere)",
+                "Dual-Campus Multi-Tenant Consolidation (Mushitala Day & Kansanshi Boarding)"
+            ],
+            C_GOLD,
+            True
+        ),
+    ]
+
+    for idx, (t_name, t_badge, t_price, t_subprice, t_quota, t_desc, t_modules, t_color, is_active) in enumerate(tiers_data):
+        left = Inches(0.8 + idx * 3.95)
+        card = slide13.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, Inches(1.35), Inches(3.8), Inches(5.85))
+        card.fill.solid()
+        card.fill.fore_color.rgb = RGBColor(240, 249, 255) if is_active else C_WHITE
+        card.line.color.rgb = C_GOLD if is_active else C_CARD_BORDER
+        card.line.width = Pt(1.5 if is_active else 1)
+
+        # Top stripe
+        stripe = slide13.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, Inches(1.35), Inches(3.8), Inches(0.12))
+        stripe.fill.solid()
+        stripe.fill.fore_color.rgb = t_color
+        stripe.line.fill.background()
+
+        tb = slide13.shapes.add_textbox(left + Inches(0.2), Inches(1.55), Inches(3.4), Inches(5.5))
+        tf = tb.text_frame
+        tf.word_wrap = True
+
+        p_badge = tf.paragraphs[0]
+        p_badge.text = t_badge
+        p_badge.font.size = Pt(9)
+        p_badge.font.bold = True
+        p_badge.font.color.rgb = t_color
+
+        p_name = tf.add_paragraph()
+        p_name.text = t_name
+        p_name.font.size = Pt(15)
+        p_name.font.bold = True
+        p_name.font.color.rgb = C_NAVY
+        p_name.space_after = Pt(2)
+
+        p_price = tf.add_paragraph()
+        p_price.text = t_price
+        p_price.font.size = Pt(16)
+        p_price.font.bold = True
+        p_price.font.color.rgb = C_NAVY
+
+        p_subprice = tf.add_paragraph()
+        p_subprice.text = t_subprice
+        p_subprice.font.size = Pt(9.5)
+        p_subprice.font.bold = True
+        p_subprice.font.color.rgb = C_EMERALD
+        p_subprice.space_after = Pt(4)
+
+        p_quota = tf.add_paragraph()
+        p_quota.text = t_quota
+        p_quota.font.size = Pt(10)
+        p_quota.font.bold = True
+        p_quota.font.color.rgb = C_DEEP_BLUE
+        p_quota.space_after = Pt(6)
+
+        p_desc = tf.add_paragraph()
+        p_desc.text = t_desc
+        p_desc.font.size = Pt(9)
+        p_desc.font.color.rgb = C_SLATE_MUTED
+        p_desc.space_after = Pt(6)
+
+        for m in t_modules:
+            p_m = tf.add_paragraph()
+            p_m.text = f"✔ {m}"
+            p_m.font.size = Pt(8.5)
+            p_m.font.color.rgb = C_SLATE_DARK
+            p_m.space_after = Pt(3)
+
+    # =========================================================================
+    # SLIDE 14: HARDWARE, IMPLEMENTATION & EXECUTIVE ROI BREAKDOWN
+    # =========================================================================
+    slide14 = prs.slides.add_slide(blank_layout)
+    set_slide_background(slide14)
+    add_header(slide14, "Turnkey Implementation, Smart Bus Hardware & Executive ROI")
 
     # Table of Costings
     rows = 7
     cols = 4
     left = Inches(0.8)
-    top = Inches(1.4)
+    top = Inches(1.35)
     width = Inches(11.733)
-    height = Inches(4.4)
+    height = Inches(4.3)
 
-    table_shape = slide13.shapes.add_table(rows, cols, left, top, width, height)
+    table_shape = slide14.shapes.add_table(rows, cols, left, top, width, height)
     table = table_shape.table
 
     table.columns[0].width = Inches(4.2)
@@ -534,12 +659,12 @@ def create_deck():
             p.font.color.rgb = C_GOLD
 
     cost_rows = [
-      ("EduSphere Sovereign Enterprise Platform Core", "Multi-Campus License, Finance, SIS, Academics, GIS & Parent Portal (Unlimited Admin & Teacher Users)", "K 65,000", "$ 2,500"),
-      ("Implementation, Historical Seeding & Setup", "Data migration of 780 students, 48 staff profiles, database configuration, and backup server setup", "K 28,000", "$ 1,075"),
-      ("Smart Bus Hardware (2 In-Vehicle Telematics Tablets)", "2x Rugged 7-inch Android In-Bus Tablets, NFC RFID readers, GPS mounts, and 4G SIM integration", "K 19,500", "$ 750"),
+      ("EduSphere Sovereign Enterprise Core (Active Tier)", "Full Multi-Campus License: SIS, Finance, Academics, GIS, Boarding, HR & Android APK", "K 65,000", "$ 2,500"),
+      ("Implementation, Historical Seeding & Setup", "Data migration of 780 students, 48 staff profiles, database configuration, and backup setup", "K 28,000", "$ 1,075"),
+      ("Smart Bus Hardware (2 In-Vehicle Tablets)", "2x Rugged 7-inch Android In-Bus Tablets, NFC RFID readers, GPS mounts, and 4G SIM integration", "K 19,500", "$ 750"),
       ("Smart Student Contactless ID Cards (800 Cards)", "800 Dual-Frequency MIFARE 13.56MHz + QR printed PVC student smart identification badges", "K 16,000", "$ 615"),
-      ("Staff Onboarding & Operational Training", "Hands-on workshops for 48 staff (Bursars, HODs, Teachers, Matrons, Drivers, and Executive Management)", "K 14,500", "$ 560"),
-      ("TOTAL YEAR 1 CAPITAL & IMPLEMENTATION INVESTMENT", "Complete sovereign school digital ecosystem with full warranty, support, and backups", "K 143,000", "$ 5,500"),
+      ("Staff Onboarding & Operational Training", "Hands-on workshops for 48 staff (Bursars, HODs, Teachers, Matrons, Drivers, and Management)", "K 14,500", "$ 560"),
+      ("TOTAL YEAR 1 CAPITAL & IMPLEMENTATION INVESTMENT", "Complete sovereign school digital ecosystem with full warranty, SLA support, and daily backups", "K 143,000", "$ 5,500"),
     ]
 
     for row_idx, r in enumerate(cost_rows):
@@ -556,11 +681,11 @@ def create_deck():
                 p.font.color.rgb = C_NAVY if is_total else C_SLATE_DARK
 
     # Bottom ROI Callout Box
-    tb_roi = slide13.shapes.add_textbox(Inches(0.8), Inches(6.0), Inches(11.733), Inches(1.1))
+    tb_roi = slide14.shapes.add_textbox(Inches(0.8), Inches(5.85), Inches(11.733), Inches(1.3))
     tf_roi = tb_roi.text_frame
     tf_roi.word_wrap = True
     p_roi = tf_roi.paragraphs[0]
-    p_roi.text = "Return on Investment (ROI) Justification for Executive Management:"
+    p_roi.text = "Return on Investment (ROI) Justification for Executive Management & Board:"
     p_roi.font.size = Pt(11)
     p_roi.font.bold = True
     p_roi.font.color.rgb = C_NAVY
@@ -571,11 +696,11 @@ def create_deck():
     p_roi_2.font.color.rgb = C_SLATE_MUTED
 
     # =========================================================================
-    # SLIDE 14: IMPLEMENTATION ROADMAP & ROLLOUT SCHEDULE
+    # SLIDE 15: IMPLEMENTATION ROADMAP & ROLLOUT SCHEDULE
     # =========================================================================
-    slide14 = prs.slides.add_slide(blank_layout)
-    set_slide_background(slide14)
-    add_header(slide14, "Deployment Timeline: 4-Week Fast-Track Execution Schedule")
+    slide15 = prs.slides.add_slide(blank_layout)
+    set_slide_background(slide15)
+    add_header(slide15, "Deployment Timeline: 4-Week Fast-Track Execution Schedule")
 
     phases = [
       ("Week 1: Sovereign Setup", [
@@ -606,17 +731,17 @@ def create_deck():
 
     for idx, (p_title, p_steps) in enumerate(phases):
         left = Inches(0.8 + idx * 2.95)
-        box = slide14.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, Inches(1.4), Inches(2.85), Inches(4.3))
+        box = slide15.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, left, Inches(1.4), Inches(2.85), Inches(4.3))
         box.fill.solid()
         box.fill.fore_color.rgb = C_WHITE
         box.line.color.rgb = C_CARD_BORDER
 
-        top_strip = slide14.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, Inches(1.4), Inches(2.85), Inches(0.1))
+        top_strip = slide15.shapes.add_shape(MSO_SHAPE.RECTANGLE, left, Inches(1.4), Inches(2.85), Inches(0.1))
         top_strip.fill.solid()
         top_strip.fill.fore_color.rgb = C_DEEP_BLUE
         top_strip.line.fill.background()
 
-        tb = slide14.shapes.add_textbox(left + Inches(0.15), Inches(1.6), Inches(2.55), Inches(3.9))
+        tb = slide15.shapes.add_textbox(left + Inches(0.15), Inches(1.6), Inches(2.55), Inches(3.9))
         tf = tb.text_frame
         tf.word_wrap = True
         p = tf.paragraphs[0]
@@ -633,12 +758,12 @@ def create_deck():
             p_step.font.color.rgb = C_SLATE_DARK
             p_step.space_after = Pt(6)
 
-    sla_box = slide14.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(6.0), Inches(11.733), Inches(1.0))
+    sla_box = slide15.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(6.0), Inches(11.733), Inches(1.0))
     sla_box.fill.solid()
     sla_box.fill.fore_color.rgb = RGBColor(240, 253, 244)
     sla_box.line.color.rgb = RGBColor(187, 247, 208)
 
-    tb_sla = slide14.shapes.add_textbox(Inches(1.0), Inches(6.05), Inches(11.3), Inches(0.85))
+    tb_sla = slide15.shapes.add_textbox(Inches(1.0), Inches(6.05), Inches(11.3), Inches(0.85))
     tf_sla = tb_sla.text_frame
     tf_sla.word_wrap = True
     p_sla = tf_sla.paragraphs[0]
@@ -648,27 +773,27 @@ def create_deck():
     p_sla.font.color.rgb = RGBColor(22, 101, 52)
 
     # =========================================================================
-    # SLIDE 15: CONCLUSION & ACTIONABLE RECOMMENDATION
+    # SLIDE 16: CONCLUSION & ACTIONABLE RECOMMENDATION
     # =========================================================================
-    slide15 = prs.slides.add_slide(blank_layout)
-    set_slide_background(slide15, C_NAVY)
+    slide16 = prs.slides.add_slide(blank_layout)
+    set_slide_background(slide16, C_NAVY)
 
-    box15 = slide15.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1.0), Inches(1.0), Inches(11.333), Inches(5.5))
-    box15.fill.solid()
-    box15.fill.fore_color.rgb = RGBColor(15, 45, 82)
-    box15.line.color.rgb = C_GOLD
-    box15.line.width = Pt(1.5)
+    box16 = slide16.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1.0), Inches(1.0), Inches(11.333), Inches(5.5))
+    box16.fill.solid()
+    box16.fill.fore_color.rgb = RGBColor(15, 45, 82)
+    box16.line.color.rgb = C_GOLD
+    box16.line.width = Pt(1.5)
 
-    tb15 = slide15.shapes.add_textbox(Inches(1.4), Inches(1.4), Inches(10.5), Inches(4.7))
-    tf15 = tb15.text_frame
-    tf15.word_wrap = True
+    tb16 = slide16.shapes.add_textbox(Inches(1.4), Inches(1.4), Inches(10.5), Inches(4.7))
+    tf16 = tb16.text_frame
+    tf16.word_wrap = True
 
-    p15_1 = tf15.paragraphs[0]
-    p15_1.text = "SUMMARY OF RECOMMENDATIONS FOR EXECUTIVE APPROVAL"
-    p15_1.font.size = Pt(14)
-    p15_1.font.bold = True
-    p15_1.font.color.rgb = C_GOLD
-    p15_1.space_after = Pt(12)
+    p16_1 = tf16.paragraphs[0]
+    p16_1.text = "SUMMARY OF RECOMMENDATIONS FOR EXECUTIVE APPROVAL"
+    p16_1.font.size = Pt(14)
+    p16_1.font.bold = True
+    p16_1.font.color.rgb = C_GOLD
+    p16_1.space_after = Pt(12)
 
     recs = [
       "1. Approve Sovereign SMIS Deployment: Authorize transition from manual paper to EduSphere across Mushitala and Kansanshi campuses.",
@@ -679,27 +804,30 @@ def create_deck():
     ]
 
     for r in recs:
-        p_r = tf15.add_paragraph()
+        p_r = tf16.add_paragraph()
         p_r.text = r
         p_r.font.size = Pt(11)
         p_r.font.bold = True
         p_r.font.color.rgb = C_WHITE
         p_r.space_after = Pt(8)
 
-    p15_sign = tf15.add_paragraph()
-    p15_sign.text = "\nPrepared with dedication for Legacy School Solwezi  •  Managing Director & Principal: Mr. Emmanuel Mwansa\n'We strive for your academic and moral excellence.'"
-    p15_sign.font.size = Pt(10.5)
-    p15_sign.font.italic = True
-    p15_sign.font.color.rgb = RGBColor(203, 213, 225)
+    p16_sign = tf16.add_paragraph()
+    p16_sign.text = "\nPrepared with dedication for Legacy School Solwezi  •  Managing Director & Principal: Mr. Emmanuel Mwansa\n'We strive for your academic and moral excellence.'"
+    p16_sign.font.size = Pt(10.5)
+    p16_sign.font.italic = True
+    p16_sign.font.color.rgb = RGBColor(203, 213, 225)
 
     # Save to both root and public downloads
     output_path = r"c:\edusphere\Legacy_School_EduSphere_Executive_Presentation.pptx"
     prs.save(output_path)
     print(f"Master presentation saved to: {output_path}")
 
-    public_path = r"c:\edusphere\public\downloads\Legacy_School_EduSphere_Executive_Presentation.pptx"
-    prs.save(public_path)
-    print(f"Public presentation saved to: {public_path}")
+    public_path = r"c:\edusphere\public\downloads\EduSphere_Master_Stakeholder_Presentation.pptx"
+    try:
+        prs.save(public_path)
+        print(f"Public presentation saved to: {public_path}")
+    except Exception as e:
+        print(f"Notice: public presentation file lock, master file updated at {output_path}: {e}")
 
 if __name__ == "__main__":
     create_deck()

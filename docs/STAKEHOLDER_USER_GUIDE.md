@@ -254,6 +254,23 @@ EduSphere features a **Multi-Horizon Attendance Matrix** that tracks pupil prese
 
 ---
 
+### 3.11 Institutional Subscription Tiers, Module Licensing & Commercial Fees
+- **Route:** `/settings` (Tab: Institutional Subscription Tier & Licensing)
+- **Primary Operators:** School Proprietor, Director Mr. Emmanuel Mwansa, ICT Systems Administrator.
+
+EduSphere provides three transparent, sovereign institutional subscription plans designed to scale with campus size and operational complexity:
+
+| Subscription Tier | Annual License (ZMW) | Termly Rate (ZMW) | USD Equiv. | Learner Quota | Included Modules & Features |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Starter Academic** *(Entry Tier)* | **K24,000 / yr** | K8,000 / term | $925 / yr | Up to 350 Learners | • Operations & Attendance Register<br>• School Calendar & Birthday Roster<br>• Academics & ECZ Gradebook Reports |
+| **Professional SMIS** *(Most Popular)* | **K42,000 / yr** | K14,000 / term | $1,615 / yr | Up to 750 Learners | • All Starter Academic Modules<br>• Boarding Houses & Kansanshi Village<br>• Fees Management & Expenditure Control<br>• Teacher Workspace & Lesson Plans |
+| **Sovereign Enterprise** *(Active Tier)* | **K65,000 / yr** | K21,667 / term | $2,500 / yr | 1,200+ Learners *(Multi-Campus)* | • All Professional SMIS Modules<br>• Staff HR & Teaching Council (TCZ) Suite<br>• Solwezi GIS & Campus Fleet Tracking<br>• Admissions SIS & Official Letters with QR<br>• Parent Portal & WhatsApp/SMS Alerts<br>• Fixed Asset Management & Inventory<br>• Native Android Mobile APK<br>• Dual-Campus Consolidation *(Mushitala & Kansanshi)* |
+
+#### Master Module Operational Licensing Controls:
+Under `/settings`, the administrator can independently toggle both the **Institutional Subscription** status and the **Operational Enablement Switch** for each module. Even when subscribed, modules can be temporarily disabled during holiday maintenance or phased onboarding.
+
+---
+
 ## 4. Statutory Compliance & Regulatory Governance
 
 EduSphere fulfills statutory compliance requirements mandated by the Republic of Zambia:

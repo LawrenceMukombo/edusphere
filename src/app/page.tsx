@@ -749,15 +749,15 @@ export default function HomePage() {
                   Master Executive PowerPoint Deck
                 </h4>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  15 widescreen slides with high-resolution UI screenshots, commercial pricing breakdown, revenue recovery, ECZ markbooks, and boarding safeguarding.
+                  16 widescreen slides with high-resolution UI screenshots, Institutional Subscription Tiers, hardware add-ons, and boarding safeguarding.
                 </p>
               </div>
             </div>
             <div className="pt-4 mt-4 border-t border-slate-700/60 flex items-center justify-between">
               <span className="text-[11px] text-slate-400 font-mono">7.0 MB • PPTX</span>
               <a
-                href="/downloads/EduSphere_Master_Stakeholder_Presentation.pptx"
-                download="EduSphere_Master_Stakeholder_Presentation.pptx"
+                href="/downloads/EduSphere_Executive_Stakeholder_Deck_v2.pptx"
+                download="Legacy_School_EduSphere_Executive_Presentation.pptx"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition"
               >
                 <Download className="w-3.5 h-3.5" />

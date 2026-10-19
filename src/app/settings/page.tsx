@@ -282,6 +282,10 @@ export default function SettingsPage() {
                   name: 'Starter Academic',
                   desc: 'Core Attendance, School Calendar, and Academic Gradebook records for small single-campus schools.',
                   badge: 'Entry Tier',
+                  priceZMW: 'K24,000',
+                  priceUSD: '$925',
+                  cadence: 'per year (or K8,000 / term)',
+                  learnerQuota: 'Up to 350 Learners',
                   includedModules: ['attendance', 'calendar', 'academics'],
                 },
                 {
@@ -289,6 +293,10 @@ export default function SettingsPage() {
                   name: 'Professional SMIS',
                   desc: 'Includes Boarding Houses, Teacher Workspace, and Complete Fee Inflows & Arrears Debtors Ledger.',
                   badge: 'Most Popular',
+                  priceZMW: 'K42,000',
+                  priceUSD: '$1,615',
+                  cadence: 'per year (or K14,000 / term)',
+                  learnerQuota: 'Up to 750 Learners',
                   includedModules: ['attendance', 'calendar', 'academics', 'boarding', 'fees', 'teacher'],
                 },
                 {
@@ -296,6 +304,10 @@ export default function SettingsPage() {
                   name: 'Sovereign Enterprise',
                   desc: 'Full institutional suite: HR TCZ compliance, Solwezi GIS GPS tracking, Admissions SIS, and Parent Portal.',
                   badge: 'Complete Suite',
+                  priceZMW: 'K65,000',
+                  priceUSD: '$2,500',
+                  cadence: 'per year (or K21,667 / term)',
+                  learnerQuota: '1,200+ Learners (Multi-Campus)',
                   includedModules: ['attendance', 'calendar', 'academics', 'boarding', 'fees', 'teacher', 'hr', 'gis', 'admissions', 'parentPortal'],
                 },
               ].map((p) => {
@@ -328,27 +340,37 @@ export default function SettingsPage() {
                         },
                       });
                     }}
-                    className={`p-5 rounded-2xl border cursor-pointer transition-all ${
+                    className={`p-5 rounded-2xl border cursor-pointer transition-all flex flex-col justify-between ${
                       isCurrent
                         ? 'border-blue-900 bg-blue-50/50 ring-2 ring-blue-900/20 shadow-md'
                         : 'border-slate-200 bg-white hover:border-slate-300'
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold uppercase tracking-wider text-blue-900">
-                        {p.badge}
-                      </span>
-                      {isCurrent && (
-                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-900 text-white">
-                          Active Plan ✓
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold uppercase tracking-wider text-blue-900">
+                          {p.badge}
                         </span>
-                      )}
+                        {isCurrent && (
+                          <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-900 text-white">
+                            Active Plan ✓
+                          </span>
+                        )}
+                      </div>
+                      <h3 className="text-base font-black text-slate-900">{p.name}</h3>
+                      <div className="mt-2 flex items-baseline gap-1.5">
+                        <span className="text-xl font-black text-slate-900">{p.priceZMW}</span>
+                        <span className="text-xs font-bold text-slate-500">({p.priceUSD})</span>
+                      </div>
+                      <span className="text-[10px] font-bold text-emerald-700 block mt-0.5">{p.cadence}</span>
+                      <p className="text-xs text-slate-600 mt-2 leading-relaxed">{p.desc}</p>
                     </div>
-                    <h3 className="text-base font-black text-slate-900">{p.name}</h3>
-                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">{p.desc}</p>
+
                     <div className="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs font-bold">
-                      <span className="text-slate-500">Modules:</span>
-                      <span className="font-mono text-blue-900">{p.includedModules.length} Licensed</span>
+                      <span className="text-slate-500">{p.learnerQuota}</span>
+                      <span className="font-mono text-blue-900 bg-blue-100/60 px-2 py-0.5 rounded-md">
+                        {p.includedModules.length} Modules
+                      </span>
                     </div>
                   </div>
                 );
