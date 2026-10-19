@@ -746,18 +746,18 @@ export default function HomePage() {
               </div>
               <div>
                 <h4 className="text-sm font-bold text-white group-hover:text-amber-300 transition">
-                  Executive PowerPoint Deck
+                  Master Executive PowerPoint Deck
                 </h4>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  14 widescreen slides covering institutional topology, revenue recovery, ECZ markbooks, boarding safeguarding, and rollout SLA.
+                  15 widescreen slides with high-resolution UI screenshots, commercial pricing breakdown, revenue recovery, ECZ markbooks, and boarding safeguarding.
                 </p>
               </div>
             </div>
             <div className="pt-4 mt-4 border-t border-slate-700/60 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400 font-mono">57 KB • PPTX</span>
+              <span className="text-[11px] text-slate-400 font-mono">7.0 MB • PPTX</span>
               <a
-                href="/downloads/Legacy_School_EduSphere_Executive_Presentation.pptx"
-                download="Legacy_School_EduSphere_Executive_Presentation.pptx"
+                href="/downloads/EduSphere_Master_Stakeholder_Presentation.pptx"
+                download="EduSphere_Master_Stakeholder_Presentation.pptx"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition"
               >
                 <Download className="w-3.5 h-3.5" />
