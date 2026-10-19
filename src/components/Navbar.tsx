@@ -28,6 +28,8 @@ import {
   Sliders,
   ShieldCheck,
   ChevronRight,
+  MessageSquare,
+  FileText,
 } from 'lucide-react';
 import { useCampus, CampusId } from './CampusContext';
 import { LegacyLogo } from './LegacyLogo';
@@ -45,6 +47,8 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Executive Dashboard', icon: LayoutDashboard },
+  { href: '/messages', label: 'In-App Messaging', icon: MessageSquare, badge: 'WhatsApp' },
+  { href: '/documents', label: 'Document Generator', icon: FileText, badge: 'Letters' },
   { href: '/attendance', label: 'Operations & Attendance', icon: CalendarCheck, badge: 'Live', moduleKey: 'attendance' },
   { href: '/calendar', label: 'School Calendar & Birthdays', icon: Calendar, badge: '2026', moduleKey: 'calendar' },
   { href: '/boarding', label: 'Boarding Houses & Village', icon: Bed, badge: 'Village', moduleKey: 'boarding' },
@@ -143,9 +147,28 @@ export function Navbar() {
             <div className="flex items-center gap-2 sm:gap-3">
               <OfflineIndicator />
 
-              <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-slate-200">
+              <div className="hidden sm:flex items-center gap-1.5 pl-2 border-l border-slate-200">
+                <Link
+                  href="/messages"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:text-blue-900 hover:bg-slate-100 transition relative"
+                  title="In-App Messaging"
+                >
+                  <MessageSquare className="w-4 h-4 text-emerald-600" />
+                  <span className="hidden xl:inline">Messages</span>
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 absolute top-1 right-1" />
+                </Link>
+
+                <Link
+                  href="/documents"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-slate-700 hover:text-blue-900 hover:bg-slate-100 transition"
+                  title="Document Generator"
+                >
+                  <FileText className="w-4 h-4 text-blue-700" />
+                  <span className="hidden xl:inline">Documents</span>
+                </Link>
+
                 <div
-                  className="w-8 h-8 rounded-full bg-blue-900 text-amber-300 font-bold text-xs flex items-center justify-center ring-2 ring-blue-100 shadow-xs"
+                  className="w-8 h-8 rounded-full bg-blue-900 text-amber-300 font-bold text-xs flex items-center justify-center ring-2 ring-blue-100 shadow-xs ml-1"
                   title="Mr. Emmanuel Mwansa — School Director & Principal"
                 >
                   EM

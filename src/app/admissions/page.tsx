@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { useCampus } from '@/components/CampusContext';
 import { ModuleGate } from '@/components/ModuleGate';
@@ -611,13 +612,23 @@ export default function AdmissionsPage() {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAdmitModal(true)}
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold shadow-xs transition"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>Admit New Learner</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/documents"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 text-xs font-bold shadow-xs transition"
+          >
+            <FileText className="w-4 h-4 text-amber-400" />
+            <span>Document Generator</span>
+          </Link>
+
+          <button
+            onClick={() => setShowAdmitModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold shadow-xs transition"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>Admit New Learner</span>
+          </button>
+        </div>
       </div>
 
       {/* Enterprise Table (Rule 24 compliant) */}
@@ -632,13 +643,26 @@ export default function AdmissionsPage() {
         onRowClick={(row) => openLearnerProfile(row.id)}
         exportFilename="edusphere-students-registry"
         rowActions={(row) => (
-          <button
-            onClick={() => openLearnerProfile(row.id)}
-            className="px-2.5 py-1 text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition inline-flex items-center gap-1 font-bold text-xs"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            <span>Full Dossier</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => openLearnerProfile(row.id)}
+              className="px-2.5 py-1 text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg transition inline-flex items-center gap-1 font-bold text-xs"
+            >
+              <Eye className="w-3.5 h-3.5" />
+              <span>Full Dossier</span>
+            </button>
+            <button
+              onClick={async () => {
+                await openLearnerProfile(row.id);
+                setShowDocGenModal(true);
+              }}
+              className="px-2.5 py-1 text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition inline-flex items-center gap-1 font-bold text-xs"
+              title="Generate Official Letter / Clearance"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Official Letter</span>
+            </button>
+          </div>
         )}
       />
 

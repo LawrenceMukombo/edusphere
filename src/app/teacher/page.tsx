@@ -33,7 +33,9 @@ import {
   ChevronDown,
   Eye,
   GraduationCap,
+  MessageSquare,
 } from 'lucide-react';
+import Link from 'next/link';
 import { generateLegacyLearners, LegacyLearnerBalance } from '@/server/services/legacySchoolData';
 import { ModuleGate } from '@/components/ModuleGate';
 
@@ -419,6 +421,16 @@ export default function TeacherWorkspacePage() {
 
         {/* Action Controls & Offline Mode */}
         <div className="flex items-center gap-2 flex-wrap">
+          <Link
+            href="/messages"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 transition shadow-2xs"
+            title="Open WhatsApp-Style In-App Messenger with Guardians"
+          >
+            <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Parent Messages</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          </Link>
+
           <button
             type="button"
             onClick={() => setIsOnline(!isOnline)}

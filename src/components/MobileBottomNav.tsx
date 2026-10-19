@@ -9,6 +9,7 @@ import {
   CalendarCheck,
   Bed,
   DollarSign,
+  MessageSquare,
   Menu,
 } from 'lucide-react';
 
@@ -22,6 +23,7 @@ export function MobileBottomNav({ onToggleDrawer, isDrawerOpen }: MobileBottomNa
 
   const navItems = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/messages', label: 'Messages', icon: MessageSquare },
     { href: '/attendance', label: 'Attendance', icon: CalendarCheck },
     { href: '/boarding', label: 'Boarding', icon: Bed },
     { href: '/finance', label: 'Finance', icon: DollarSign },

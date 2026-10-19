@@ -30,7 +30,9 @@ import {
   Phone,
   Mail,
   MapPin,
+  MessageSquare,
 } from 'lucide-react';
+import Link from 'next/link';
 import { ModuleGate } from '@/components/ModuleGate';
 import { LegacyLogo } from '@/components/LegacyLogo';
 
@@ -404,6 +406,14 @@ export default function ParentPortalPage() {
                   <Printer className="w-3.5 h-3.5" />
                   <span>Official Report Card</span>
                 </button>
+                <Link
+                  href="/messages"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-xs transition"
+                  title="Open In-App Messenger with Class Teacher"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Message Teacher</span>
+                </Link>
               </div>
             </div>
           </div>

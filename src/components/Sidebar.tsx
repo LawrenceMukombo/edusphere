@@ -22,6 +22,8 @@ import {
   Sliders,
   Lock,
   Boxes,
+  MessageSquare,
+  FileText,
 } from 'lucide-react';
 import { useCampus } from './CampusContext';
 import { loadAppSettings, checkModuleEntitlement, AppSettings } from '@/lib/appSettings';
@@ -36,6 +38,8 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/', label: 'Executive Dashboard', icon: LayoutDashboard },
+  { href: '/messages', label: 'In-App Messaging', icon: MessageSquare, badge: 'WhatsApp' },
+  { href: '/documents', label: 'Document Generator', icon: FileText, badge: 'Letters' },
   { href: '/attendance', label: 'Operations & Attendance', icon: CalendarCheck, badge: 'Live', moduleKey: 'attendance' },
   { href: '/calendar', label: 'School Calendar & Birthdays', icon: Calendar, badge: '2026', moduleKey: 'calendar' },
   { href: '/boarding', label: 'Boarding Houses & Village', icon: Bed, badge: 'Village', moduleKey: 'boarding' },
