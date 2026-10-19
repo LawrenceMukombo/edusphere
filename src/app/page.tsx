@@ -28,6 +28,10 @@ import {
   Award,
   Layers,
   Sparkles,
+  Presentation,
+  Smartphone,
+  Download,
+  BookOpen,
 } from 'lucide-react';
 import { InteractiveChart } from '@/components/InteractiveChart';
 import { useCampus } from '@/components/CampusContext';
@@ -710,6 +714,111 @@ export default function HomePage() {
               <span>View Full Ledger</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Executive Downloads & Stakeholder Documentation Hub */}
+      <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-blue-950 rounded-3xl p-6 sm:p-8 text-white border border-slate-800 shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-5">
+          <div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+              <h3 className="text-lg font-black tracking-tight text-white">
+                Executive Stakeholder Resources & Mobile Deployment Hub
+              </h3>
+            </div>
+            <p className="text-xs text-slate-400 mt-1">
+              Authorized release assets for the Board of Governors, Ministry Inspectors, School Leadership, and Parents.
+            </p>
+          </div>
+          <span className="self-start sm:self-auto px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold uppercase tracking-wider">
+            2026 Term 3 Verified
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* Card 1: PowerPoint Deck */}
+          <div className="bg-slate-800/80 rounded-2xl p-5 border border-slate-700/80 flex flex-col justify-between hover:border-amber-400/60 transition group">
+            <div className="space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+                <Presentation className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white group-hover:text-amber-300 transition">
+                  Executive PowerPoint Deck
+                </h4>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  14 widescreen slides covering institutional topology, revenue recovery, ECZ markbooks, boarding safeguarding, and rollout SLA.
+                </p>
+              </div>
+            </div>
+            <div className="pt-4 mt-4 border-t border-slate-700/60 flex items-center justify-between">
+              <span className="text-[11px] text-slate-400 font-mono">57 KB • PPTX</span>
+              <a
+                href="/downloads/Legacy_School_EduSphere_Executive_Presentation.pptx"
+                download="Legacy_School_EduSphere_Executive_Presentation.pptx"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download Deck</span>
+              </a>
+            </div>
+          </div>
+
+          {/* Card 2: Android APK */}
+          <div className="bg-slate-800/80 rounded-2xl p-5 border border-slate-700/80 flex flex-col justify-between hover:border-emerald-400/60 transition group">
+            <div className="space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white group-hover:text-emerald-300 transition">
+                  EduSphere Android App (APK)
+                </h4>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Native Android package (com.legacyschool.edusphere) with 1-tap roll-call, 21:00 curfew bed checks, and offline sync.
+                </p>
+              </div>
+            </div>
+            <div className="pt-4 mt-4 border-t border-slate-700/60 flex items-center justify-between">
+              <span className="text-[11px] text-slate-400 font-mono">4.1 MB • APK</span>
+              <a
+                href="/downloads/edusphere.apk"
+                download="edusphere.apk"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download APK</span>
+              </a>
+            </div>
+          </div>
+
+          {/* Card 3: Stakeholder User Guide */}
+          <div className="bg-slate-800/80 rounded-2xl p-5 border border-slate-700/80 flex flex-col justify-between hover:border-blue-400/60 transition group">
+            <div className="space-y-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">
+                <BookOpen className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white group-hover:text-blue-300 transition">
+                  Stakeholder User Guide
+                </h4>
+                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                  Comprehensive 10-module operational manual covering statutory MoE Form 12A returns, fee workflows, and RBAC governance.
+                </p>
+              </div>
+            </div>
+            <div className="pt-4 mt-4 border-t border-slate-700/60 flex items-center justify-between">
+              <span className="text-[11px] text-slate-400 font-mono">v2.0 • 10 Modules</span>
+              <Link
+                href="/admin"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs transition"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Open Guide</span>
+              </Link>
+            </div>
           </div>
         </div>
       </div>

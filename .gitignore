@@ -43,3 +43,4 @@ android/*.iml
 android/app/*.iml
 android/.idea/
 *.apk
+~$*
