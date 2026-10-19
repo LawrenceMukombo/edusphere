@@ -21,6 +21,7 @@ import {
   Bed,
   Sliders,
   Lock,
+  Boxes,
 } from 'lucide-react';
 import { useCampus } from './CampusContext';
 import { loadAppSettings, checkModuleEntitlement, AppSettings } from '@/lib/appSettings';
@@ -39,6 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/calendar', label: 'School Calendar & Birthdays', icon: Calendar, badge: '2026', moduleKey: 'calendar' },
   { href: '/boarding', label: 'Boarding Houses & Village', icon: Bed, badge: 'Village', moduleKey: 'boarding' },
   { href: '/finance', label: 'Fees & Expenditures', icon: DollarSign, badge: 'Ledger', moduleKey: 'fees' },
+  { href: '/assets', label: 'School Asset Manager', icon: Boxes, badge: 'Capital', moduleKey: 'assets' },
   { href: '/hr', label: 'Staff & HR Suite', icon: Briefcase, badge: 'TCZ', moduleKey: 'hr' },
   { href: '/gis', label: 'Solwezi Campuses & GIS', icon: Compass, moduleKey: 'gis' },
   { href: '/admissions', label: 'Admissions & SIS', icon: Users, moduleKey: 'admissions' },

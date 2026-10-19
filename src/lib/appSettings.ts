@@ -97,6 +97,13 @@ export interface AppSettings {
       showTermRankings: boolean;
       whatsappAlerts: boolean;
     };
+    assets: {
+      enabled: boolean;
+      requireDepreciationAudit: boolean;
+      straightLineDefaultYears: number;
+      salvageValueDefaultPercent: number;
+      preventDeletionOfActiveAssets: boolean;
+    };
   };
 
   // Campuses Infrastructure
@@ -167,6 +174,7 @@ export interface AppSettings {
       academics: boolean;
       teacher: boolean;
       parentPortal: boolean;
+      assets: boolean;
     };
     adminPin: string;
     adminPassword: string;
@@ -265,6 +273,13 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
       showTermRankings: true,
       whatsappAlerts: true,
     },
+    assets: {
+      enabled: true,
+      requireDepreciationAudit: true,
+      straightLineDefaultYears: 5,
+      salvageValueDefaultPercent: 10,
+      preventDeletionOfActiveAssets: true,
+    },
   },
   campuses: {
     mushitala: {
@@ -329,6 +344,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
       academics: true,
       teacher: true,
       parentPortal: true,
+      assets: true,
     },
     adminPin: '2026',
     adminPassword: 'LegacyAdmin2026',
@@ -438,6 +454,7 @@ export function loadAppSettings(): AppSettings {
         hr: { ...DEFAULT_APP_SETTINGS.modules.hr, ...(parsed.modules?.hr || {}) },
         gis: { ...DEFAULT_APP_SETTINGS.modules.gis, ...(parsed.modules?.gis || {}) },
         parentPortal: { ...DEFAULT_APP_SETTINGS.modules.parentPortal, ...(parsed.modules?.parentPortal || {}) },
+        assets: { ...DEFAULT_APP_SETTINGS.modules.assets, ...(parsed.modules?.assets || {}) },
       },
       campuses: {
         ...DEFAULT_APP_SETTINGS.campuses,

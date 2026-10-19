@@ -46,6 +46,8 @@ import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { InteractiveChart } from '@/components/InteractiveChart';
 import { useCampus } from '@/components/CampusContext';
 import { ModuleGate } from '@/components/ModuleGate';
+import { Finance2FAModal } from '@/components/Finance2FAModal';
+import { is2FAVerifiedForSession, clear2FASession, loadActiveUser } from '@/lib/authPermissions';
 import { saveAdminAuditLogs, AdminAuditLog } from '@/lib/appSettings';
 import {
   LEGACY_EXPENDITURES,
@@ -85,6 +87,23 @@ interface LearnerBalanceRecord {
 export default function FinancePage() {
   const { selectedCampus, campusInfo } = useCampus();
   const [activeTab, setActiveTab] = useState<'balances' | 'ledger' | 'expenditures' | 'reports'>('balances');
+  const [is2FAVerified, setIs2FAVerified] = useState<boolean>(() => is2FAVerifiedForSession());
+  const [activeUser, setActiveUser] = useState(() => loadActiveUser());
+
+  useEffect(() => {
+    const handle2FAUpdate = () => {
+      setIs2FAVerified(is2FAVerifiedForSession());
+      setActiveUser(loadActiveUser());
+    };
+    window.addEventListener('edusphere:2fa-verified', handle2FAUpdate);
+    window.addEventListener('edusphere:2fa-cleared', handle2FAUpdate);
+    window.addEventListener('edusphere:user-updated', handle2FAUpdate);
+    return () => {
+      window.removeEventListener('edusphere:2fa-verified', handle2FAUpdate);
+      window.removeEventListener('edusphere:2fa-cleared', handle2FAUpdate);
+      window.removeEventListener('edusphere:user-updated', handle2FAUpdate);
+    };
+  }, []);
   
   // Synchronous initial baseline so page is NEVER blank while network hydrates
   const [learnerBalances, setLearnerBalances] = useState<LearnerBalanceRecord[]>(() => {
@@ -1043,6 +1062,17 @@ export default function FinancePage() {
       pricePerTermZMW={2450}
     >
       <div className="space-y-6 w-full">
+      {/* 2FA Challenge Modal for Financial Ledger Access */}
+      {!is2FAVerified && (
+        <Finance2FAModal
+          onSuccess={() => {
+            setIs2FAVerified(true);
+            setToastMessage('2FA Security Clearance Verified: Financial Access Granted.');
+          }}
+          actionTitle="Access Institutional Financial Inflows & Treasury Ledger"
+        />
+      )}
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700 animate-in slide-in-from-top-4">
@@ -1068,6 +1098,31 @@ export default function FinancePage() {
         </div>
 
         <div className="flex items-center gap-2">
+          {is2FAVerified ? (
+            <button
+              type="button"
+              onClick={() => {
+                clear2FASession();
+                setIs2FAVerified(false);
+                setToastMessage('Financial 2FA session locked for security.');
+              }}
+              className="px-3 py-2 rounded-xl bg-emerald-50 hover:bg-rose-50 text-emerald-800 hover:text-rose-700 border border-emerald-300 hover:border-rose-300 text-xs font-bold transition flex items-center gap-1.5"
+              title="Click to lock finance session"
+            >
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>2FA Verified • Lock</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setIs2FAVerified(false)}
+              className="px-3 py-2 rounded-xl bg-rose-600 text-white text-xs font-bold transition flex items-center gap-1.5"
+            >
+              <Lock className="w-4 h-4" />
+              <span>2FA Required</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setShowExpenseModal(true)}

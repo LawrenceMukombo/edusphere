@@ -14,8 +14,15 @@ import {
   Lock,
   X,
   ExternalLink,
+  KeyRound,
+  Sliders,
+  Sparkles,
+  Layers,
 } from 'lucide-react';
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
+import { RolePermissionsMatrix } from '@/components/admin/RolePermissionsMatrix';
+import { StaffSecurityManager } from '@/components/admin/StaffSecurityManager';
+import { PasswordPolicyManager } from '@/components/admin/PasswordPolicyManager';
 
 interface OrgRecord {
   id: string;
@@ -44,6 +51,7 @@ const THEME_PRESETS = [
 ];
 
 export default function AdminPage() {
+  const [adminTab, setAdminTab] = useState<'tenants' | 'permissions' | 'passwords' | 'policy'>('tenants');
   const [organisations, setOrganisations] = useState<OrgRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showProvisionModal, setShowProvisionModal] = useState(false);
@@ -341,17 +349,110 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Tenants Table */}
-      <EnterpriseTable
-        title="Subscribed School Tenants & Institutions"
-        description="Manage school tiers, operational day/boarding models, active campuses, and feature entitlements. Click any row to inspect & edit."
-        data={organisations}
-        columns={columns}
-        isLoading={isLoading}
-        onRefresh={fetchOrgs}
-        onRowClick={(row) => openEditTenant(row)}
-        exportFilename="edusphere-saas-tenants"
-      />
+      {/* Master Admin Sub-Navigation Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 pb-2">
+        <button
+          type="button"
+          onClick={() => setAdminTab('tenants')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap ${
+            adminTab === 'tenants'
+              ? 'bg-blue-900 text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Building2 className="w-4 h-4" />
+          <span>School Tenants & Campuses</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-800 text-white font-mono">
+            {organisations.length}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setAdminTab('permissions')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap ${
+            adminTab === 'permissions'
+              ? 'bg-blue-900 text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <span>Granular Role & Permissions Matrix</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500 text-slate-900 font-bold uppercase">
+            RBAC
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setAdminTab('passwords')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap ${
+            adminTab === 'passwords'
+              ? 'bg-blue-900 text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <KeyRound className="w-4 h-4 text-amber-400" />
+          <span>Staff Security & Monthly Rotation</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500 text-slate-900 font-bold uppercase">
+            30-Day
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setAdminTab('policy')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap ${
+            adminTab === 'policy'
+              ? 'bg-blue-900 text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Lock className="w-4 h-4 text-blue-400" />
+          <span>Password Policy & 2FA Governance</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-800 text-white font-mono">
+            2FA
+          </span>
+        </button>
+      </div>
+
+      {/* TAB 1: Tenants & Campuses */}
+      {adminTab === 'tenants' && (
+        <div className="space-y-6 animate-in fade-in">
+          {/* Tenants Table */}
+          <EnterpriseTable
+            title="Subscribed School Tenants & Institutions"
+            description="Manage school tiers, operational day/boarding models, active campuses, and feature entitlements. Click any row to inspect & edit."
+            data={organisations}
+            columns={columns}
+            isLoading={isLoading}
+            onRefresh={fetchOrgs}
+            onRowClick={(row) => openEditTenant(row)}
+            exportFilename="edusphere-saas-tenants"
+          />
+        </div>
+      )}
+
+      {/* TAB 2: Granular Role & Permissions Matrix */}
+      {adminTab === 'permissions' && (
+        <div className="animate-in fade-in">
+          <RolePermissionsMatrix />
+        </div>
+      )}
+
+      {/* TAB 3: Staff Security & Monthly Password Rotation */}
+      {adminTab === 'passwords' && (
+        <div className="animate-in fade-in">
+          <StaffSecurityManager />
+        </div>
+      )}
+
+      {/* TAB 4: Password Policy & 2FA Controls */}
+      {adminTab === 'policy' && (
+        <div className="animate-in fade-in">
+          <PasswordPolicyManager />
+        </div>
+      )}
 
       {/* Provision School Modal with Logo & Theme Customization */}
       {showProvisionModal && (

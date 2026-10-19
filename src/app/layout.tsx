@@ -3,6 +3,7 @@ import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import { Navbar } from '@/components/Navbar';
+import { TopWelcomeBanner } from '@/components/TopWelcomeBanner';
 import { Sidebar } from '@/components/Sidebar';
 import { CampusProvider } from '@/components/CampusContext';
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
@@ -43,6 +44,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <ServiceWorkerRegistration />
         <CampusProvider>
+          <TopWelcomeBanner />
           <Navbar />
           <div className="flex">
             <Sidebar />
