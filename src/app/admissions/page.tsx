@@ -631,6 +631,68 @@ export default function AdmissionsPage() {
         </div>
       </div>
 
+      {/* Dynamic Enrolment & Demographic KPI Deck (Granular Data Driven) */}
+      {(() => {
+        const capacity = selectedCampus === 'URBAN' ? 450 : selectedCampus === 'ALL' ? 1100 : 650;
+        const maleCount = learners.filter((l) => l.gender === 'MALE').length;
+        const femaleCount = learners.filter((l) => l.gender === 'FEMALE').length;
+        const linkedGuardiansCount = learners.filter(
+          (l) => l.guardians && l.guardians.length > 0 && l.guardians[0]?.guardian?.phone
+        ).length;
+        const secondaryCount = learners.filter((l) => l.currentClass?.stage === 'SECONDARY').length;
+        const primaryCount = learners.length - secondaryCount;
+        const capacityPct = Math.round((learners.length / (capacity || 1)) * 100);
+
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                Active Enrolment
+              </span>
+              <div className="text-2xl font-black text-slate-900 mt-1">
+                {learners.length} <span className="text-xs font-semibold text-slate-400">Pupils</span>
+              </div>
+              <span className="text-[11px] text-blue-700 font-bold block mt-0.5">
+                {maleCount} Male (Boys) • {femaleCount} Female (Girls)
+              </span>
+            </div>
+
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                Campus Capacity
+              </span>
+              <div className="text-2xl font-black text-emerald-700 mt-1">{capacityPct}%</div>
+              <span className="text-[11px] text-emerald-700 font-bold block mt-0.5">
+                {learners.length} of {capacity} desks allocated
+              </span>
+            </div>
+
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                Guardian Directory
+              </span>
+              <div className="text-2xl font-black text-indigo-700 mt-1">{linkedGuardiansCount}</div>
+              <span className="text-[11px] text-indigo-700 font-bold block mt-0.5">
+                {Math.round((linkedGuardiansCount / (learners.length || 1)) * 100)}% verified contacts linked
+              </span>
+            </div>
+
+            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                Curriculum Stages
+              </span>
+              <div className="text-2xl font-black text-slate-900 mt-1">
+                {secondaryCount} <span className="text-xs font-semibold text-slate-400">Sec</span> / {primaryCount}{' '}
+                <span className="text-xs font-semibold text-slate-400">Pri</span>
+              </div>
+              <span className="text-[11px] text-slate-500 font-semibold block mt-0.5">
+                ECZ Examination Standard 2026
+              </span>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Enterprise Table (Rule 24 compliant) */}
       <EnterpriseTable
         title="Enrolled Learners Registry"

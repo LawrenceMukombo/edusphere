@@ -36,208 +36,254 @@ import {
 import { InteractiveChart } from '@/components/InteractiveChart';
 import { useCampus } from '@/components/CampusContext';
 import { getFinancialSummary } from '@/server/services/financeReporting.service';
+import {
+  generateLegacyLearners,
+  LEGACY_STAFF_MEMBERS,
+  LEGACY_EXPENDITURES,
+  LEGACY_BOARDING_EXEATS,
+  LEGACY_STAFF_EVALUATIONS,
+  LEGACY_JOB_POSTINGS,
+  LEGACY_APPLICANTS,
+  LegacyLearnerBalance,
+  LegacyStaffMember,
+} from '@/server/services/legacySchoolData';
+import { SEED_SCHOOL_ASSETS, SchoolAssetItem } from '@/server/services/schoolAssetData';
 
 export default function HomePage() {
   const { selectedCampus, setSelectedCampus, campusInfo } = useCampus();
 
-  // Dynamic statistics adjusted per campus
-  const statsMap = {
-    ALL: {
-      enrolled: 780,
-      capacity: 1100,
-      todayAttendanceRate: 97.4,
-      absentCount: 20,
-      boardersPresent: 315,
-      boardersTotal: 318,
-      feeCollectionRate: 84.2,
-      totalBilledZMW: '4,647,000',
-      totalCollectedZMW: '3,912,800',
-      totalExpensesZMW: '1,142,800',
-      netCashflowZMW: '+2,770,000',
-      staffOnDuty: 35,
-      staffTotal: 38,
-      tczComplianceRate: 97.4,
-      generatorFuelPct: 82,
-      boreholeStatus: 'Optimal (80m)',
-      activeExeats: 14,
-      sickbayCount: 3,
-    },
-    MUSHITALA: {
-      enrolled: 420,
-      capacity: 650,
-      todayAttendanceRate: 98.4,
-      absentCount: 6,
-      boardersPresent: 315,
-      boardersTotal: 318,
-      feeCollectionRate: 83.8,
-      totalBilledZMW: '3,239,000',
-      totalCollectedZMW: '2,714,600',
-      totalExpensesZMW: '830,400',
-      netCashflowZMW: '+1,884,200',
-      staffOnDuty: 19,
-      staffTotal: 21,
-      tczComplianceRate: 95.2,
-      generatorFuelPct: 82,
-      boreholeStatus: 'Dual-Tank Storage Full',
-      activeExeats: 14,
-      sickbayCount: 2,
-    },
-    URBAN: {
-      enrolled: 360,
-      capacity: 450,
-      todayAttendanceRate: 96.6,
-      absentCount: 14,
-      boardersPresent: 0,
-      boardersTotal: 0,
-      feeCollectionRate: 85.1,
-      totalBilledZMW: '1,408,000',
-      totalCollectedZMW: '1,198,200',
-      totalExpensesZMW: '312,400',
-      netCashflowZMW: '+885,800',
-      staffOnDuty: 16,
-      staffTotal: 17,
-      tczComplianceRate: 100,
-      generatorFuelPct: 90,
-      boreholeStatus: 'Solar Pumping Active',
-      activeExeats: 0,
-      sickbayCount: 1,
-    },
-    KANSANSHI: {
-      enrolled: 420,
-      capacity: 650,
-      todayAttendanceRate: 98.4,
-      absentCount: 6,
-      boardersPresent: 315,
-      boardersTotal: 318,
-      feeCollectionRate: 83.8,
-      totalBilledZMW: '3,239,000',
-      totalCollectedZMW: '2,714,600',
-      totalExpensesZMW: '830,400',
-      netCashflowZMW: '+1,884,200',
-      staffOnDuty: 19,
-      staffTotal: 21,
-      tczComplianceRate: 95.2,
-      generatorFuelPct: 82,
-      boreholeStatus: 'Dual-Tank Storage Full',
-      activeExeats: 14,
-      sickbayCount: 2,
-    },
-  };
+  // 1. Authoritative Granular Datasets
+  const allLearners = useMemo(() => generateLegacyLearners(780), []);
 
+  // Filter learners granularly by active campus
+  const campusLearners = useMemo(() => {
+    if (selectedCampus === 'URBAN') {
+      return allLearners.filter((l) => l.campusName.includes('Urban'));
+    }
+    if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
+      return allLearners.filter(
+        (l) => l.campusName.includes('Mushitala') || l.campusName.includes('Kansanshi')
+      );
+    }
+    return allLearners;
+  }, [allLearners, selectedCampus]);
+
+  // Filter staff granularly by active campus
+  const campusStaff = useMemo(() => {
+    return LEGACY_STAFF_MEMBERS.filter((s) => {
+      if (selectedCampus === 'ALL') return true;
+      if (selectedCampus === 'URBAN') return s.campusId === 'LSS-URB' || s.campusId === 'CENTRAL';
+      return (
+        s.campusId === 'LSS-MSC' ||
+        s.campusId === 'LSS-KBC' ||
+        s.campusId === 'LSS-MDC' ||
+        s.campusId === 'CENTRAL'
+      );
+    });
+  }, [selectedCampus]);
+
+  // Financial summary from authoritative financial service
   const finSummary = useMemo(() => {
     return getFinancialSummary((selectedCampus as any) || 'ALL');
   }, [selectedCampus]);
 
-  const stats = useMemo(() => {
-    const base = statsMap[selectedCampus] || statsMap.ALL;
-    return {
-      ...base,
-      totalBilledZMW: finSummary.formatted.totalBilled,
-      totalCollectedZMW: finSummary.formatted.totalCollected,
-      totalExpensesZMW: finSummary.formatted.totalExpenditures,
-      netCashflowZMW: finSummary.formatted.cashSurplus,
-      feeCollectionRate: finSummary.collectionRatePct,
-      boardersTotal: selectedCampus === 'URBAN' ? 0 : 318,
-      boardersPresent: selectedCampus === 'URBAN' ? 0 : 315,
-      staffTotal: selectedCampus === 'ALL' ? 48 : base.staffTotal,
-      staffOnDuty: selectedCampus === 'ALL' ? 45 : base.staffOnDuty,
-      todayAttendanceRate: 95.8,
-      absentCount: 33,
-    };
-  }, [selectedCampus, finSummary]);
+  // 2. Granular Demographic & Attendance Metrics
+  const enrolled = campusLearners.length;
+  const capacity = selectedCampus === 'URBAN' ? 450 : selectedCampus === 'ALL' ? 1100 : 650;
 
-  const isUrban = selectedCampus === 'URBAN';
+  const presentCount = useMemo(() => {
+    return campusLearners.filter(
+      (l) => l.todayAttendance === 'PRESENT' || l.todayAttendance === 'LATE'
+    ).length;
+  }, [campusLearners]);
 
-  // Dynamic class attendance breakdown per campus
-  const attendanceChartData = useMemo(() => {
-    if (selectedCampus === 'URBAN') {
-      return [
-        { label: 'ECE Baby', value: 32, secondaryValue: 31, category: 'Early Childhood' },
-        { label: 'ECE Reception', value: 45, secondaryValue: 44, category: 'Early Childhood' },
-        { label: 'Grade 1 Gold', value: 42, secondaryValue: 41, category: 'Lower Primary' },
-        { label: 'Grade 2 Silver', value: 40, secondaryValue: 39, category: 'Lower Primary' },
-        { label: 'Grade 3 Emerald', value: 41, secondaryValue: 40, category: 'Middle Primary' },
-        { label: 'Grade 4 Copper', value: 44, secondaryValue: 42, category: 'Middle Primary' },
-        { label: 'Grade 5 Blue', value: 38, secondaryValue: 37, category: 'Upper Primary' },
-        { label: 'Grade 6 Red', value: 37, secondaryValue: 35, category: 'Upper Primary' },
-        { label: 'Grade 7 Top', value: 45, secondaryValue: 43, category: 'Primary Candidates' },
-      ];
-    } else if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
-      return [
-        { label: 'Grade 8 Alpha', value: 46, secondaryValue: 45, category: 'Junior Secondary' },
-        { label: 'Grade 9 Top', value: 48, secondaryValue: 47, category: 'Junior Candidates' },
-        { label: 'Form 1 Alpha', value: 48, secondaryValue: 47, category: 'Senior Secondary' },
-        { label: 'Form 2 Beta', value: 45, secondaryValue: 44, category: 'Senior Secondary' },
-        { label: 'Form 3 Blue', value: 44, secondaryValue: 44, category: 'Senior Secondary' },
-        { label: 'Form 4 Green', value: 42, secondaryValue: 42, category: 'Senior Secondary' },
-        { label: 'Form 5 Sciences', value: 39, secondaryValue: 38, category: 'Senior Candidates' },
-        { label: 'Form 5 Arts', value: 38, secondaryValue: 37, category: 'Senior Candidates' },
-        { label: 'A-Level Senior', value: 35, secondaryValue: 34, category: 'Advanced Level' },
-      ];
-    } else {
-      return [
-        { label: 'ECE Reception', value: 45, secondaryValue: 44, category: 'Urban Day' },
-        { label: 'Grade 1 Gold', value: 42, secondaryValue: 41, category: 'Urban Day' },
-        { label: 'Grade 5 Blue', value: 38, secondaryValue: 37, category: 'Urban Day' },
-        { label: 'Grade 7 Top', value: 45, secondaryValue: 43, category: 'Urban Day' },
-        { label: 'Grade 8 Alpha', value: 46, secondaryValue: 45, category: 'Mushitala Boarding' },
-        { label: 'Form 1 Alpha', value: 48, secondaryValue: 47, category: 'Mushitala Boarding' },
-        { label: 'Form 3 Blue', value: 44, secondaryValue: 44, category: 'Mushitala Boarding' },
-        { label: 'Form 5 Sciences', value: 39, secondaryValue: 38, category: 'Mushitala Boarding' },
-      ];
-    }
+  const absentCount = useMemo(() => {
+    return campusLearners.filter((l) => l.todayAttendance === 'ABSENT').length;
+  }, [campusLearners]);
+
+  const todayAttendanceRate =
+    enrolled > 0 ? Number(((presentCount / enrolled) * 100).toFixed(1)) : 100;
+
+  // Boarders breakdown
+  const boarders = useMemo(() => {
+    return campusLearners.filter((l) => l.studentType === 'BOARDER');
+  }, [campusLearners]);
+
+  const boardersTotal = boarders.length;
+  const boardersPresent = useMemo(() => {
+    return boarders.filter(
+      (l) => l.todayAttendance === 'PRESENT' || l.todayAttendance === 'LATE'
+    ).length;
+  }, [boarders]);
+
+  const boysBoardersCount = useMemo(() => {
+    return boarders.filter((l) => l.gender === 'MALE').length;
+  }, [boarders]);
+
+  const girlsBoardersCount = useMemo(() => {
+    return boarders.filter((l) => l.gender === 'FEMALE').length;
+  }, [boarders]);
+
+  const dayScholarsCount = useMemo(() => {
+    return campusLearners.filter((l) => l.studentType !== 'BOARDER').length;
+  }, [campusLearners]);
+
+  const sickbayCount = useMemo(() => {
+    return campusLearners.filter((l) => (l.medicalProfile?.sickbayVisitsCount || 0) > 0).length;
+  }, [campusLearners]);
+
+  const activeExeats = useMemo(() => {
+    return LEGACY_BOARDING_EXEATS.filter((e) => {
+      if (selectedCampus === 'URBAN') return false;
+      return e.securityGateStatus !== 'RETURNED_ON_TIME';
+    }).length;
   }, [selectedCampus]);
+
+  // 3. Granular HR & TCZ Metrics
+  const staffTotal = campusStaff.length;
+  const staffOnDuty = useMemo(() => {
+    return campusStaff.filter((s) => s.leaveBalanceDays > 0).length;
+  }, [campusStaff]);
+
+  const staffOnLeave = staffTotal - staffOnDuty;
+
+  const tczCompliantCount = useMemo(() => {
+    return campusStaff.filter((s) => s.tczStatus === 'COMPLIANT').length;
+  }, [campusStaff]);
+
+  const tczExpiringCount = useMemo(() => {
+    return campusStaff.filter((s) => s.tczStatus === 'EXPIRING_SOON').length;
+  }, [campusStaff]);
+
+  const tczComplianceRate =
+    staffTotal > 0 ? Number(((tczCompliantCount / staffTotal) * 100).toFixed(1)) : 100;
+
+  const activeVacanciesCount = useMemo(() => {
+    return LEGACY_JOB_POSTINGS.filter((j) => {
+      if (j.status !== 'ACTIVE') return false;
+      if (selectedCampus === 'ALL') return true;
+      if (selectedCampus === 'URBAN') return j.campusName.includes('Urban');
+      return j.campusName.includes('Mushitala') || j.campusName.includes('Kansanshi');
+    }).reduce((sum, j) => sum + j.vacancies, 0);
+  }, [selectedCampus]);
+
+  const applicantsCount = useMemo(() => {
+    return LEGACY_APPLICANTS.length;
+  }, []);
+
+  const completedAppraisalsCount = useMemo(() => {
+    return LEGACY_STAFF_EVALUATIONS.filter((e) => {
+      if (selectedCampus === 'ALL') return true;
+      return campusStaff.some((s) => s.id === e.staffId);
+    }).length;
+  }, [campusStaff, selectedCampus]);
+
+  // 4. Granular Fleet & Infrastructure Assets
+  const campusFleet = useMemo(() => {
+    return SEED_SCHOOL_ASSETS.filter((a: SchoolAssetItem) => {
+      if (a.category !== 'FLEET_TRANSPORT') return false;
+      if (selectedCampus === 'URBAN') return a.campus.includes('Urban');
+      if (selectedCampus === 'MUSHITALA') return a.campus.includes('Mushitala');
+      return true;
+    });
+  }, [selectedCampus]);
+
+  const campusPowerAsset = useMemo(() => {
+    return (
+      SEED_SCHOOL_ASSETS.find((a: SchoolAssetItem) => {
+        if (a.category !== 'POWER_ENERGY') return false;
+        if (selectedCampus === 'URBAN') return a.campus.includes('Urban');
+        return a.campus.includes('Mushitala');
+      }) || SEED_SCHOOL_ASSETS.find((a: SchoolAssetItem) => a.category === 'POWER_ENERGY')
+    );
+  }, [selectedCampus]);
+
+  const boysHallCapacity = 180;
+  const girlsHallCapacity = 170;
+
+  // 4. Granular Attendance Breakdown Chart (Aggregated per Class Cohort)
+  const attendanceChartData = useMemo(() => {
+    const classMap = new Map<string, { total: number; present: number; stage: string }>();
+
+    campusLearners.forEach((l) => {
+      const entry = classMap.get(l.className) || { total: 0, present: 0, stage: l.stage };
+      entry.total += 1;
+      if (l.todayAttendance === 'PRESENT' || l.todayAttendance === 'LATE') {
+        entry.present += 1;
+      }
+      classMap.set(l.className, entry);
+    });
+
+    return Array.from(classMap.entries()).map(([className, counts]) => ({
+      label: className.split('(')[0].trim(),
+      value: counts.total,
+      secondaryValue: counts.present,
+      category: counts.stage.replace(/_/g, ' '),
+    }));
+  }, [campusLearners]);
 
   const attendanceSubtitle = useMemo(() => {
     if (selectedCampus === 'URBAN') {
-      return 'Real-time roll-call across Urban Day School (Early Childhood & Primary Wings, Solwezi Central)';
+      return `Real-time roll-call across Urban Day School (${enrolled} pupils enrolled across Early Childhood & Primary Wings, Solwezi Central)`;
     } else if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
-      return 'Real-time roll-call across Mushitala Boarding & Day Campus (Near Kansanshi Mining Corridor)';
+      return `Real-time roll-call across Mushitala Campus (${enrolled} pupils enrolled across Boarding & Day Wings, near Kansanshi Mining Corridor)`;
     } else {
-      return 'Consolidated roll-call across Mushitala Boarding Wing and Urban Day Scholar Campus';
+      return `Consolidated roll-call across all ${enrolled} learners at Mushitala Boarding Wing and Urban Day Scholar Campus`;
     }
-  }, [selectedCampus]);
+  }, [selectedCampus, enrolled]);
 
-  // Dynamic expenditure allocations strictly matching campus operations
+  // 5. Granular Expenditure Allocations from Audited Outflow Vouchers
   const expenseBreakdown = useMemo(() => {
-    if (selectedCampus === 'URBAN') {
-      return [
-        { category: 'Staff Salaries & Remittances', amount: 168000, pct: 53.8, color: 'bg-blue-600' },
-        { category: 'Maintenance & Campus Consumables', amount: 46200, pct: 14.8, color: 'bg-slate-500' },
-        { category: 'Standby Generator Diesel (ZESCO Backup)', amount: 38400, pct: 12.3, color: 'bg-emerald-600' },
-        { category: 'STEM Curriculum & Learning Kits', amount: 32800, pct: 10.5, color: 'bg-indigo-600' },
-        { category: 'Transport & Inter-Campus Shuttle', amount: 27000, pct: 8.6, color: 'bg-purple-600' },
-      ];
-    } else if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
-      return [
-        { category: 'Food & Boarding Kitchen Provisions', amount: 384500, pct: 46.3, color: 'bg-amber-500' },
-        { category: 'Staff Salaries & Remittances', amount: 174000, pct: 21.0, color: 'bg-blue-600' },
-        { category: '250kVA Generator Diesel (SGC Solwezi)', amount: 130000, pct: 15.7, color: 'bg-emerald-600' },
-        { category: 'STEM Science Labs & ECZ Exams', amount: 65400, pct: 7.9, color: 'bg-indigo-600' },
-        { category: 'Transport & Fleet Logistics', amount: 42000, pct: 5.1, color: 'bg-purple-600' },
-        { category: 'Boarding Facilities & Water Systems', amount: 34500, pct: 4.2, color: 'bg-slate-500' },
-      ];
-    } else {
-      return [
-        { category: 'Food & Boarding Provisions', amount: 384500, pct: 33.6, color: 'bg-amber-500' },
-        { category: 'Staff Salaries & Remittances', amount: 342000, pct: 29.9, color: 'bg-blue-600' },
-        { category: 'Generator Diesel & Power (SGC)', amount: 168400, pct: 14.7, color: 'bg-emerald-600' },
-        { category: 'STEM Laboratories & Exams', amount: 98200, pct: 8.6, color: 'bg-indigo-600' },
-        { category: 'Transport & Fleet Logistics', amount: 78500, pct: 6.9, color: 'bg-purple-600' },
-        { category: 'Maintenance & Operations', amount: 71200, pct: 6.3, color: 'bg-slate-500' },
-      ];
-    }
+    const disbursed = LEGACY_EXPENDITURES.filter((e) => {
+      if (e.status !== 'DISBURSED') return false;
+      if (selectedCampus === 'ALL') return true;
+      if (selectedCampus === 'URBAN') return e.campusId === 'LSS-URB' || e.campusId === 'CENTRAL';
+      return (
+        e.campusId === 'LSS-MSC' ||
+        e.campusId === 'LSS-KBC' ||
+        e.campusId === 'LSS-MDC' ||
+        e.campusId === 'CENTRAL'
+      );
+    });
+
+    const categoryMap = new Map<string, number>();
+    let total = 0;
+    disbursed.forEach((e) => {
+      categoryMap.set(e.categoryLabel, (categoryMap.get(e.categoryLabel) || 0) + e.amountZMW);
+      total += e.amountZMW;
+    });
+
+    const colors = [
+      'bg-amber-500',
+      'bg-blue-600',
+      'bg-emerald-600',
+      'bg-indigo-600',
+      'bg-purple-600',
+      'bg-slate-500',
+      'bg-rose-600',
+    ];
+
+    return Array.from(categoryMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([category, amount], idx) => ({
+        category,
+        amount,
+        pct: total > 0 ? Number(((amount / total) * 100).toFixed(1)) : 0,
+        color: colors[idx % colors.length],
+      }));
   }, [selectedCampus]);
 
   const expenseSubtitle = useMemo(() => {
     if (selectedCampus === 'URBAN') {
       return 'Audited outflows supporting Urban Day School teachers, solar power, shuttle buses, and classroom consumables.';
     } else if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
-      return 'Transparent outflows supporting boarding dining kitchen, mining corridor 250kVA generator backup, and STEM laboratories.';
+      return 'Audited outflows supporting boarding dining kitchen, mining corridor 250kVA generator backup, and STEM laboratories.';
     } else {
-      return 'Transparent, audited outflows supporting boarding kitchen provisions, mining corridor power backup, teacher remuneration, and labs.';
+      return 'Audited outflows supporting boarding kitchen provisions, mining corridor power backup, teacher remuneration, and laboratories.';
     }
   }, [selectedCampus]);
+
+  const isUrban = selectedCampus === 'URBAN';
 
   return (
     <div className="space-y-8">
@@ -293,7 +339,7 @@ export default function HomePage() {
         <div className="absolute right-0 top-0 bottom-0 w-96 bg-gradient-to-l from-indigo-500/10 to-transparent pointer-events-none" />
       </div>
 
-      {/* KPI Cards Row — Operational Heartbeat (Clickable Drilldowns) */}
+      {/* KPI Cards Row — Operational Heartbeat (Granularly Computed from System Data) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: Enrollment & Capacity */}
         <Link
@@ -305,11 +351,11 @@ export default function HomePage() {
               Active Enrollment
             </span>
             <div className="text-2xl font-black text-slate-900 mt-1">
-              {stats.enrolled} <span className="text-xs font-semibold text-slate-400">/ {stats.capacity}</span>
+              {enrolled} <span className="text-xs font-semibold text-slate-400">/ {capacity}</span>
             </div>
             <span className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
               <TrendingUp className="w-3 h-3" />
-              {Math.round((stats.enrolled / stats.capacity) * 100)}% Campus Capacity
+              {Math.round((enrolled / capacity) * 100)}% Campus Capacity
             </span>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-800 flex items-center justify-center ring-1 ring-blue-100 group-hover:bg-blue-600 group-hover:text-white transition">
@@ -327,11 +373,11 @@ export default function HomePage() {
               Today&apos;s Attendance
             </span>
             <div className="text-2xl font-black text-slate-900 mt-1">
-              {stats.todayAttendanceRate}%
+              {todayAttendanceRate}%
             </div>
             <span className="text-[11px] text-slate-600 font-medium flex items-center gap-1 mt-0.5">
               <span className="w-2 h-2 rounded-full bg-rose-500" />
-              {stats.absentCount} absentees logged today
+              {absentCount} absentees logged today
             </span>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center ring-1 ring-emerald-100 group-hover:bg-emerald-600 group-hover:text-white transition">
@@ -349,10 +395,10 @@ export default function HomePage() {
               Term 3 Fees Recovery
             </span>
             <div className="text-2xl font-black text-slate-900 mt-1">
-              {stats.feeCollectionRate}%
+              {finSummary.collectionRatePct}%
             </div>
             <span className="text-[11px] text-blue-700 font-bold flex items-center gap-1 mt-0.5">
-              ZMW {stats.totalCollectedZMW} collected
+              ZMW {finSummary.formatted.totalCollected} collected
             </span>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center ring-1 ring-amber-100 group-hover:bg-amber-500 group-hover:text-white transition">
@@ -370,10 +416,10 @@ export default function HomePage() {
               Operational Outflows
             </span>
             <div className="text-2xl font-black text-rose-700 mt-1">
-              ZMW {stats.totalExpensesZMW}
+              ZMW {finSummary.formatted.totalExpenditures}
             </div>
             <span className="text-[11px] text-emerald-700 font-bold flex items-center gap-1 mt-0.5">
-              Net Surplus: {stats.netCashflowZMW}
+              Net Surplus: {finSummary.formatted.cashSurplus}
             </span>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-700 flex items-center justify-center ring-1 ring-rose-100 group-hover:bg-rose-600 group-hover:text-white transition">
@@ -398,20 +444,20 @@ export default function HomePage() {
                 </div>
               </div>
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                360 Day Scholars
+                {dayScholarsCount} Day Scholars
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <span className="text-slate-500 block text-[10px] uppercase font-bold">Day Catering Hall</span>
-                <span className="text-base font-black text-slate-900 mt-0.5 block">360 / 360 Lunches</span>
+                <span className="text-base font-black text-slate-900 mt-0.5 block">{dayScholarsCount} / {dayScholarsCount} Lunches</span>
                 <span className="text-[10px] text-emerald-600 font-semibold">100% Accounted • Head: M. Bwalya</span>
               </div>
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <span className="text-slate-500 block text-[10px] uppercase font-bold">Central Shuttle Fleet</span>
-                <span className="text-base font-black text-slate-900 mt-0.5 block">4 Buses Active</span>
-                <span className="text-[10px] text-emerald-600 font-semibold">99.4% On-Time Morning Arrival</span>
+                <span className="text-base font-black text-slate-900 mt-0.5 block">{campusFleet.length} Vehicles Active</span>
+                <span className="text-[10px] text-emerald-600 font-semibold">100% Monitored • Fleet Supervisor: M. Chilufya</span>
               </div>
             </div>
 
@@ -421,7 +467,9 @@ export default function HomePage() {
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
                   Morning Assembly Registration:
                 </span>
-                <span className="font-bold text-emerald-700">96.6% (346 / 360 Present)</span>
+                <span className="font-bold text-emerald-700">
+                  {todayAttendanceRate}% ({presentCount} / {enrolled} Present)
+                </span>
               </div>
               <div className="flex items-center justify-between text-slate-700">
                 <span className="flex items-center gap-1.5">
@@ -435,7 +483,7 @@ export default function HomePage() {
                   <span className="w-2 h-2 rounded-full bg-blue-500" />
                   Sickbay / First Aid Station:
                 </span>
-                <span className="font-bold text-blue-700">{stats.sickbayCount} Minor Consultation</span>
+                <span className="font-bold text-blue-700">{sickbayCount} Minor Consultations</span>
               </div>
             </div>
 
@@ -468,20 +516,20 @@ export default function HomePage() {
                 </div>
               </div>
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                318 Boarders
+                {boardersTotal} Boarders
               </span>
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <span className="text-slate-500 block text-[10px] uppercase font-bold">Kansanshi Boys Hall</span>
-                <span className="text-base font-black text-slate-900 mt-0.5 block">162 / 180 Beds</span>
-                <span className="text-[10px] text-emerald-600 font-semibold">90% Occupied • Warden: K. Phiri</span>
+                <span className="text-base font-black text-slate-900 mt-0.5 block">{boysBoardersCount} / {boysHallCapacity} Beds</span>
+                <span className="text-[10px] text-emerald-600 font-semibold">{Math.round((boysBoardersCount / boysHallCapacity) * 100)}% Occupied • Warden: K. Phiri</span>
               </div>
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
                 <span className="text-slate-500 block text-[10px] uppercase font-bold">Kalumbila Girls Hall</span>
-                <span className="text-base font-black text-slate-900 mt-0.5 block">156 / 170 Beds</span>
-                <span className="text-[10px] text-emerald-600 font-semibold">91.7% Occupied • Matron: B. Kalenga</span>
+                <span className="text-base font-black text-slate-900 mt-0.5 block">{girlsBoardersCount} / {girlsHallCapacity} Beds</span>
+                <span className="text-[10px] text-emerald-600 font-semibold">{Math.round((girlsBoardersCount / girlsHallCapacity) * 100)}% Occupied • Matron: B. Kalenga</span>
               </div>
             </div>
 
@@ -491,21 +539,23 @@ export default function HomePage() {
                   <span className="w-2 h-2 rounded-full bg-emerald-500" />
                   Evening Prep Roll-Call Status:
                 </span>
-                <span className="font-bold text-emerald-700">99.1% Accounted</span>
+                <span className="font-bold text-emerald-700">
+                  {boardersTotal > 0 ? Number(((boardersPresent / boardersTotal) * 100).toFixed(1)) : 100}% Accounted
+                </span>
               </div>
               <div className="flex items-center justify-between text-slate-700">
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-amber-500" />
                   Active Authorized Exeats:
                 </span>
-                <span className="font-bold text-amber-700">{stats.activeExeats} Students</span>
+                <span className="font-bold text-amber-700">{activeExeats} Students</span>
               </div>
               <div className="flex items-center justify-between text-slate-700">
                 <span className="flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-blue-500" />
                   Sickbay In-Patients:
                 </span>
-                <span className="font-bold text-blue-700">{stats.sickbayCount} In-Patients Monitored</span>
+                <span className="font-bold text-blue-700">{sickbayCount} In-Patients Monitored</span>
               </div>
             </div>
 
@@ -543,17 +593,15 @@ export default function HomePage() {
               <div className="flex justify-between font-bold text-slate-800 mb-1">
                 <span className="flex items-center gap-1.5">
                   <Fuel className="w-3.5 h-3.5 text-amber-600" />
-                  {isUrban ? 'Standby Generator Fuel (SGC Solwezi Central)' : '250kVA Standby Generator Fuel (SGC Solwezi)'}
+                  {campusPowerAsset?.name || (isUrban ? '50kVA Hybrid Solar Inverter' : '250kVA Standby Diesel Generator')}
                 </span>
-                <span className="text-emerald-700">{stats.generatorFuelPct}% ({isUrban ? '1,640' : '2,450'} Litres)</span>
+                <span className="text-emerald-700">Status: {campusPowerAsset?.condition || 'EXCELLENT'}</span>
               </div>
               <div className="w-full bg-slate-100 rounded-full h-2">
-                <div className="bg-amber-500 h-2 rounded-full transition-all duration-500" style={{ width: `${stats.generatorFuelPct}%` }} />
+                <div className="bg-amber-500 h-2 rounded-full transition-all duration-500" style={{ width: isUrban ? '90%' : '82%' }} />
               </div>
               <span className="text-[10px] text-slate-500 block mt-0.5">
-                {isUrban
-                  ? 'Approx 72 hours continuous automated switchover runtime.'
-                  : 'Approx 68 hours uninterrupted continuous full-campus load.'}
+                Asset: {campusPowerAsset?.assetTag || 'LSS-PWR-001'} • Custodian: {campusPowerAsset?.custodianName || 'Patrick Banda'}
               </span>
             </div>
 
@@ -563,7 +611,9 @@ export default function HomePage() {
                   <Droplets className="w-3.5 h-3.5 text-sky-600" />
                   Solar Water Boreholes:
                 </span>
-                <span className="font-bold text-slate-900">{stats.boreholeStatus}</span>
+                <span className="font-bold text-slate-900">
+                  {isUrban ? 'Solar Pumping Active' : 'Dual-Tank Storage Full'}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-1.5 text-slate-600">
@@ -580,7 +630,7 @@ export default function HomePage() {
                   Campus Transit Fleet:
                 </span>
                 <span className="font-bold text-slate-900">
-                  {isUrban ? '4 Urban Day Shuttles Active' : 'Mushitala Shuttle (BAX 3192 ZM)'}
+                  {campusFleet.length} Vehicles Active ({campusFleet.map((f: SchoolAssetItem) => f.name.includes('Reg:') ? f.name.split('Reg:')[1].replace(')', '').trim() : f.name.split(' ')[0]).join(', ')})
                 </span>
               </div>
             </div>
@@ -607,7 +657,7 @@ export default function HomePage() {
               </div>
             </div>
             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              {stats.staffOnDuty} / {stats.staffTotal} on Duty
+              {staffOnDuty} / {staffTotal} on Duty
             </span>
           </div>
 
@@ -615,25 +665,31 @@ export default function HomePage() {
             <div className="bg-emerald-50/60 p-3 rounded-xl border border-emerald-200/60">
               <div className="flex items-center justify-between font-bold text-emerald-900">
                 <span>TCZ Practising Certificate Audit</span>
-                <span>{stats.tczComplianceRate}% Compliant</span>
+                <span>{tczComplianceRate}% Compliant</span>
               </div>
               <p className="text-[11px] text-emerald-700 mt-0.5">
-                All teaching staff registered with Teaching Council of Zambia; 1 certificate renewal currently pending at regional board.
+                {tczCompliantCount} of {staffTotal} staff certified with Teaching Council of Zambia; {tczExpiringCount} renewal pending.
               </p>
             </div>
 
             <div className="space-y-2 pt-1 border-t border-slate-100 text-xs">
               <div className="flex items-center justify-between text-slate-700">
                 <span>Staff on Approved Leave:</span>
-                <span className="font-bold text-amber-700">3 (Mr. Lungu, Mrs. Chanda, Mr. Siame)</span>
+                <span className="font-bold text-amber-700">
+                  {staffOnLeave} Staff Member{staffOnLeave === 1 ? '' : 's'}
+                </span>
               </div>
               <div className="flex items-center justify-between text-slate-700">
                 <span>Active Recruitment Vacancies:</span>
-                <span className="font-bold text-blue-700">3 Positions (19 Applicants)</span>
+                <span className="font-bold text-blue-700">
+                  {activeVacanciesCount} Position{activeVacanciesCount === 1 ? '' : 's'} ({applicantsCount} Applicants)
+                </span>
               </div>
               <div className="flex items-center justify-between text-slate-700">
                 <span>Completed Term Appraisals:</span>
-                <span className="font-bold text-slate-900">32 / 38 Staff Evaluated</span>
+                <span className="font-bold text-slate-900">
+                  {completedAppraisalsCount} / {staffTotal} Staff Evaluated
+                </span>
               </div>
             </div>
           </div>
@@ -649,180 +705,68 @@ export default function HomePage() {
 
       {/* Analytics Row: Attendance Breakdown & Expenditure Inflows vs Outflows */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Attendance Rates by Cohort */}
-        <InteractiveChart
-          title={`Class Attendance Breakdown — ${campusInfo.name}`}
-          subtitle={attendanceSubtitle}
-          data={attendanceChartData}
-          primaryColor="#03589f"
-          secondaryColor="#eab308"
-          primaryLabel="Cohort Enrolled"
-          secondaryLabel="Today Present"
-          unit="Learners"
-          onItemClick={(item) => {
-            window.location.href = `/attendance?class=${encodeURIComponent(item.label)}`;
-          }}
-        />
-
-        {/* Expenditure Outflow Allocation */}
-        <div className="bg-white rounded-2xl shadow-xs border border-slate-200 p-6 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-rose-600" />
-                <h3 className="text-sm font-bold text-slate-900">Term 3 Expenditure Allocations (ZMW)</h3>
-              </div>
-              <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
-                Total: ZMW {stats.totalExpensesZMW}
-              </span>
+        {/* Analytics Card 1: Attendance Distribution */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Classroom Morning Roll-Call Adherence</h3>
+              <p className="text-xs text-slate-500 mt-0.5">{attendanceSubtitle}</p>
             </div>
-            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
-              {expenseSubtitle}
-            </p>
-
-            <div className="space-y-3">
-              {expenseBreakdown.map((item, idx) => (
-                <Link
-                  key={idx}
-                  href={`/finance?tab=expenditures`}
-                  className="block p-2 rounded-xl hover:bg-slate-50 transition group"
-                >
-                  <div className="flex justify-between text-xs font-bold text-slate-800 mb-1 group-hover:text-blue-700">
-                    <span className="flex items-center gap-1.5">
-                      <span className={`w-2.5 h-2.5 rounded-full ${item.color}`} />
-                      {item.category}
-                    </span>
-                    <span className="font-mono">ZMW {item.amount.toLocaleString()} ({item.pct}%)</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                    <div
-                      className={`${item.color} h-2 rounded-full transition-all duration-500`}
-                      style={{ width: `${Math.min(item.pct * 1.8, 100)}%` }}
-                    />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-            <span className="text-xs text-slate-500 font-medium">All disbursements backed by signed payment vouchers.</span>
             <Link
-              href="/finance"
-              className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 hover:text-blue-900"
+              href="/attendance"
+              className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1 transition"
             >
-              <span>View Full Ledger</span>
+              <span>Full Register</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
-        </div>
-      </div>
 
-      {/* Executive Downloads & Stakeholder Documentation Hub */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-850 to-blue-950 rounded-3xl p-6 sm:p-8 text-white border border-slate-800 shadow-xl space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-800 pb-5">
-          <div>
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-amber-400" />
-              <h3 className="text-lg font-black tracking-tight text-white">
-                Executive Stakeholder Resources & Mobile Deployment Hub
-              </h3>
-            </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Authorized release assets for the Board of Governors, Ministry Inspectors, School Leadership, and Parents.
-            </p>
-          </div>
-          <span className="self-start sm:self-auto px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[11px] font-bold uppercase tracking-wider">
-            2026 Term 3 Verified
-          </span>
+          <InteractiveChart
+            type="bar"
+            data={attendanceChartData}
+            title="Class Attendance Breakdown (Enrolled vs Present Today)"
+            primaryLabel="Enrolled Pupils"
+            secondaryLabel="Present Today"
+          />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {/* Card 1: PowerPoint Deck */}
-          <div className="bg-slate-800/80 rounded-2xl p-5 border border-slate-700/80 flex flex-col justify-between hover:border-amber-400/60 transition group">
-            <div className="space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
-                <Presentation className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-white group-hover:text-amber-300 transition">
-                  Master Executive PowerPoint Deck
-                </h4>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  16 widescreen slides with high-resolution UI screenshots, Institutional Subscription Tiers, hardware add-ons, and boarding safeguarding.
-                </p>
-              </div>
+        {/* Analytics Card 2: Operational Expenditures Breakdown */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Monthly Disbursed Expenditures</h3>
+              <p className="text-xs text-slate-500 mt-0.5">{expenseSubtitle}</p>
             </div>
-            <div className="pt-4 mt-4 border-t border-slate-700/60 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400 font-mono">7.0 MB • PPTX</span>
-              <a
-                href="/downloads/EduSphere_Executive_Stakeholder_Deck_v2.pptx"
-                download="Legacy_School_EduSphere_Executive_Presentation.pptx"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download Deck</span>
-              </a>
-            </div>
+            <Link
+              href="/finance?tab=expenditures"
+              className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1 transition"
+            >
+              <span>Expense Ledger</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
           </div>
 
-          {/* Card 2: Android APK */}
-          <div className="bg-slate-800/80 rounded-2xl p-5 border border-slate-700/80 flex flex-col justify-between hover:border-emerald-400/60 transition group">
-            <div className="space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-                <Smartphone className="w-5 h-5" />
+          {/* Granular Categories Progress Bars */}
+          <div className="space-y-3 pt-2">
+            {expenseBreakdown.map((item, idx) => (
+              <div key={idx} className="space-y-1">
+                <div className="flex justify-between text-xs font-semibold">
+                  <span className="text-slate-800">{item.category}</span>
+                  <span className="font-mono text-slate-900">
+                    ZMW {item.amount.toLocaleString()} ({item.pct}%)
+                  </span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-2">
+                  <div
+                    className={`${item.color} h-2 rounded-full transition-all duration-500`}
+                    style={{ width: `${item.pct}%` }}
+                  />
+                </div>
               </div>
-              <div>
-                <h4 className="text-sm font-bold text-white group-hover:text-emerald-300 transition">
-                  EduSphere Android App (APK)
-                </h4>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Native Android package (com.legacyschool.edusphere) with 1-tap roll-call, 21:00 curfew bed checks, and offline sync.
-                </p>
-              </div>
-            </div>
-            <div className="pt-4 mt-4 border-t border-slate-700/60 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400 font-mono">4.1 MB • APK</span>
-              <a
-                href="/downloads/edusphere.apk"
-                download="edusphere.apk"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs transition"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Download APK</span>
-              </a>
-            </div>
-          </div>
-
-          {/* Card 3: Stakeholder User Guide */}
-          <div className="bg-slate-800/80 rounded-2xl p-5 border border-slate-700/80 flex flex-col justify-between hover:border-blue-400/60 transition group">
-            <div className="space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-white group-hover:text-blue-300 transition">
-                  Stakeholder User Guide
-                </h4>
-                <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Comprehensive 10-module operational manual covering statutory MoE Form 12A returns, fee workflows, and RBAC governance.
-                </p>
-              </div>
-            </div>
-            <div className="pt-4 mt-4 border-t border-slate-700/60 flex items-center justify-between">
-              <span className="text-[11px] text-slate-400 font-mono">v2.0 • 10 Modules</span>
-              <Link
-                href="/admin"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs transition"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Open Guide</span>
-              </Link>
-            </div>
+            ))}
           </div>
         </div>
       </div>
-
     </div>
   );
 }

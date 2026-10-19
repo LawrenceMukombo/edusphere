@@ -745,41 +745,58 @@ export default function HRPage() {
       {activeTab === 'DIRECTORY' && (
         <div className="space-y-6">
           {/* Compliance KPI Row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Headcount</span>
-              <div className="text-2xl font-black text-slate-900 mt-1">{filteredStaff.length} Staff</div>
-              <span className="text-[11px] text-blue-700 font-bold block mt-0.5">
-                {selectedCampus === 'ALL'
-                  ? '38 Academic & Teaching • 10 Support & Operations'
-                  : `${filteredStaff.filter((s) => s.department.includes('ACADEMIC')).length} Teaching • ${filteredStaff.filter((s) => !s.department.includes('ACADEMIC')).length} Support`}
-              </span>
-            </div>
+          {(() => {
+            const tczCompliantCount = filteredStaff.filter((s) => s.tczStatus === 'COMPLIANT').length;
+            const tczExpiringCount = filteredStaff.filter((s) => s.tczStatus === 'EXPIRING_SOON').length;
+            const tczCompliancePct =
+              filteredStaff.length > 0 ? ((tczCompliantCount / filteredStaff.length) * 100).toFixed(1) : '100';
 
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">TCZ Compliance Rate</span>
-              <div className="text-2xl font-black text-emerald-700 mt-1">97.4%</div>
-              <span className="text-[11px] text-emerald-700 font-bold block mt-0.5">
-                37 Valid Certificates • 1 in Renewal
-              </span>
-            </div>
+            const approvedLeaveCount = leaveRequests.filter((l) => l.status === 'APPROVED').length;
+            const pendingLeaveCount = leaveRequests.filter((l) => l.status === 'PENDING').length;
 
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Staff On Approved Leave</span>
-              <div className="text-2xl font-black text-amber-700 mt-1">3 Active</div>
-              <span className="text-[11px] text-slate-500 font-semibold block mt-0.5">
-                Relief teachers & matrons designated
-              </span>
-            </div>
+            const totalOpenVacancies = jobPostings
+              .filter((j) => j.status === 'ACTIVE')
+              .reduce((sum, j) => sum + j.vacancies, 0);
+            const totalApplicantsCount = applicants.length;
 
-            <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Open Vacancies</span>
-              <div className="text-2xl font-black text-purple-700 mt-1">3 Positions</div>
-              <span className="text-[11px] text-purple-700 font-bold block mt-0.5">
-                19 Applicants in Interview Pipeline
-              </span>
-            </div>
-          </div>
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Headcount</span>
+                  <div className="text-2xl font-black text-slate-900 mt-1">{filteredStaff.length} Staff</div>
+                  <span className="text-[11px] text-blue-700 font-bold block mt-0.5">
+                    {selectedCampus === 'ALL'
+                      ? `${filteredStaff.filter((s) => s.department.includes('ACADEMIC')).length} Academic & Teaching • ${filteredStaff.filter((s) => !s.department.includes('ACADEMIC')).length} Support & Operations`
+                      : `${filteredStaff.filter((s) => s.department.includes('ACADEMIC')).length} Teaching • ${filteredStaff.filter((s) => !s.department.includes('ACADEMIC')).length} Support`}
+                  </span>
+                </div>
+
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">TCZ Compliance Rate</span>
+                  <div className="text-2xl font-black text-emerald-700 mt-1">{tczCompliancePct}%</div>
+                  <span className="text-[11px] text-emerald-700 font-bold block mt-0.5">
+                    {tczCompliantCount} Valid Certificates • {tczExpiringCount} in Renewal
+                  </span>
+                </div>
+
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Staff On Approved Leave</span>
+                  <div className="text-2xl font-black text-amber-700 mt-1">{approvedLeaveCount} Active</div>
+                  <span className="text-[11px] text-slate-500 font-semibold block mt-0.5">
+                    {pendingLeaveCount > 0 ? `${pendingLeaveCount} pending review • ` : ''}Relief staff designated
+                  </span>
+                </div>
+
+                <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Open Vacancies</span>
+                  <div className="text-2xl font-black text-purple-700 mt-1">{totalOpenVacancies} Position{totalOpenVacancies === 1 ? '' : 's'}</div>
+                  <span className="text-[11px] text-purple-700 font-bold block mt-0.5">
+                    {totalApplicantsCount} Candidate{totalApplicantsCount === 1 ? '' : 's'} in Interview Pipeline
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
 
           <EnterpriseTable
             data={filteredStaff}
