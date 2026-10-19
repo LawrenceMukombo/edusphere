@@ -1363,6 +1363,8 @@ export function generateLegacyLearners(totalCount = 780): LegacyLearnerBalance[]
   ];
 
   let studentIndex = 1;
+  let assignedBoysBoarders = 0;
+  let assignedGirlsBoarders = 0;
 
   for (const c of classesConfig) {
     for (let i = 0; i < c.count; i++) {
@@ -1380,15 +1382,29 @@ export function generateLegacyLearners(totalCount = 780): LegacyLearnerBalance[]
       const birthDay = ((studentIndex * 13 + i) % daysInMonth) + 1;
       const dateOfBirth = `${birthYear}-${String(birthMonth).padStart(2, '0')}-${String(birthDay).padStart(2, '0')}`;
 
-      // Boarding designation: 75% of secondary students are boarders (~315 total: ~158 boys, ~157 girls)
+      // Boarding designation (BRD-001):
+      // Enforce hall bed capacity: Boys 162/180 (90.0%), Girls 156/170 (91.8%), Total 318/350 (90.9%)
       let studentType: 'DAY_SCHOLAR' | 'BOARDER' = 'DAY_SCHOLAR';
       let hallName: string | undefined = undefined;
 
       if (c.isSecondary) {
-        const isBoarder = studentIndex % 4 !== 0; // 75% Boarders
-        if (isBoarder) {
+        const candidateForBoarding = (studentIndex * 7 + i) % 10 < 8;
+        if (isMale && candidateForBoarding && assignedBoysBoarders < 162) {
           studentType = 'BOARDER';
-          hallName = isMale ? 'Kansanshi Boys Boarding Hall' : 'Kalumbila Girls Boarding Hall';
+          hallName = 'Kansanshi Boys Boarding Hall';
+          assignedBoysBoarders++;
+        } else if (!isMale && candidateForBoarding && assignedGirlsBoarders < 156) {
+          studentType = 'BOARDER';
+          hallName = 'Kalumbila Girls Boarding Hall';
+          assignedGirlsBoarders++;
+        } else if (isMale && assignedBoysBoarders < 162 && (781 - studentIndex) <= (162 - assignedBoysBoarders + 156 - assignedGirlsBoarders)) {
+          studentType = 'BOARDER';
+          hallName = 'Kansanshi Boys Boarding Hall';
+          assignedBoysBoarders++;
+        } else if (!isMale && assignedGirlsBoarders < 156 && (781 - studentIndex) <= (162 - assignedBoysBoarders + 156 - assignedGirlsBoarders)) {
+          studentType = 'BOARDER';
+          hallName = 'Kalumbila Girls Boarding Hall';
+          assignedGirlsBoarders++;
         }
       }
 

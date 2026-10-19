@@ -609,6 +609,28 @@ export function savePasswordPolicy(policy: PasswordPolicyConfig): void {
   }
 }
 
+// Persistence: Security Users
+export function loadSecurityUsers(): UserSecurityProfile[] {
+  if (typeof window === 'undefined') return INITIAL_SECURITY_USERS;
+  try {
+    const raw = localStorage.getItem(STORAGE_USER_PROFILES);
+    if (!raw) return INITIAL_SECURITY_USERS;
+    return JSON.parse(raw);
+  } catch {
+    return INITIAL_SECURITY_USERS;
+  }
+}
+
+export function saveSecurityUsers(users: UserSecurityProfile[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_USER_PROFILES, JSON.stringify(users));
+    window.dispatchEvent(new Event('edusphere:users-updated'));
+  } catch (e) {
+    console.error('Failed to save security users', e);
+  }
+}
+
 // Check if user has specific permission on module
 export function hasPermission(
   role: UserRole,

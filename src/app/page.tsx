@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { InteractiveChart } from '@/components/InteractiveChart';
 import { useCampus } from '@/components/CampusContext';
+import { getFinancialSummary } from '@/server/services/financeReporting.service';
 
 export default function HomePage() {
   const { selectedCampus, setSelectedCampus, campusInfo } = useCampus();
@@ -119,7 +120,28 @@ export default function HomePage() {
     },
   };
 
-  const stats = statsMap[selectedCampus] || statsMap.ALL;
+  const finSummary = useMemo(() => {
+    return getFinancialSummary((selectedCampus as any) || 'ALL');
+  }, [selectedCampus]);
+
+  const stats = useMemo(() => {
+    const base = statsMap[selectedCampus] || statsMap.ALL;
+    return {
+      ...base,
+      totalBilledZMW: finSummary.formatted.totalBilled,
+      totalCollectedZMW: finSummary.formatted.totalCollected,
+      totalExpensesZMW: finSummary.formatted.totalExpenditures,
+      netCashflowZMW: finSummary.formatted.cashSurplus,
+      feeCollectionRate: finSummary.collectionRatePct,
+      boardersTotal: selectedCampus === 'URBAN' ? 0 : 318,
+      boardersPresent: selectedCampus === 'URBAN' ? 0 : 315,
+      staffTotal: selectedCampus === 'ALL' ? 48 : base.staffTotal,
+      staffOnDuty: selectedCampus === 'ALL' ? 45 : base.staffOnDuty,
+      todayAttendanceRate: 95.8,
+      absentCount: 33,
+    };
+  }, [selectedCampus, finSummary]);
+
   const isUrban = selectedCampus === 'URBAN';
 
   // Dynamic class attendance breakdown per campus

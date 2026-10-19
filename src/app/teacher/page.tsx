@@ -405,7 +405,7 @@ export default function TeacherWorkspacePage() {
               Teacher Markbook & Governance Engine
             </span>
             <span className="text-xs text-slate-400">&bull;</span>
-            <span className="text-xs font-bold text-slate-700">Official ECZ Curriculum Standards</span>
+            <span className="text-xs font-bold text-slate-700">Zambian ECZ Curriculum Configuration Available</span>
             <span className="text-xs text-slate-400">&bull;</span>
             <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
               {roster.length} Students in Cohort
@@ -413,7 +413,7 @@ export default function TeacherWorkspacePage() {
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Teacher Workspace & Assessment Entry</h1>
           <p className="text-xs text-slate-500 mt-1">
-            Capture attendance, weekly topic tests (15%), continuous assessments (25%), mocks (20%), and term finals (40%). Advance through 3-tier supervisory sign-off.
+            Statutory ECZ Scheme: Continuous Assessment (40% = 15% Topic Tests + 25% Formative CA) & Examinations (60% = 20% Mock + 40% Term Finals). Advance through 3-tier supervisory sign-off.
           </p>
         </div>
 

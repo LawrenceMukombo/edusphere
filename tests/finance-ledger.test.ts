@@ -3,6 +3,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { prisma } from '../src/server/db';
 import { FinanceService } from '../src/server/services/finance.service';
 import { FeeCategory, PaymentMethod, LedgerEntryType } from '@prisma/client';
+import { getFinancialSummary } from '../src/server/services/financeReporting.service';
 
 describe('AC-06 & AC-07: Financial Ledger Integrity, Idempotency & Reversals', () => {
   let orgId: string;
@@ -158,5 +159,20 @@ describe('AC-06 & AC-07: Financial Ledger Integrity, Idempotency & Reversals', (
     expect(reports.ageingSummary).toHaveProperty('days31to60');
     expect(reports.ageingSummary).toHaveProperty('days61to90');
     expect(reports.ageingSummary).toHaveProperty('over90days');
+  });
+
+  it('FIN-001: Central Financial Reporting Service reconciles collections, billings, and expenditures with zero variance', () => {
+    const allSummary = getFinancialSummary('ALL');
+    expect(allSummary.totalBilledZMW).toBeGreaterThan(0);
+    expect(allSummary.totalCollectedZMW).toBeGreaterThan(0);
+    expect(allSummary.totalExpendituresZMW).toBeGreaterThan(0);
+    expect(allSummary.reconciliationStatus.isReconciled).toBe(true);
+    expect(allSummary.reconciliationStatus.varianceZMW).toBe(0);
+
+    // Sum of campuses equals or reconciles to consolidated totals
+    const mushitala = getFinancialSummary('MUSHITALA');
+    const urban = getFinancialSummary('URBAN');
+    expect(mushitala.totalCollectedZMW + urban.totalCollectedZMW).toBe(allSummary.totalCollectedZMW);
+    expect(mushitala.totalBilledZMW + urban.totalBilledZMW).toBe(allSummary.totalBilledZMW);
   });
 });

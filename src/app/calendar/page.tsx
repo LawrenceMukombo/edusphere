@@ -35,6 +35,7 @@ import {
   getBirthdaysByMonth,
   getBirthdaysForDate,
   getTodayBirthdays,
+  getSchoolCurrentDateStr,
   generateSmsBirthdayWish,
   buildMonthCalendarMatrix,
   CalendarDayCell,
@@ -71,7 +72,7 @@ export default function SchoolCalendarPage() {
   // Month navigation (Defaults to October 2026 - National Day of Prayer & Exam Month)
   const [currentYear, setCurrentYear] = useState(2026);
   const [currentMonth, setCurrentMonth] = useState(10); // 1-12 (October)
-  const todayDateStr = '2026-10-18'; // Zambia National Day of Prayer
+  const todayDateStr = useMemo(() => getSchoolCurrentDateStr(), []);
 
   // Selected Day Cell for Drawer / Modal
   const [selectedDayCell, setSelectedDayCell] = useState<CalendarDayCell | null>(null);

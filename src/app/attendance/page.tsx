@@ -254,22 +254,8 @@ function getMonthDaysForLearner(learner: StudentRosterItem, monthIndex: number):
         isHoliday: false,
         isFuture: true,
         isToday: false,
-        isLocked: isFeeLocked,
+        isLocked: false,
         status: 'FUTURE_SCHEDULED',
-        time: '—',
-      });
-    } else if (isToday && isFeeLocked) {
-      // TODAY and learner has unpaid fees -> Roll-call disabled, access locked!
-      days.push({
-        dayNumber: d,
-        dateStr,
-        dayOfWeek: dayOfWeekLetter,
-        isWeekend: false,
-        isHoliday: false,
-        isFuture: false,
-        isToday: true,
-        isLocked: true,
-        status: 'FEE_LOCKED',
         time: '—',
       });
     } else {
@@ -470,17 +456,10 @@ function getLearnerAttendanceHorizons(learner: StudentRosterItem): LearnerAttend
 
     if (mc.isCurrent) {
       // March live Month-to-date (5 elapsed days)
-      if (isFeeLocked) {
-        mAbsent = 1; // Locked today
-        mLate = 0;
-        mExcused = 0;
-        mPresent = 4;
-      } else {
-        mAbsent = (seed % 17 === 0 ? 1 : 0) + (learner.status === 'ABSENT' ? 1 : 0);
-        mLate = seed % 9 === 0 ? 1 : learner.status === 'LATE' ? 1 : 0;
-        mExcused = seed % 25 === 0 ? 1 : 0;
-        mPresent = Math.max(0, ELAPSED_TEACHING_DAYS_MARCH - mAbsent);
-      }
+      mAbsent = (seed % 17 === 0 ? 1 : 0) + (learner.status === 'ABSENT' ? 1 : 0);
+      mLate = seed % 9 === 0 ? 1 : learner.status === 'LATE' ? 1 : 0;
+      mExcused = seed % 25 === 0 ? 1 : 0;
+      mPresent = Math.max(0, ELAPSED_TEACHING_DAYS_MARCH - mAbsent);
       mRate = Math.min(100, Math.round((mPresent / ELAPSED_TEACHING_DAYS_MARCH) * 1000) / 10);
     } else {
       // Historical elapsed months: Jan (15d) & Feb (20d)
@@ -653,7 +632,6 @@ function getLearnerAttendanceHorizons(learner: StudentRosterItem): LearnerAttend
 }
 
 const GENERATED_ROSTER: StudentRosterItem[] = generateLegacyLearners(780).map((l) => {
-  const isLocked = l.balance > 0 && (l.financialStatus === 'ARREARS' || l.financialStatus === 'CHRONIC_ARREARS');
   return {
     id: l.id,
     studentNumber: l.studentNumber,
@@ -669,20 +647,18 @@ const GENERATED_ROSTER: StudentRosterItem[] = generateLegacyLearners(780).map((l
           ? 'Kansanshi Boys Boarding Hall'
           : 'Kalumbila Girls Boarding Hall'
         : undefined),
-    status: isLocked ? 'ABSENT' : l.todayAttendance,
-    arrivalMinutesLate: isLocked ? undefined : l.todayAttendance === 'LATE' ? 38 : 0,
+    status: l.todayAttendance,
+    arrivalMinutesLate: l.todayAttendance === 'LATE' ? 38 : 0,
     guardianName: l.guardian.name,
     guardianPhone: l.guardian.phone,
-    alertSent: isLocked || l.todayAttendance === 'ABSENT',
+    alertSent: l.todayAttendance === 'ABSENT',
     totalBilled: l.totalBilled,
     totalPaid: l.totalPaid,
     balanceDue: l.balance,
     financialStatus: l.financialStatus,
-    busAccessStatus: isLocked ? 'SUSPENDED' : 'ACTIVE',
-    campusAccessStatus: isLocked ? 'DENIED' : 'ACTIVE',
-    accessLockReason: isLocked
-      ? `Tuition & Transport Arrears of K ${l.balance.toLocaleString()} pending Bursary clearance. Biometric turnstile gate access & morning bus pass suspended.`
-      : undefined,
+    busAccessStatus: 'ACTIVE',
+    campusAccessStatus: 'ACTIVE',
+    accessLockReason: undefined,
   };
 });
 
@@ -993,10 +969,6 @@ export default function AttendancePage() {
 
   const updateStudentStatus = (id: string, status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED') => {
     const target = roster.find((s) => s.id === id);
-    if (target && target.balanceDue > 0 && (target.financialStatus === 'ARREARS' || target.financialStatus === 'CHRONIC_ARREARS')) {
-      showToast(`🚫 Register Locked: ${target.learnerName} has tuition fee arrears of K ${target.balanceDue.toLocaleString()}. Direct Mobile Money payment required to unlock.`);
-      return;
-    }
     setRoster((prev) =>
       prev.map((s) => (s.id === id ? { ...s, status } : s))
     );
@@ -1014,17 +986,12 @@ export default function AttendancePage() {
   };
 
   const markAllPresent = () => {
-    let lockedCount = 0;
     let updatedCount = 0;
     setRoster((prev) =>
       prev.map((s) => {
         if ((selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') && !s.campusName.includes('Mushitala') && !s.campusName.includes('Kansanshi')) return s;
         if (selectedCampus === 'URBAN' && !s.campusName.includes('Urban')) return s;
         if (selectedClass !== 'ALL' && s.className !== selectedClass) return s;
-        if (s.balanceDue > 0 && (s.financialStatus === 'ARREARS' || s.financialStatus === 'CHRONIC_ARREARS')) {
-          lockedCount++;
-          return s; // Preserve locked status
-        }
         updatedCount++;
         return { ...s, status: 'PRESENT' };
       })
@@ -1038,11 +1005,7 @@ export default function AttendancePage() {
         campus: selectedCampus,
       });
     }
-    if (lockedCount > 0) {
-      showToast(`All fee-cleared learners marked PRESENT. (${lockedCount} learners with fee arrears were retained as locked).`);
-    } else {
-      showToast(`All learners in active view (${selectedClass === 'ALL' ? 'All Cohorts' : selectedClass}) marked PRESENT.`);
-    }
+    showToast(`All learners in active view (${selectedClass === 'ALL' ? 'All Cohorts' : selectedClass}) marked PRESENT.`);
   };
 
   // Multi-Horizon Matrix: Filtered Learners for the active classroom
@@ -1674,21 +1637,12 @@ export default function AttendancePage() {
       header: 'Register Status',
       sortable: true,
       render: (r) => {
-        const isFeeLocked = r.balanceDue > 0 && (r.financialStatus === 'ARREARS' || r.financialStatus === 'CHRONIC_ARREARS');
-        if (isFeeLocked) {
-          return (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-black border bg-rose-100 text-rose-900 border-rose-300">
-              <Lock className="w-3 h-3 text-rose-700" />
-              <span>LOCKED (ARREARS)</span>
-            </span>
-          );
-        }
         const styles = {
           PRESENT: 'bg-emerald-50 text-emerald-800 border-emerald-200',
           ABSENT: 'bg-rose-50 text-rose-800 border-rose-200',
           LATE: 'bg-amber-50 text-amber-800 border-amber-200',
           EXCUSED: 'bg-slate-100 text-slate-700 border-slate-200',
-        }[r.status];
+        }[r.status] || 'bg-slate-50 text-slate-700 border-slate-200';
         return (
           <span className={`inline-block px-2.5 py-0.5 rounded-md text-[11px] font-black border ${styles}`}>
             {r.status} {r.arrivalMinutesLate ? `(+${r.arrivalMinutesLate}m)` : ''}
@@ -1704,27 +1658,15 @@ export default function AttendancePage() {
         return (
           <div className="space-y-1 text-[10px]">
             <div className="flex items-center gap-1.5">
-              <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold border ${
-                  r.busAccessStatus === 'ACTIVE'
-                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                    : 'bg-rose-50 text-rose-800 border-rose-200'
-                }`}
-              >
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold border bg-emerald-50 text-emerald-800 border-emerald-200">
                 <span>🚌</span>
-                <span>{r.busAccessStatus === 'ACTIVE' ? 'Bus Cleared' : 'Bus Suspended'}</span>
+                <span>Transit Active</span>
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span
-                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold border ${
-                  r.campusAccessStatus === 'ACTIVE'
-                    ? 'bg-teal-50 text-teal-800 border-teal-200'
-                    : 'bg-rose-50 text-rose-800 border-rose-200'
-                }`}
-              >
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold border bg-teal-50 text-teal-800 border-teal-200">
                 <span>🏫</span>
-                <span>{r.campusAccessStatus === 'ACTIVE' ? 'Gate Granted' : 'Turnstile Denied'}</span>
+                <span>Gate Cleared</span>
               </span>
             </div>
           </div>
@@ -1743,24 +1685,8 @@ export default function AttendancePage() {
     },
     {
       key: 'quickActions',
-      header: 'Roll-Call & Clearance Actions',
+      header: 'Roll-Call & Attendance Actions',
       render: (r) => {
-        const isFeeLocked = r.balanceDue > 0 && (r.financialStatus === 'ARREARS' || r.financialStatus === 'CHRONIC_ARREARS');
-        if (isFeeLocked) {
-          return (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => openMobileMoneyModal(r)}
-                className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black shadow-xs flex items-center gap-1.5 transition animate-pulse"
-                title="Direct Mobile Money Instant Clearance: Pay fees via MTN, Airtel, or Zamtel to unlock register and access"
-              >
-                <Smartphone className="w-3.5 h-3.5 text-emerald-200" />
-                <span>Pay MoMo (K{r.balanceDue.toLocaleString()})</span>
-              </button>
-            </div>
-          );
-        }
         return (
           <div className="flex items-center gap-1.5">
             <button

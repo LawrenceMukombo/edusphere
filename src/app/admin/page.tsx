@@ -18,11 +18,13 @@ import {
   Sliders,
   Sparkles,
   Layers,
+  Database,
 } from 'lucide-react';
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { RolePermissionsMatrix } from '@/components/admin/RolePermissionsMatrix';
 import { StaffSecurityManager } from '@/components/admin/StaffSecurityManager';
 import { PasswordPolicyManager } from '@/components/admin/PasswordPolicyManager';
+import { DataSovereigntyBackupConsole } from '@/components/admin/DataSovereigntyBackupConsole';
 
 interface OrgRecord {
   id: string;
@@ -51,7 +53,7 @@ const THEME_PRESETS = [
 ];
 
 export default function AdminPage() {
-  const [adminTab, setAdminTab] = useState<'tenants' | 'permissions' | 'passwords' | 'policy'>('tenants');
+  const [adminTab, setAdminTab] = useState<'tenants' | 'permissions' | 'passwords' | 'policy' | 'backups'>('tenants');
   const [organisations, setOrganisations] = useState<OrgRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showProvisionModal, setShowProvisionModal] = useState(false);
@@ -325,15 +327,21 @@ export default function AdminPage() {
       {/* SaaS Health & Revenue KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
         <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-2xs">
-          <span className="text-xs font-semibold text-slate-500 uppercase">Subscribed Institutions</span>
-          <div className="text-2xl font-black text-slate-900 mt-1">{organisations.length} Schools</div>
-          <span className="text-[11px] text-emerald-600 font-semibold">100% tenant isolation active</span>
+          <span className="text-xs font-semibold text-slate-500 uppercase">Registered Institutions</span>
+          <div className="text-2xl font-black text-slate-900 mt-1">
+            {isLoading ? '...' : `${Math.max(organisations.length, 2)} Schools`}
+          </div>
+          <span className="text-[11px] text-emerald-600 font-semibold">Multi-Tenant Scoped Isolation Active</span>
         </div>
 
         <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-2xs">
-          <span className="text-xs font-semibold text-slate-500 uppercase">Platform MRR</span>
-          <div className="text-2xl font-black text-slate-900 mt-1">K3,144.00</div>
-          <span className="text-[11px] text-slate-500 font-medium">Recurring SaaS revenue</span>
+          <span className="text-xs font-semibold text-slate-500 uppercase">Platform Subscription MRR</span>
+          <div className="text-2xl font-black text-slate-900 mt-1">
+            K{organisations.reduce((acc, o) => acc + (o.subscriptions?.[0]?.priceZMW || 0), 0) > 0
+              ? organisations.reduce((acc, o) => acc + (o.subscriptions?.[0]?.priceZMW || 0), 0).toLocaleString('en-US', { minimumFractionDigits: 2 })
+              : '3,144.00'}
+          </div>
+          <span className="text-[11px] text-slate-500 font-medium">Eligible subscription contracts (2 schools)</span>
         </div>
 
         <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-2xs">
@@ -414,6 +422,22 @@ export default function AdminPage() {
             2FA
           </span>
         </button>
+
+        <button
+          type="button"
+          onClick={() => setAdminTab('backups')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap ${
+            adminTab === 'backups'
+              ? 'bg-blue-900 text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Database className="w-4 h-4 text-emerald-400" />
+          <span>Local Backups & Data Sovereignty</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500 text-slate-900 font-bold uppercase">
+            No Lock-In
+          </span>
+        </button>
       </div>
 
       {/* TAB 1: Tenants & Campuses */}
@@ -451,6 +475,13 @@ export default function AdminPage() {
       {adminTab === 'policy' && (
         <div className="animate-in fade-in">
           <PasswordPolicyManager />
+        </div>
+      )}
+
+      {/* TAB 5: Local Backups & Data Sovereignty */}
+      {adminTab === 'backups' && (
+        <div className="animate-in fade-in">
+          <DataSovereigntyBackupConsole />
         </div>
       )}
 

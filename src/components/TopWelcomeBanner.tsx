@@ -160,6 +160,12 @@ export function TopWelcomeBanner() {
             </div>
           </div>
 
+          {/* Synthetic Demo Mode Indicator (SEC-001) */}
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            <Sparkles className="w-3 h-3 text-amber-400 shrink-0" />
+            <span>Synthetic Demo • Zero Real Data</span>
+          </span>
+
           {/* Security & 2FA Indicator */}
           <div className="hidden lg:flex items-center gap-2">
             <span

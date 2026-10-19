@@ -748,9 +748,11 @@ export default function HRPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
               <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Headcount</span>
-              <div className="text-2xl font-black text-slate-900 mt-1">38 Staff</div>
+              <div className="text-2xl font-black text-slate-900 mt-1">{filteredStaff.length} Staff</div>
               <span className="text-[11px] text-blue-700 font-bold block mt-0.5">
-                21 Secondary & Boarding • 17 Primary & ECE
+                {selectedCampus === 'ALL'
+                  ? '38 Academic & Teaching • 10 Support & Operations'
+                  : `${filteredStaff.filter((s) => s.department.includes('ACADEMIC')).length} Teaching • ${filteredStaff.filter((s) => !s.department.includes('ACADEMIC')).length} Support`}
               </span>
             </div>
 

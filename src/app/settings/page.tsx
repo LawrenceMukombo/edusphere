@@ -43,6 +43,7 @@ import {
   loadAdminAuditLogs,
 } from '@/lib/appSettings';
 import { openEduSphereDB } from '@/lib/offlineSync';
+import { DataSovereigntyBackupConsole } from '@/components/admin/DataSovereigntyBackupConsole';
 
 export default function SettingsPage() {
   const { selectedCampus, campusInfo } = useCampus();
@@ -175,7 +176,7 @@ export default function SettingsPage() {
                 Sovereign Administrative Suite
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/20 text-blue-200 border border-blue-400/30">
-                MoE Certified 2026
+                MoE Curriculum Aligned 2026
               </span>
               <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                 <Wifi className="w-3 h-3" />
@@ -186,7 +187,7 @@ export default function SettingsPage() {
               System Administration & Module Configuration
             </h1>
             <p className="text-slate-300 text-xs sm:text-sm max-w-2xl leading-relaxed">
-              Configure operational rules, strict attendance data validations, tuition arrears access gates,
+              Configure operational rules, statutory attendance validations, independent fee reconciliation,
               mobile money unlock rules, campus quotas, and statutory compliance standards for Legacy School Solwezi.
             </p>
           </div>
@@ -220,7 +221,7 @@ export default function SettingsPage() {
             { id: 'infrastructure', label: 'Campuses & Infrastructure', icon: Building2 },
             { id: 'finance', label: 'Mobile Money & Arrears Gate', icon: DollarSign },
             { id: 'compliance', label: 'MoE & Statutory Compliance', icon: ShieldCheck },
-            { id: 'storage', label: 'Offline Storage & PWA', icon: HardDrive },
+            { id: 'storage', label: 'Local Backups & Storage', icon: HardDrive },
             { id: 'audit', label: 'Audit Trail & Event Log', icon: FileText },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -1499,9 +1500,12 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* TAB 5: OFFLINE STORAGE & PWA DIAGNOSTICS */}
+      {/* TAB 5: LOCAL BACKUPS & OFFLINE STORAGE */}
       {activeTab === 'storage' && (
         <div className="space-y-6 animate-in fade-in-50 duration-200">
+          {/* 1. Sovereign Local Backup & Disaster Recovery Console */}
+          <DataSovereigntyBackupConsole />
+
           <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-6">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4">
               <div>

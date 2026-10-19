@@ -60,4 +60,22 @@ describe('AC-08 & AC-09: Attendance & Offline Reconciliation', () => {
     const synced = await AttendanceService.getClassAttendance(classId, '2026-10-15');
     expect(synced!.records.length).toBeGreaterThanOrEqual(1);
   });
+
+  it('SAFE-001: Pupil attendance can be recorded regardless of fee arrears with zero lock-out', async () => {
+    // Pupil has balance due, but teacher can take roll-call without hindrance
+    const session = await AttendanceService.submitRegister({
+      classId,
+      termId,
+      date: '2026-10-16',
+      records: [
+        { learnerId: pupilId, status: AttendanceStatus.PRESENT, remarks: 'Roll-call taken irrespective of financial balance' },
+      ],
+    });
+
+    expect(session).toBeDefined();
+    const record = await prisma.attendanceRecord.findUnique({
+      where: { sessionId_learnerId: { sessionId: session.id, learnerId: pupilId } },
+    });
+    expect(record!.status).toBe(AttendanceStatus.PRESENT);
+  });
 });

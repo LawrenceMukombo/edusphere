@@ -507,13 +507,23 @@ export function getBirthdaysForDate(dateStr: string): LearnerBirthdayProfile[] {
   return all.filter((l) => l.birthMonth === month && l.birthDay === day);
 }
 
+/**
+ * Authoritative timezone-aware current date for Zambia (Africa/Lusaka) (CAL-001)
+ */
+export function getSchoolCurrentDateStr(): string {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Africa/Lusaka' }).format(new Date());
+  } catch {
+    return new Date().toISOString().split('T')[0];
+  }
+}
+
 export function getTodayBirthdays(overrideDate?: string): {
   date: string;
   count: number;
   birthdays: LearnerBirthdayProfile[];
 } {
-  // If overrideDate is provided use it, otherwise use 2026-10-18 (National Day of Prayer) or system date
-  const targetDate = overrideDate || '2026-10-18';
+  const targetDate = overrideDate || getSchoolCurrentDateStr();
   const matches = getBirthdaysForDate(targetDate);
   return {
     date: targetDate,
@@ -547,7 +557,8 @@ export interface CalendarDayCell {
   birthdays: LearnerBirthdayProfile[];
 }
 
-export function buildMonthCalendarMatrix(year: number, month: number, todayDateStr = '2026-10-18'): CalendarDayCell[][] {
+export function buildMonthCalendarMatrix(year: number, month: number, todayDateStr?: string): CalendarDayCell[][] {
+  const activeToday = todayDateStr || getSchoolCurrentDateStr();
   const firstDay = new Date(year, month - 1, 1);
   const totalDays = new Date(year, month, 0).getDate();
   const startDayOfWeek = firstDay.getDay(); // 0 = Sunday
@@ -566,13 +577,13 @@ export function buildMonthCalendarMatrix(year: number, month: number, todayDateS
     const prevMonth = month === 1 ? 12 : month - 1;
     const prevYear = month === 1 ? year - 1 : year;
     const dStr = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-    currentWeek.push(createDayCell(prevYear, prevMonth, dayNum, false, dStr, todayDateStr, allHolidays, allEvents, allBirthdays));
+    currentWeek.push(createDayCell(prevYear, prevMonth, dayNum, false, dStr, activeToday, allHolidays, allEvents, allBirthdays));
   }
 
   // Current month days
   for (let dayNum = 1; dayNum <= totalDays; dayNum++) {
     const dStr = `${year}-${String(month).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-    const dayCell = createDayCell(year, month, dayNum, true, dStr, todayDateStr, allHolidays, allEvents, allBirthdays);
+    const dayCell = createDayCell(year, month, dayNum, true, dStr, activeToday, allHolidays, allEvents, allBirthdays);
     currentWeek.push(dayCell);
 
     if (currentWeek.length === 7) {
@@ -588,7 +599,7 @@ export function buildMonthCalendarMatrix(year: number, month: number, todayDateS
     let nextDayNum = 1;
     while (currentWeek.length < 7) {
       const dStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-${String(nextDayNum).padStart(2, '0')}`;
-      currentWeek.push(createDayCell(nextYear, nextMonth, nextDayNum, false, dStr, todayDateStr, allHolidays, allEvents, allBirthdays));
+      currentWeek.push(createDayCell(nextYear, nextMonth, nextDayNum, false, dStr, activeToday, allHolidays, allEvents, allBirthdays));
       nextDayNum++;
     }
     matrix.push(currentWeek);
