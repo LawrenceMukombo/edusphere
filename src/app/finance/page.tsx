@@ -47,6 +47,7 @@ import { InteractiveChart } from '@/components/InteractiveChart';
 import { useCampus } from '@/components/CampusContext';
 import { ModuleGate } from '@/components/ModuleGate';
 import { Finance2FAModal } from '@/components/Finance2FAModal';
+import { LegacyLogo } from '@/components/LegacyLogo';
 import { is2FAVerifiedForSession, clear2FASession, loadActiveUser } from '@/lib/authPermissions';
 import { saveAdminAuditLogs, AdminAuditLog } from '@/lib/appSettings';
 import {
@@ -2315,11 +2316,9 @@ export default function FinancePage() {
 
       {/* MODAL: Official Receipt Presentation */}
       {selectedReceipt && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl border border-slate-200 text-center space-y-4">
-            <div className="w-16 h-16 rounded-3xl bg-blue-900 text-amber-300 flex items-center justify-center mx-auto shadow-md">
-              <ReceiptIcon className="w-8 h-8" />
-            </div>
+            <LegacyLogo variant="emblem" size="lg" className="mx-auto drop-shadow-md mb-2" />
 
             <div>
               <span className="text-[10px] uppercase font-black tracking-widest text-blue-900 block">
@@ -2391,7 +2390,7 @@ export default function FinancePage() {
 
       {/* MODAL: Individual Student Statement History */}
       {selectedLearnerHistory && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
@@ -2443,7 +2442,7 @@ export default function FinancePage() {
 
       {/* MODAL: Daily Cashbook Detailed Transactions Drilldown */}
       {selectedCashbookDate && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden animate-in zoom-in-95">
             {/* Modal Header */}
             <div className="p-6 pb-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
@@ -2611,7 +2610,7 @@ export default function FinancePage() {
 
       {/* MODAL: Immutable Audit Trail Provenance Drawer / Modal */}
       {selectedAuditRecord && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in zoom-in-95">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">

@@ -5008,7 +5008,7 @@ export default function AttendancePage() {
 
       {/* MODAL: Issue Exeat Gate Pass */}
       {showExeatModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-4 border border-slate-200">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-bold text-slate-900">Issue Boarding Gate Pass (Exeat)</h3>
@@ -5841,7 +5841,7 @@ export default function AttendancePage() {
 
       {/* MODAL: Direct Mobile Money Clearance & Access Restoration (MTN / Airtel / Zamtel) */}
       {mobileMoneyModalStudent && (
-        <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 space-y-5 border border-slate-200 max-h-[92vh] overflow-y-auto">
             {/* Header */}
             <div className="flex items-start justify-between border-b border-slate-200 pb-4">
@@ -6086,7 +6086,7 @@ export default function AttendancePage() {
         const totalFeeLocks = auditLogs.filter((l) => l.eventType === 'FEE_LOCK_ENFORCED').length;
 
         return (
-          <div className="fixed inset-0 z-50 bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[80] bg-slate-900/75 backdrop-blur-xs flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full p-6 space-y-5 border border-slate-200 max-h-[92vh] overflow-y-auto">
               {/* Header */}
               <div className="flex items-start justify-between border-b border-slate-200 pb-4">

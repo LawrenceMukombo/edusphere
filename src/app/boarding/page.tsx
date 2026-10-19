@@ -52,6 +52,7 @@ import { useCampus } from '@/components/CampusContext';
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { LegacyLogo } from '@/components/LegacyLogo';
 import { ModuleGate } from '@/components/ModuleGate';
+import { OfficialDocumentGeneratorModal } from '@/components/documents/OfficialDocumentGeneratorModal';
 import {
   generateLegacyLearners,
   LegacyLearnerBalance,
@@ -240,6 +241,7 @@ export default function BoardingVillagePage() {
   const [isEditAcademicOpen, setIsEditAcademicOpen] = useState(false);
   const [isEditMedicalOpen, setIsEditMedicalOpen] = useState(false);
   const [isAddSickbayOpen, setIsAddSickbayOpen] = useState(false);
+  const [isDocGenOpen, setIsDocGenOpen] = useState(false);
 
   // Form State Containers
   const [bioForm, setBioForm] = useState({
@@ -1487,7 +1489,7 @@ export default function BoardingVillagePage() {
       {/* ROLL-CALL WORKFLOW MODAL */}
       {/* --------------------------------------------------------------------- */}
       {isRollCallOpen && (
-        <div className="fixed inset-0 z-60 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+        <div className="fixed inset-0 z-[80] bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
           <div className="bg-white rounded-2xl max-w-4xl w-full p-5 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between border-b pb-3">
               <div className="flex items-center gap-2">
@@ -1672,7 +1674,7 @@ export default function BoardingVillagePage() {
       {/* STUDENT 360° DOSSIER MODAL WITH COMPLETE CRUD */}
       {/* --------------------------------------------------------------------- */}
       {selectedStudent && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+        <div className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
           <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col max-h-[92vh]">
             {/* Modal Header */}
             <div className="bg-blue-950 text-white p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1706,7 +1708,15 @@ export default function BoardingVillagePage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-2 self-end sm:self-auto">
+              <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+                <button
+                  onClick={() => setIsDocGenOpen(true)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-xs transition"
+                  title="Generate Official School Documents with Letterhead"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Official Documents</span>
+                </button>
                 <button
                   onClick={() => openPaymentModal(selectedStudent)}
                   className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs transition"
@@ -2325,7 +2335,7 @@ export default function BoardingVillagePage() {
       {/* CRUD MODAL 1: EDIT BIO & PERSONAL DETAILS */}
       {/* --------------------------------------------------------------------- */}
       {isEditBioOpen && (
-        <div className="fixed inset-0 z-60 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
@@ -2429,7 +2439,7 @@ export default function BoardingVillagePage() {
       {/* CRUD MODAL 2: REALLOCATE ACCOMMODATION & CADRE */}
       {/* --------------------------------------------------------------------- */}
       {isEditAccommodationOpen && (
-        <div className="fixed inset-0 z-60 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
@@ -2604,7 +2614,7 @@ export default function BoardingVillagePage() {
       {/* CRUD MODAL 3: RECORD PAYMENT */}
       {/* --------------------------------------------------------------------- */}
       {isRecordPaymentOpen && (
-        <div className="fixed inset-0 z-60 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
@@ -2699,7 +2709,7 @@ export default function BoardingVillagePage() {
       {/* CRUD MODAL 4: EDIT ALL SUBJECT MARKS & REMARKS */}
       {/* --------------------------------------------------------------------- */}
       {isEditAcademicOpen && (
-        <div className="fixed inset-0 z-60 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-3xl w-full p-5 shadow-2xl border border-slate-200 space-y-4 max-h-[92vh] flex flex-col">
             <div className="flex items-center justify-between border-b pb-3">
               <div>
@@ -2822,7 +2832,7 @@ export default function BoardingVillagePage() {
       {/* CRUD MODAL 5: EDIT MEDICAL PROFILE */}
       {/* --------------------------------------------------------------------- */}
       {isEditMedicalOpen && (
-        <div className="fixed inset-0 z-60 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
@@ -2927,7 +2937,7 @@ export default function BoardingVillagePage() {
       {/* CRUD MODAL 6: LOG SICKBAY VISIT */}
       {/* --------------------------------------------------------------------- */}
       {isAddSickbayOpen && (
-        <div className="fixed inset-0 z-60 bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] bg-slate-900/70 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between border-b pb-3">
               <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
@@ -3013,6 +3023,36 @@ export default function BoardingVillagePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* --------------------------------------------------------------------- */}
+      {/* OFFICIAL INSTITUTIONAL DOCUMENT GENERATOR MODAL */}
+      {/* --------------------------------------------------------------------- */}
+      {isDocGenOpen && selectedStudent && (
+        <OfficialDocumentGeneratorModal
+          isOpen={isDocGenOpen}
+          onClose={() => setIsDocGenOpen(false)}
+          learner={{
+            studentNumber: selectedStudent.studentNumber,
+            learnerName: selectedStudent.learnerName,
+            className: selectedStudent.className,
+            stage: selectedStudent.stage,
+            campusName: selectedStudent.campusName,
+            studentType: selectedStudent.studentType,
+            gender: selectedStudent.gender,
+            guardianName: selectedStudent.guardian.name,
+            guardianPhone: selectedStudent.guardian.phone,
+            guardianEmail: selectedStudent.guardian.email,
+            hallName: selectedStudent.currentAccommodation?.boardingHouseLabel || selectedStudent.hallName,
+            dormRoom: selectedStudent.currentAccommodation?.dormRoom,
+            bedNumber: selectedStudent.currentAccommodation?.bedNumber,
+            totalBilled: selectedStudent.totalBilled,
+            totalPaid: selectedStudent.totalPaid,
+            balance: selectedStudent.balance,
+            conductRating: 'Exemplary (A+)',
+            academicAverage: selectedStudent.performanceHistory?.[0]?.averageScore ?? 82,
+          }}
+        />
       )}
       </div>
     </ModuleGate>

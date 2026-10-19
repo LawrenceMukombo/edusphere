@@ -28,6 +28,7 @@ import {
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { useCampus } from '@/components/CampusContext';
 import { ModuleGate } from '@/components/ModuleGate';
+import { LegacyLogo } from '@/components/LegacyLogo';
 
 import { generateLegacyLearners } from '@/server/services/legacySchoolData';
 
@@ -459,7 +460,7 @@ export default function AcademicsPage() {
 
       {/* Printable / Inspectable Report Card Modal */}
       {selectedReport && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[92vh] overflow-y-auto p-8 shadow-2xl border border-slate-200 print:p-0 print:shadow-none print:border-none">
             {/* Action Bar (Top) */}
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-slate-200 no-print">
@@ -514,17 +515,9 @@ export default function AcademicsPage() {
 
             {/* Official Report Card Body */}
             <div className="p-4 border border-slate-300 rounded-xl bg-white shadow-2xs">
-              {/* Report Header */}
-              <div className="text-center pb-6 border-b-2 border-slate-900">
-                <div className="w-14 h-14 rounded-2xl bg-blue-900 text-amber-300 mx-auto flex items-center justify-center font-black text-2xl mb-2 shadow-sm">
-                  LSS
-                </div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase">
-                  Legacy School Solwezi
-                </h2>
-                <p className="text-xs text-slate-600 font-medium">
-                  We Strive for Your Academic and Moral Excellence • Plot 889/890 Kansanshi Mine Road, Solwezi
-                </p>
+              {/* Report Header with Authentic School Letterhead Logo */}
+              <div className="text-center pb-4 border-b-2 border-slate-900">
+                <LegacyLogo variant="letterhead" showAddress={true} />
                 <div className="mt-3 inline-block px-5 py-1.5 rounded-full bg-slate-900 text-amber-300 font-black text-xs uppercase tracking-widest shadow-2xs">
                   Official Learner Progress Report Card • {selectedReport.termName}
                 </div>

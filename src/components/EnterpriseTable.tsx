@@ -506,7 +506,7 @@ export function EnterpriseTable<T extends { id?: string | number }>({
 
       {/* Enterprise Full-CRUD Pre-filled Record Modal */}
       {selectedRecord && enableRecordModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col justify-between animate-in zoom-in-95">
             <div>
               <div className="flex items-center justify-between pb-4 border-b border-slate-100">

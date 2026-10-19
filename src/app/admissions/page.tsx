@@ -33,7 +33,9 @@ import {
   Edit3,
   Trash2,
   Plus,
+  FileText,
 } from 'lucide-react';
+import { OfficialDocumentGeneratorModal } from '@/components/documents/OfficialDocumentGeneratorModal';
 
 interface LearnerRecord {
   id: string;
@@ -98,6 +100,9 @@ export default function AdmissionsPage() {
   const [newSubjectName, setNewSubjectName] = useState('');
   const [newSubjectCode, setNewSubjectCode] = useState('');
   const [newSubjectTeacher, setNewSubjectTeacher] = useState('Mr. Emmanuel Mwansa');
+
+  // Official Document Generator State
+  const [showDocGenModal, setShowDocGenModal] = useState(false);
 
   // Toast alert
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -639,7 +644,7 @@ export default function AdmissionsPage() {
 
       {/* NEW ADMISSION MODAL */}
       {showAdmitModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-xl w-full p-6 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -803,7 +808,7 @@ export default function AdmissionsPage() {
 
       {/* COMPREHENSIVE STUDENT PERSONAL DOSSIER & ACADEMIC COMMAND CENTER */}
       {selectedLearner && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] overflow-y-auto p-6 shadow-2xl border border-slate-200 space-y-5">
             {/* Dossier Header with Passport Photo Frame */}
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b border-slate-100">
@@ -878,6 +883,15 @@ export default function AdmissionsPage() {
 
                   {/* Inter-Campus Transfer & Conversion Action Buttons */}
                   <div className="flex flex-wrap gap-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowDocGenModal(true)}
+                      className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs inline-flex items-center gap-1.5 transition"
+                    >
+                      <FileText className="w-3.5 h-3.5" />
+                      <span>Official Documents</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => setShowTransferModal(true)}
@@ -1342,7 +1356,7 @@ export default function AdmissionsPage() {
 
       {/* INTER-CAMPUS TRANSFER MODAL */}
       {showTransferModal && selectedLearner && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -1414,7 +1428,7 @@ export default function AdmissionsPage() {
 
       {/* CONVERT DAY SCHOLAR <-> BOARDER MODAL */}
       {showConvertModal && selectedLearner && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -1495,7 +1509,7 @@ export default function AdmissionsPage() {
 
       {/* ADD SUBJECT MODAL */}
       {showAddSubjectModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[80] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 space-y-4 text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
@@ -1559,6 +1573,33 @@ export default function AdmissionsPage() {
             </form>
           </div>
         </div>
+      )}
+      {/* OFFICIAL INSTITUTIONAL DOCUMENT GENERATOR MODAL */}
+      {showDocGenModal && selectedLearner && (
+        <OfficialDocumentGeneratorModal
+          isOpen={showDocGenModal}
+          onClose={() => setShowDocGenModal(false)}
+          learner={{
+            studentNumber: selectedLearner.studentNumber,
+            learnerName: `${selectedLearner.firstName} ${selectedLearner.lastName}`,
+            className: selectedLearner.currentClass?.name || 'Form 2 Green',
+            campusName: selectedLearner.campus?.name || 'Mushitala Campus',
+            studentType: selectedLearner.studentType || 'DAY_SCHOLAR',
+            gender: selectedLearner.gender,
+            dateOfBirth: selectedLearner.dateOfBirth,
+            guardianName: selectedLearner.guardian ? `${selectedLearner.guardian.firstName} ${selectedLearner.guardian.lastName}` : 'Guardian of Record',
+            guardianPhone: selectedLearner.guardian?.phone || '+260 97 XXX XXXX',
+            guardianEmail: selectedLearner.guardian?.email,
+            hallName: selectedLearner.boardingDetails?.houseName,
+            dormRoom: selectedLearner.boardingDetails?.roomNumber,
+            bedNumber: selectedLearner.boardingDetails?.bedNumber,
+            totalBilled: 12000,
+            totalPaid: 12000,
+            balance: 0,
+            conductRating: 'Exemplary (A+)',
+            academicAverage: 81.4,
+          }}
+        />
       )}
       </div>
     </ModuleGate>

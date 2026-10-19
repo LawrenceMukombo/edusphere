@@ -1,0 +1,30 @@
+{
+  "appId": "com.legacyschool.edusphere",
+  "appName": "Legacy School EduSphere",
+  "webDir": "public",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://legacyschool.lamtoninvestments.com",
+    "cleartext": true,
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": true,
+    "backgroundColor": "#0f172a"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#0f172a",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP"
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#1e3a8a"
+    }
+  }
+}
