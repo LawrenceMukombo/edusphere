@@ -342,7 +342,7 @@ export default function HomePage() {
         >
           <div>
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-amber-700 transition">
-              Term 1 Fees Recovery
+              Term 3 Fees Recovery
             </span>
             <div className="text-2xl font-black text-slate-900 mt-1">
               {stats.feeCollectionRate}%
@@ -666,7 +666,7 @@ export default function HomePage() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <DollarSign className="w-5 h-5 text-rose-600" />
-                <h3 className="text-sm font-bold text-slate-900">Term 1 Expenditure Allocations (ZMW)</h3>
+                <h3 className="text-sm font-bold text-slate-900">Term 3 Expenditure Allocations (ZMW)</h3>
               </div>
               <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-full border border-rose-200">
                 Total: ZMW {stats.totalExpensesZMW}

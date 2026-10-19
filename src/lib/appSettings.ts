@@ -206,7 +206,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
     primaryPhone: '+260 974 371271',
     officialEmail: 'legacyschool208@gmail.com',
     taxNumber: '1008492019',
-    activeTerm: '2026 Term 1',
+    activeTerm: '2026 Term 3',
     activeAcademicYear: '2026',
     currentWeek: 8,
   },

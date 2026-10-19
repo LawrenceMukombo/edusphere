@@ -1500,7 +1500,7 @@ export default function FinancePage() {
           {/* Expenditure KPI Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
-              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Disbursed (Term 1)</span>
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Total Disbursed (Term 3)</span>
               <div className="text-2xl font-black text-rose-700 mt-1">
                 K{totalDisbursed.toLocaleString()}
               </div>
@@ -1628,7 +1628,7 @@ export default function FinancePage() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-slate-100 gap-4">
                 <div>
                   <h3 className="text-base font-bold text-slate-900">
-                    Income vs Operational Expenditure Statement (2026 Term 1)
+                    Income vs Operational Expenditure Statement (2026 Term 3)
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
                     100% reconciled financial performance for {campusInfo.name} ({displayedBalances.length} active student accounts).

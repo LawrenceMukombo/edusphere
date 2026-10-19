@@ -143,23 +143,12 @@ export function Navbar() {
             <div className="flex items-center gap-2 sm:gap-3">
               <OfflineIndicator />
 
-              <div className="hidden md:flex flex-col text-right">
-                <span className="inline-flex items-center justify-end gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  2026 Term 1 • Week 8
-                </span>
-                <span className="text-[10px] text-slate-500 mt-0.5">
-                  Stand # S/SOLWE/3177178, Kansanshi Rd
-                </span>
-              </div>
-
-              <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-slate-200">
-                <div className="w-9 h-9 rounded-full bg-blue-900 text-amber-300 font-bold text-xs flex items-center justify-center ring-2 ring-blue-100 shadow-xs">
+              <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-slate-200">
+                <div
+                  className="w-8 h-8 rounded-full bg-blue-900 text-amber-300 font-bold text-xs flex items-center justify-center ring-2 ring-blue-100 shadow-xs"
+                  title="Mr. Emmanuel Mwansa — School Director & Principal"
+                >
                   EM
-                </div>
-                <div className="hidden xl:block text-left">
-                  <p className="text-xs font-bold text-slate-900 leading-tight">Mr. Emmanuel Mwansa</p>
-                  <p className="text-[10px] text-slate-500">School Director & Principal</p>
                 </div>
               </div>
 

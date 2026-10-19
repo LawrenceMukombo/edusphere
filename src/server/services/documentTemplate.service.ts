@@ -248,7 +248,7 @@ export class DocumentTemplateService {
               ['Cadre of Enrolment', isBoarder ? 'Full Residential Boarder' : 'Day Scholar'],
               ['Residential Dormitory', isBoarder ? (learner.hallName || 'Assigned Boarding Village') : 'Not Applicable (Day Scholar)'],
               ['Official Guardian of Record', `${learner.guardianName || 'Registered Guardian'} (${learner.guardianPhone || '+260 97 XXX XXXX'})`],
-              ['Academic Year & Term', `${year} Academic Session • Term 1`],
+              ['Academic Year & Term', `${year} Academic Session • Term 3`],
             ],
           },
           signatoryName: defaultSignatoryName,

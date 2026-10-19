@@ -181,22 +181,22 @@ interface WeekAttendanceRecord {
 }
 
 const CURRENT_ACADEMIC_YEAR = 2026;
-const CURRENT_ACADEMIC_TERM = 1;
-const CURRENT_MONTH_INDEX = 3; // March 2026 (Live Current Month)
-const CURRENT_DAY = 6; // Friday, 06 March 2026 (Active Instructional Session)
-const ELAPSED_TEACHING_DAYS_MARCH = 5; // Monday 02 Mar to Friday 06 Mar 2026
+const CURRENT_ACADEMIC_TERM = 3;
+const CURRENT_MONTH_INDEX = 10; // October 2026 (Live Current Month • Term 3)
+const CURRENT_DAY = 19; // Monday, 19 October 2026 (Active Instructional Session)
+const ELAPSED_TEACHING_DAYS_MARCH = 13; // Term 3 Week 8
 
 const MONTH_CONFIGS = [
   { index: 1, name: 'January', short: 'Jan', days: 31, teachingDays: 15, term: 1 as const, termLabel: 'Term 1', isPast: true, isCurrent: false, isFuture: false },
   { index: 2, name: 'February', short: 'Feb', days: 28, teachingDays: 20, term: 1 as const, termLabel: 'Term 1', isPast: true, isCurrent: false, isFuture: false },
-  { index: 3, name: 'March', short: 'Mar', days: 31, teachingDays: 22, term: 1 as const, termLabel: 'Term 1', isPast: false, isCurrent: true, isFuture: false },
-  { index: 4, name: 'April', short: 'Apr', days: 30, teachingDays: 6, term: 1 as const, termLabel: 'Term 1 (Close)', isPast: false, isCurrent: false, isFuture: true },
-  { index: 5, name: 'May', short: 'May', days: 31, teachingDays: 15, term: 2 as const, termLabel: 'Term 2 (Starts 11 May)', isPast: false, isCurrent: false, isFuture: true },
-  { index: 6, name: 'June', short: 'Jun', days: 30, teachingDays: 21, term: 2 as const, termLabel: 'Term 2', isPast: false, isCurrent: false, isFuture: true },
-  { index: 7, name: 'July', short: 'Jul', days: 31, teachingDays: 22, term: 2 as const, termLabel: 'Term 2', isPast: false, isCurrent: false, isFuture: true },
-  { index: 8, name: 'August', short: 'Aug', days: 31, teachingDays: 4, term: 2 as const, termLabel: 'Term 2 (Close)', isPast: false, isCurrent: false, isFuture: true },
-  { index: 9, name: 'September', short: 'Sep', days: 30, teachingDays: 18, term: 3 as const, termLabel: 'Term 3 (Starts 07 Sep)', isPast: false, isCurrent: false, isFuture: true },
-  { index: 10, name: 'October', short: 'Oct', days: 31, teachingDays: 21, term: 3 as const, termLabel: 'Term 3', isPast: false, isCurrent: false, isFuture: true },
+  { index: 3, name: 'March', short: 'Mar', days: 31, teachingDays: 22, term: 1 as const, termLabel: 'Term 1', isPast: true, isCurrent: false, isFuture: false },
+  { index: 4, name: 'April', short: 'Apr', days: 30, teachingDays: 6, term: 1 as const, termLabel: 'Term 1', isPast: true, isCurrent: false, isFuture: false },
+  { index: 5, name: 'May', short: 'May', days: 31, teachingDays: 15, term: 2 as const, termLabel: 'Term 2', isPast: true, isCurrent: false, isFuture: false },
+  { index: 6, name: 'June', short: 'Jun', days: 30, teachingDays: 21, term: 2 as const, termLabel: 'Term 2', isPast: true, isCurrent: false, isFuture: false },
+  { index: 7, name: 'July', short: 'Jul', days: 31, teachingDays: 22, term: 2 as const, termLabel: 'Term 2', isPast: true, isCurrent: false, isFuture: false },
+  { index: 8, name: 'August', short: 'Aug', days: 31, teachingDays: 4, term: 2 as const, termLabel: 'Term 2', isPast: true, isCurrent: false, isFuture: false },
+  { index: 9, name: 'September', short: 'Sep', days: 30, teachingDays: 18, term: 3 as const, termLabel: 'Term 3', isPast: true, isCurrent: false, isFuture: false },
+  { index: 10, name: 'October', short: 'Oct', days: 31, teachingDays: 21, term: 3 as const, termLabel: 'Term 3 (Active)', isPast: false, isCurrent: true, isFuture: false },
   { index: 11, name: 'November', short: 'Nov', days: 30, teachingDays: 20, term: 3 as const, termLabel: 'Term 3 (ECZ Exams)', isPast: false, isCurrent: false, isFuture: true },
   { index: 12, name: 'December', short: 'Dec', days: 31, teachingDays: 3, term: 3 as const, termLabel: 'Term 3 (Close 04 Dec)', isPast: false, isCurrent: false, isFuture: true },
 ];
@@ -521,7 +521,31 @@ function getLearnerAttendanceHorizons(learner: StudentRosterItem): LearnerAttend
   const terms: TermAttendanceRecord[] = [
     {
       termNumber: 1,
-      termLabel: 'Term 1 (Autumn • Active)',
+      termLabel: 'Term 1 (Autumn)',
+      teachingDays: 63,
+      sessionsAttended: Math.round(term1TeachingDaysTotal * 0.96),
+      sessionsAbsent: Math.round(term1TeachingDaysTotal * 0.04),
+      sessionsLate: 1,
+      sessionsExcused: 1,
+      rate: 96.0,
+      standing: 'SILVER',
+      isCurrentTerm: false,
+    },
+    {
+      termNumber: 2,
+      termLabel: 'Term 2 (Winter)',
+      teachingDays: 62,
+      sessionsAttended: Math.round(62 * 0.97),
+      sessionsAbsent: Math.round(62 * 0.03),
+      sessionsLate: 0,
+      sessionsExcused: 1,
+      rate: 97.0,
+      standing: 'GOLD',
+      isCurrentTerm: false,
+    },
+    {
+      termNumber: 3,
+      termLabel: 'Term 3 (Promotional & ECZ • Active)',
       teachingDays: term1TeachingDaysTotal,
       sessionsAttended: term1Present,
       sessionsAbsent: term1Absent,
@@ -530,30 +554,6 @@ function getLearnerAttendanceHorizons(learner: StudentRosterItem): LearnerAttend
       rate: term1Rate,
       standing: getStanding(term1Rate),
       isCurrentTerm: true,
-    },
-    {
-      termNumber: 2,
-      termLabel: 'Term 2 (Winter • Starts 11 May)',
-      teachingDays: 62,
-      sessionsAttended: 0,
-      sessionsAbsent: 0,
-      sessionsLate: 0,
-      sessionsExcused: 0,
-      rate: 0,
-      standing: 'GOLD',
-      isCurrentTerm: false,
-    },
-    {
-      termNumber: 3,
-      termLabel: 'Term 3 (Promotional & ECZ • Starts 07 Sep)',
-      teachingDays: 62,
-      sessionsAttended: 0,
-      sessionsAbsent: 0,
-      sessionsLate: 0,
-      sessionsExcused: 0,
-      rate: 0,
-      standing: 'GOLD',
-      isCurrentTerm: false,
     },
   ];
 
@@ -2383,7 +2383,7 @@ export default function AttendancePage() {
               <span className="px-2.5 py-1 rounded-lg bg-slate-900 text-white font-bold text-[10px] uppercase tracking-wider">
                 {matrixHorizonView === 'ALL' && 'Consolidated Multi-Horizon Matrix'}
                 {matrixHorizonView === 'DAILY' && 'Morning Roll-Call & Punctuality'}
-                {matrixHorizonView === 'WEEKLY' && 'Term 1 Instructional Weeks (W1-W13)'}
+                {matrixHorizonView === 'WEEKLY' && 'Term 3 Instructional Weeks (W1-W13)'}
                 {matrixHorizonView === 'MONTHLY' && '12-Month Academic Register & 31-Day Sheet'}
                 {matrixHorizonView === 'TERMLY' && 'Ministry of Education Terms 1-3 & ECZ Clearance'}
               </span>
@@ -2896,7 +2896,7 @@ export default function AttendancePage() {
 
                 <div className="p-3.5 rounded-xl bg-white border border-slate-200/90 shadow-xs space-y-1">
                   <div className="flex items-center justify-between text-slate-500 font-bold uppercase tracking-wider text-[10px]">
-                    <span>Termly (Term 1)</span>
+                    <span>Termly (Term 3)</span>
                     <Award className="w-3.5 h-3.5 text-amber-500" />
                   </div>
                   <div className="flex items-baseline gap-1.5">
@@ -2959,16 +2959,16 @@ export default function AttendancePage() {
                         {/* Term 1 Months */}
                         <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60" title="January (15 School Days - Archived)">Jan</th>
                         <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60" title="February (20 School Days - Archived)">Feb</th>
-                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60 bg-teal-900/40 text-teal-200" title="March (Active Month-to-Date • 5 Elapsed Days)">Mar</th>
-                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700 text-slate-400" title="April (Future Term 1 Close • Locked)">🔒 Apr</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60" title="March (22 School Days - Archived)">Mar</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700" title="April (6 School Days - Archived)">Apr</th>
                         {/* Term 2 Months */}
-                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60 text-slate-400" title="May (Term 2 Starts 11 May • Locked)">🔒 May</th>
-                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60 text-slate-400" title="June (Term 2 • Locked)">🔒 Jun</th>
-                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60 text-slate-400" title="July (Term 2 • Locked)">🔒 Jul</th>
-                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700 text-slate-400" title="August (Term 2 Close • Locked)">🔒 Aug</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60" title="May (15 School Days - Archived)">May</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60" title="June (21 School Days - Archived)">Jun</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60" title="July (22 School Days - Archived)">Jul</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700" title="August (4 School Days - Archived)">Aug</th>
                         {/* Term 3 Months */}
-                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60 text-slate-400" title="September (Term 3 Starts 07 Sep • Locked)">🔒 Sep</th>
-                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60 text-slate-400" title="October (Term 3 • Locked)">🔒 Oct</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60" title="September (18 School Days - Archived)">Sep</th>
+                        <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60 bg-teal-900/40 text-teal-200" title="October (Active Month-to-Date • Term 3 Week 8)">Oct</th>
                         <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700/60 text-slate-400" title="November (Term 3 ECZ Exams • Locked)">🔒 Nov</th>
                         <th className="px-1 py-1 text-center min-w-[50px] border-r border-slate-700 text-slate-400" title="December (Term 3 Close 04 Dec • Locked)">🔒 Dec</th>
                         {/* Annual Cumulative */}
@@ -4604,7 +4604,7 @@ export default function AttendancePage() {
                   <div className="flex items-center gap-2">
                     <BarChart3 className="w-5 h-5 text-blue-900" />
                     <h3 className="text-base font-black text-slate-900 tracking-tight">
-                      Term 1 Longitudinal Attendance & Punctuality Intelligence
+                      Term 3 Longitudinal Attendance & Punctuality Intelligence
                     </h3>
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
@@ -4880,7 +4880,7 @@ export default function AttendancePage() {
                       Cohort Attendance & Punctuality Leaderboard
                     </h4>
                     <span className="text-xs text-slate-500">
-                      Ranked performance across all evaluated classes in Term 1.
+                      Ranked performance across all evaluated classes in Term 3.
                     </span>
                   </div>
                   <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200">
@@ -5606,7 +5606,7 @@ export default function AttendancePage() {
               {/* Horizon 2: Weekly Progression (Weeks 1 to 8) */}
               <div className="space-y-2">
                 <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                  Weekly Attendance Progression (Term 1)
+                  Weekly Attendance Progression (Term 3)
                 </h4>
                 <div className="grid grid-cols-4 gap-2 text-xs">
                   {h.weekly.weekTrends.map((wt) => (
