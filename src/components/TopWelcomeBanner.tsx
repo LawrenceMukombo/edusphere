@@ -30,7 +30,7 @@ import { useCampus } from './CampusContext';
 
 export function TopWelcomeBanner() {
   const { campusInfo } = useCampus();
-  const [currentUser, setCurrentUser] = useState<UserSecurityProfile>(() => loadActiveUser());
+  const [currentUser, setCurrentUser] = useState<UserSecurityProfile>(INITIAL_SECURITY_USERS[0]);
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
   const [is2FAActive, setIs2FAActive] = useState(false);

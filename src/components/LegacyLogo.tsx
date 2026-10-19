@@ -10,27 +10,23 @@ interface LegacyLogoProps {
   showAddress?: boolean;
 }
 
+const DEFAULT_INSTITUTION = {
+  name: 'Legacy School Solwezi',
+  motto: 'We Strive for Your Academic and Moral Excellence',
+  city: 'Solwezi',
+  province: 'North-Western Province',
+  address: 'Stand # S/SOLWE/3177178, Kansanshi Mine Road, Mushitala',
+  primaryPhone: '+260 974 371271',
+  officialEmail: 'legacyschool208@gmail.com',
+};
+
 export function LegacyLogo({
   variant = 'compact',
   className = '',
   size = 'md',
   showAddress = true,
 }: LegacyLogoProps) {
-  const [institution, setInstitution] = useState(() => {
-    try {
-      return loadAppSettings().institution;
-    } catch {
-      return {
-        name: 'Legacy School Solwezi',
-        motto: 'We Strive for Your Academic and Moral Excellence',
-        city: 'Solwezi',
-        province: 'North-Western Province',
-        address: 'Stand # S/SOLWE/3177178, Kansanshi Mine Road, Mushitala',
-        primaryPhone: '+260 974 371271',
-        officialEmail: 'legacyschool208@gmail.com',
-      };
-    }
-  });
+  const [institution, setInstitution] = useState(DEFAULT_INSTITUTION);
 
   useEffect(() => {
     const handleUpdate = () => {
@@ -40,6 +36,7 @@ export function LegacyLogo({
         // Safe fallback
       }
     };
+    handleUpdate();
     window.addEventListener('storage', handleUpdate);
     window.addEventListener('edusphere:settings-updated', handleUpdate);
     window.addEventListener('edusphere:tenant-switched', handleUpdate);

@@ -35,7 +35,7 @@ import { useCampus, CampusId } from './CampusContext';
 import { LegacyLogo } from './LegacyLogo';
 import { OfflineIndicator } from './OfflineIndicator';
 import { MobileBottomNav } from './MobileBottomNav';
-import { loadAppSettings, checkModuleEntitlement, AppSettings } from '@/lib/appSettings';
+import { loadAppSettings, checkModuleEntitlement, AppSettings, DEFAULT_APP_SETTINGS } from '@/lib/appSettings';
 
 interface NavItem {
   href: string;
@@ -68,7 +68,7 @@ export function Navbar() {
   const pathname = usePathname();
   const { selectedCampus, setSelectedCampus, campusInfo } = useCampus();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [settings, setSettings] = useState<AppSettings>(() => loadAppSettings());
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
 
   // Close mobile drawer on route transition
   useEffect(() => {
@@ -78,6 +78,7 @@ export function Navbar() {
   // Sync settings
   useEffect(() => {
     const handleUpdate = () => setSettings(loadAppSettings());
+    handleUpdate();
     window.addEventListener('storage', handleUpdate);
     window.addEventListener('edusphere:settings-updated', handleUpdate);
     return () => {
