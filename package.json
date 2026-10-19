@@ -4,9 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "next dev -p 3005",
+    "dev": "next dev -p 3025",
     "build": "next build",
-    "start": "next start -p 3005",
+    "start": "next start -p 3025",
     "check": "tsc --noEmit",
     "test": "vitest run",
     "seed": "tsx prisma/seed.ts"

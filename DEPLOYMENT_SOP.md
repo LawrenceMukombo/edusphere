@@ -153,16 +153,16 @@ npm install --production=false
 npm run build
 
 # 7. Graceful reload of PM2 process
-pm2 reload edusphere || pm2 start npm --name "edusphere" -- start -- -p 3005
+pm2 reload legacyschool || pm2 start npm --name "legacyschool" -- run start
 
 # 8. Save PM2 process list
 pm2 save
 
 # 9. Verify production process logs (no unhandled rejections or crashes)
-pm2 logs edusphere --lines 50
+pm2 logs legacyschool --lines 50
 
 # 10. Confirm system responsiveness
-curl -I http://localhost:3005/boarding
+curl -I http://localhost:3025/attendance
 ```
 
 ---
