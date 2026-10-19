@@ -34,10 +34,15 @@ import {
   Eye,
   GraduationCap,
   MessageSquare,
+  Building2,
+  Layers,
+  Bed,
+  Sun,
 } from 'lucide-react';
 import Link from 'next/link';
 import { generateLegacyLearners, LegacyLearnerBalance } from '@/server/services/legacySchoolData';
 import { ModuleGate } from '@/components/ModuleGate';
+import { useCampus, CampusId } from '@/components/CampusContext';
 
 interface RosterStudent {
   id: string;
@@ -122,6 +127,7 @@ const ECE_SUBJECTS = [
 ];
 
 export default function TeacherWorkspacePage() {
+  const { selectedCampus, setSelectedCampus, campusInfo } = useCampus();
   const [isOnline, setIsOnline] = useState(true);
   const [offlineQueue, setOfflineQueue] = useState<any[]>([]);
   const [selectedClass, setSelectedClass] = useState('Form 2 Green');
@@ -145,6 +151,25 @@ export default function TeacherWorkspacePage() {
 
   // Full Roster State loaded dynamically from authoritative 780 students baseline
   const [roster, setRoster] = useState<RosterStudent[]>([]);
+
+  // Filter cohorts reactively based on active campus selection
+  const filteredCohorts = useMemo(() => {
+    if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
+      return ALL_COHORTS.filter((c) => c.campus.includes('Mushitala'));
+    }
+    if (selectedCampus === 'URBAN') {
+      return ALL_COHORTS.filter((c) => c.campus.includes('Urban'));
+    }
+    return ALL_COHORTS;
+  }, [selectedCampus]);
+
+  // Synchronize selectedClass automatically when campus switcher changes
+  useEffect(() => {
+    const isCurrentValid = filteredCohorts.some((c) => c.name === selectedClass);
+    if (!isCurrentValid && filteredCohorts.length > 0) {
+      setSelectedClass(filteredCohorts[0].name);
+    }
+  }, [filteredCohorts, selectedClass]);
 
   // Determine subjects based on class stage
   const availableSubjects = useMemo(() => {
@@ -464,6 +489,65 @@ export default function TeacherWorkspacePage() {
         </div>
       </div>
 
+      {/* Interactive Campus Selector Bar (Directly Linked to Global Campus Context) */}
+      <div className="bg-slate-900 text-white p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-md border border-slate-800">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0">
+            <Building2 className="w-5 h-5 text-amber-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-black tracking-wide text-white uppercase">{campusInfo.name}</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                {campusInfo.badge}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-300 mt-0.5">
+              Scope: {filteredCohorts.length} Active Class Cohorts &bull; Enrolled: {campusInfo.enrolled} Pupils (Capacity: {campusInfo.capacity})
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setSelectedCampus('ALL')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              selectedCampus === 'ALL'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>All Campuses (Consolidated)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCampus('MUSHITALA')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <Bed className="w-3.5 h-3.5" />
+            <span>Mushitala Campus (Near Kansanshi)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCampus('URBAN')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              selectedCampus === 'URBAN'
+                ? 'bg-sky-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <Sun className="w-3.5 h-3.5" />
+            <span>Urban Campus (Solwezi Central)</span>
+          </button>
+        </div>
+      </div>
+
       {/* Success Notification Alert */}
       {successMessage && (
         <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-xs font-semibold flex items-center justify-between animate-in fade-in">
@@ -480,14 +564,14 @@ export default function TeacherWorkspacePage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div>
             <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
-              Class Cohort (All 16 Classes)
+              Class Cohort ({filteredCohorts.length} Classes &bull; {selectedCampus === 'ALL' ? 'All Campuses' : campusInfo.name.split(' ')[0]})
             </label>
             <select
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
               className="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 font-black text-slate-900 focus:ring-2 focus:ring-blue-500"
             >
-              {ALL_COHORTS.map((c) => (
+              {filteredCohorts.map((c) => (
                 <option key={c.id} value={c.name}>
                   {c.name} &bull; {c.campus.split(' ')[0]} ({c.count} Pupils)
                 </option>

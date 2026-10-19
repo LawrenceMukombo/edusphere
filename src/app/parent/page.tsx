@@ -27,18 +27,30 @@ import {
   BookOpen,
   ChevronDown,
   X,
-  Phone,
-  Mail,
-  MapPin,
   MessageSquare,
+  Building2,
+  Layers,
+  Bed,
+  Sun,
+  Plus,
+  Trash2,
+  ExternalLink,
 } from 'lucide-react';
 import Link from 'next/link';
 import { ModuleGate } from '@/components/ModuleGate';
 import { LegacyLogo } from '@/components/LegacyLogo';
+import { useCampus, CampusId } from '@/components/CampusContext';
 
 export default function ParentPortalPage() {
+  const { selectedCampus, setSelectedCampus, campusInfo } = useCampus();
   const [children, setChildren] = useState<any[]>([]);
   const [selectedChildIndex, setSelectedChildIndex] = useState(0);
+  const [activeFamilyView, setActiveFamilyView] = useState<'unified' | 'individual'>('unified');
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkSearchQuery, setLinkSearchQuery] = useState('');
+  const [selectedLearnerToLink, setSelectedLearnerToLink] = useState<any | null>(null);
+  const [relationshipType, setRelationshipType] = useState('FATHER');
+  const [financialRole, setFinancialRole] = useState('FULL');
   const [allSchoolLearners, setAllSchoolLearners] = useState<any[]>([]);
   const [guardianInfo, setGuardianInfo] = useState<any>({
     name: 'Eng. Chileshe Mulenga',
@@ -75,7 +87,22 @@ export default function ParentPortalPage() {
       .then((res) => res.json())
       .then((json) => {
         if (json.success && json.data.length > 0) {
-          setChildren(json.data);
+          let combined = json.data;
+          try {
+            const saved = localStorage.getItem('edusphere_guardian_linked_wards');
+            if (saved) {
+              const parsed = JSON.parse(saved);
+              if (Array.isArray(parsed)) {
+                parsed.forEach((pw: any) => {
+                  if (!combined.some((c: any) => c.learner?.studentNumber === pw.learner?.studentNumber)) {
+                    combined.push(pw);
+                  }
+                });
+              }
+            }
+          } catch (e) {}
+
+          setChildren(combined);
           if (json.guardian) setGuardianInfo(json.guardian);
           if (json.allSchoolLearnersSummary) setAllSchoolLearners(json.allSchoolLearnersSummary);
         }
@@ -86,12 +113,40 @@ export default function ParentPortalPage() {
 
   const currentChild = children[selectedChildIndex]?.learner;
 
-  // Sync payment modal default amount with child balance
+  // Family-wide consolidated totals
+  const familyTotalBilled = useMemo(() => children.reduce((sum, c) => sum + (c.learner?.totalBilled || 0), 0), [children]);
+  const familyTotalPaid = useMemo(() => children.reduce((sum, c) => sum + (c.learner?.totalPaid || 0), 0), [children]);
+  const familyTotalBalance = useMemo(() => children.reduce((sum, c) => sum + (c.learner?.balance || 0), 0), [children]);
+  const familyAverageScore = useMemo(() => {
+    if (children.length === 0) return 0;
+    const sum = children.reduce((acc, c) => acc + (c.learner?.averageScore || 0), 0);
+    return Math.round((sum / children.length) * 10) / 10;
+  }, [children]);
+  const familyAverageAttendance = useMemo(() => {
+    if (children.length === 0) return 0;
+    const sum = children.reduce((acc, c) => acc + (c.learner?.attendance?.ratePercent || 0), 0);
+    return Math.round((sum / children.length) * 10) / 10;
+  }, [children]);
+
+  // Reactive campus filtering for wards
+  const filteredChildren = useMemo(() => {
+    if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
+      return children.filter((c) => (c.learner?.campusName || '').includes('Mushitala') || c.learner?.isBoarder);
+    }
+    if (selectedCampus === 'URBAN') {
+      return children.filter((c) => (c.learner?.campusName || '').includes('Urban') || !c.learner?.isBoarder);
+    }
+    return children;
+  }, [children, selectedCampus]);
+
+  // Sync payment modal default amount with child balance or family balance
   useEffect(() => {
-    if (currentChild) {
+    if (activeFamilyView === 'unified') {
+      setPaymentAmount(familyTotalBalance > 0 ? familyTotalBalance : 3500);
+    } else if (currentChild) {
       setPaymentAmount(currentChild.balance > 0 ? currentChild.balance : 1500);
     }
-  }, [currentChild]);
+  }, [currentChild, familyTotalBalance, activeFamilyView]);
 
   const handleSimulatePayment = (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +154,17 @@ export default function ParentPortalPage() {
       setPaymentSuccess(true);
       setShowPaymentModal(false);
       // Reduce balance locally
-      if (currentChild) {
+      if (activeFamilyView === 'unified') {
+        let remaining = paymentAmount;
+        children.forEach((c) => {
+          if (c.learner && remaining > 0) {
+            const deduction = Math.min(c.learner.balance, remaining);
+            c.learner.balance -= deduction;
+            c.learner.totalPaid += deduction;
+            remaining -= deduction;
+          }
+        });
+      } else if (currentChild) {
         currentChild.balance = Math.max(0, currentChild.balance - paymentAmount);
         currentChild.totalPaid += paymentAmount;
       }
@@ -114,87 +179,118 @@ export default function ParentPortalPage() {
     }, 400);
   };
 
-  const handleSelectAlternativeLearner = (student: any) => {
-    // Dynamically insert or switch to this learner in children list
+  // Link learner confirmation
+  const handleConfirmLink = () => {
+    if (!selectedLearnerToLink) return;
+    const student = selectedLearnerToLink;
     const existingIdx = children.findIndex((c) => c.learner.studentNumber === student.studentNumber);
     if (existingIdx !== -1) {
+      alert(`${student.learnerName} is already linked to your guardian portal.`);
       setSelectedChildIndex(existingIdx);
-    } else {
-      const newEntry = {
-        relationshipId: `rel-alt-${Date.now()}`,
-        relationshipType: 'GUARDIAN',
-        hasFinancialAuthority: true,
-        learner: {
-          id: student.id,
-          studentNumber: student.studentNumber,
-          firstName: student.learnerName.split(' ')[0],
-          lastName: student.learnerName.split(' ').slice(1).join(' '),
-          fullName: student.learnerName,
-          gender: 'MALE',
-          stage: student.className.includes('Grade') ? 'PRIMARY' : 'SECONDARY',
-          campusName: student.campusName,
-          currentClass: { name: student.className },
-          campus: {
-            name: student.campusName,
-            address: student.campusName.includes('Mushitala')
-              ? 'Stand # S/SOLWE/3177178, Plot 889, 890 Kansanshi Mine Road (opp. SGC Filling Station), Mushitala'
-              : 'Opposite Kikombe School, next to Zambia Army Mess, Solwezi Central',
-          },
-          isBoarder: student.isBoarder ?? student.campusName.includes('Mushitala'),
-          totalBilled: student.totalBilled || (student.campusName.includes('Mushitala') ? 10400 : 2800),
-          totalPaid: (student.totalBilled || (student.campusName.includes('Mushitala') ? 10400 : 2800)) - student.balance,
-          balance: student.balance,
-          financialStatus: student.balance === 0 ? 'CLEARED' : 'ARREARS',
-          academicStanding: 'Distinction (1)',
-          averageScore: 86.4,
-          subjects: [
-            { subjectName: 'Mathematics', code: 'MATH', score: 92, eczGrade: '1 (Distinction)', teacherRemark: 'Superb problem solving skills.' },
-            { subjectName: 'English Language', code: 'ENG', score: 85, eczGrade: '1 (Distinction)', teacherRemark: 'Fluent reading and comprehension.' },
-            { subjectName: 'Integrated Science', code: 'SCI', score: 88, eczGrade: '1 (Distinction)', teacherRemark: 'Outstanding laboratory work.' },
-            { subjectName: 'Social Studies', code: 'SOC', score: 80, eczGrade: '2 (Distinction)', teacherRemark: 'Good grasp of Zambian geography.' },
-            { subjectName: 'Computer Studies', code: 'COMP', score: 95, eczGrade: '1 (Distinction)', teacherRemark: 'Advanced computer and typing skills.' },
-          ],
-          termPerformanceTrend: [
-            { term: '2025 Term 1', average: 81, rank: '3rd of 42' },
-            { term: '2025 Term 2', average: 84, rank: '2nd of 42' },
-            { term: '2025 Term 3', average: 86, rank: '1st of 42' },
-            { term: '2026 Term 1', average: 88, rank: '1st of 42' },
-          ],
-          itemizedFees: [
-            { id: '1', name: 'Tuition Fee Scheme', category: 'Academic Core', billed: 4200, paid: 4200, balance: 0 },
-            { id: '2', name: 'Boarding & Dining Hall Fee', category: 'Boarding & Dining', billed: 3500, paid: 3500 - student.balance, balance: student.balance },
-          ],
-          reportCards: [
-            {
-              id: 'rep-alt-1',
-              title: 'Term 1 Official Progress & Competency Report',
-              academicYear: '2026',
-              term: 'Term 1',
-              status: 'PUBLISHED',
-              conductGrade: 'EXEMPLARY (A+)',
-              classTeacherRemarks: 'Diligent, punctual, and highly disciplined student.',
-              principalRemarks: 'Approved for progression with honours.',
-              positionInClass: '1st of 42 Learners',
-            },
-          ],
-          attendance: {
-            ratePercent: 98.2,
-            daysPresent: 59,
-            totalDays: 60,
-            unexcusedAbsences: 0,
-            excusedAbsences: 1,
-            lateArrivals: 0,
-            recentSessions: [
-              { date: '2026-10-17', status: 'PRESENT', session: 'Morning Registration', time: '07:20 AM' },
-              { date: '2026-10-16', status: 'PRESENT', session: 'Morning Registration', time: '07:15 AM' },
-            ],
-          },
-        },
-      };
-      setChildren([...children, newEntry]);
-      setSelectedChildIndex(children.length);
+      setActiveFamilyView('individual');
+      setShowLinkModal(false);
+      return;
     }
-    setShowAllLearnersPicker(false);
+
+    const newEntry = {
+      relationshipId: `rel-link-${Date.now()}`,
+      relationshipType,
+      hasFinancialAuthority: financialRole !== 'MONITORING_ONLY',
+      financialResponsibility: financialRole,
+      learner: {
+        id: student.id,
+        studentNumber: student.studentNumber,
+        firstName: student.learnerName.split(' ')[0],
+        lastName: student.learnerName.split(' ').slice(1).join(' '),
+        fullName: student.learnerName,
+        gender: student.gender || 'MALE',
+        stage: student.className.includes('Grade') ? 'PRIMARY' : 'SECONDARY',
+        campusName: student.campusName,
+        currentClass: { name: student.className },
+        campus: {
+          name: student.campusName,
+          address: student.campusName.includes('Mushitala')
+            ? 'Stand # S/SOLWE/3177178, Plot 889, 890 Kansanshi Mine Road (opp. SGC Filling Station), Mushitala'
+            : 'Opposite Kikombe School, next to Zambia Army Mess, Solwezi Central',
+        },
+        isBoarder: student.isBoarder ?? student.campusName.includes('Mushitala'),
+        totalBilled: student.totalBilled || (student.campusName.includes('Mushitala') ? 10400 : 2800),
+        totalPaid: (student.totalBilled || (student.campusName.includes('Mushitala') ? 10400 : 2800)) - (student.balance || 0),
+        balance: student.balance || 0,
+        financialStatus: (student.balance || 0) === 0 ? 'CLEARED' : 'ARREARS',
+        academicStanding: 'Distinction (1)',
+        averageScore: 84.5,
+        subjects: [
+          { subjectName: 'Mathematics', code: 'MATH', score: 88, eczGrade: '1 (Distinction)', teacherRemark: 'Superb algebraic problem-solving.' },
+          { subjectName: 'English Language', code: 'ENG', score: 82, eczGrade: '2 (Distinction)', teacherRemark: 'Fluent reading and comprehension.' },
+          { subjectName: 'Integrated Science', code: 'SCI', score: 86, eczGrade: '1 (Distinction)', teacherRemark: 'Inquisitive scientific methodology.' },
+          { subjectName: 'Social Studies', code: 'SOC', score: 79, eczGrade: '2 (Distinction)', teacherRemark: 'Sound grasp of curriculum.' },
+          { subjectName: 'Computer Studies', code: 'COMP', score: 92, eczGrade: '1 (Distinction)', teacherRemark: 'Advanced digital skills.' },
+        ],
+        termPerformanceTrend: [
+          { term: '2025 Term 1', average: 80, rank: '3rd of 42' },
+          { term: '2025 Term 2', average: 82, rank: '2nd of 42' },
+          { term: '2025 Term 3', average: 84, rank: '1st of 42' },
+          { term: '2026 Term 1', average: 85, rank: '1st of 42' },
+        ],
+        itemizedFees: [
+          { id: '1', name: 'Tuition Fee Scheme', category: 'Academic Core', billed: student.campusName.includes('Mushitala') ? 4200 : 2200, paid: student.campusName.includes('Mushitala') ? 4200 : 2200, balance: 0 },
+          { id: '2', name: student.campusName.includes('Mushitala') ? 'Boarding & Dining Hall Fee' : 'Nutrition & Tuckshop', category: 'Dining & Boarding', billed: student.campusName.includes('Mushitala') ? 3500 : 400, paid: (student.campusName.includes('Mushitala') ? 3500 : 400) - (student.balance || 0), balance: student.balance || 0 },
+        ],
+        reportCards: [
+          {
+            id: `rep-${student.studentNumber}-2026-T1`,
+            title: 'Term 1 Official Progress & Competency Report',
+            academicYear: '2026',
+            term: 'Term 1',
+            status: 'PUBLISHED',
+            conductGrade: 'EXEMPLARY (A+)',
+            classTeacherRemarks: 'Diligent, punctual, and highly disciplined student.',
+            principalRemarks: 'Approved for progression with honours.',
+            positionInClass: `1st of ${student.className.includes('Grade') ? '36' : '44'} Learners`,
+          },
+        ],
+        attendance: {
+          ratePercent: 97.5,
+          daysPresent: 58,
+          totalDays: 60,
+          unexcusedAbsences: 0,
+          excusedAbsences: 2,
+          lateArrivals: 0,
+          recentSessions: [
+            { date: '2026-10-17', status: 'PRESENT', session: 'Morning Registration', time: '07:20 AM' },
+            { date: '2026-10-16', status: 'PRESENT', session: 'Morning Registration', time: '07:15 AM' },
+          ],
+        },
+      },
+    };
+
+    const updated = [...children, newEntry];
+    setChildren(updated);
+    try {
+      localStorage.setItem('edusphere_guardian_linked_wards', JSON.stringify(updated));
+    } catch (e) {}
+
+    setSelectedLearnerToLink(null);
+    setShowLinkModal(false);
+    setSelectedChildIndex(updated.length - 1);
+    setActiveFamilyView('individual');
+    alert(`Successfully linked ${student.learnerName} (${student.className}) to your guardian portal!`);
+  };
+
+  const handleUnlinkChild = (idx: number, childName: string) => {
+    if (children.length <= 1) {
+      alert('You must have at least one active ward linked to your portal account.');
+      return;
+    }
+    if (confirm(`Are you sure you want to unlink ${childName} from this guardian portal account?`)) {
+      const updated = children.filter((_, i) => i !== idx);
+      setChildren(updated);
+      setSelectedChildIndex(0);
+      try {
+        localStorage.setItem('edusphere_guardian_linked_wards', JSON.stringify(updated));
+      } catch (e) {}
+    }
   };
 
   const filteredAlternativeLearners = useMemo(() => {
@@ -207,6 +303,17 @@ export default function ParentPortalPage() {
       )
       .slice(0, 15);
   }, [allSchoolLearners, searchStudentQuery]);
+
+  const searchResultsForLinking = useMemo(() => {
+    if (!linkSearchQuery) return allSchoolLearners.slice(0, 8);
+    return allSchoolLearners
+      .filter((l) =>
+        l.learnerName.toLowerCase().includes(linkSearchQuery.toLowerCase()) ||
+        l.studentNumber.toLowerCase().includes(linkSearchQuery.toLowerCase()) ||
+        l.className.toLowerCase().includes(linkSearchQuery.toLowerCase())
+      )
+      .slice(0, 12);
+  }, [allSchoolLearners, linkSearchQuery]);
 
   return (
     <ModuleGate
@@ -249,79 +356,129 @@ export default function ParentPortalPage() {
           </p>
         </div>
 
-        {/* Multi-Child Tabs (PRD FR-PAR-001) */}
+        {/* Master View Switcher & Actions */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
+          {/* Unified Family Mode Toggle */}
+          <button
+            type="button"
+            onClick={() => setActiveFamilyView('unified')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-black transition flex items-center gap-1.5 shadow-2xs ${
+              activeFamilyView === 'unified'
+                ? 'bg-blue-900 text-white ring-2 ring-blue-700'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 text-amber-400" />
+            <span>Unified Family Overview</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-800 text-white font-mono">
+              {children.length} Wards
+            </span>
+          </button>
+
+          {/* Child Tabs */}
+          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 flex-wrap">
             {children.map((item, idx) => {
               const lrn = item.learner;
-              const isSelected = selectedChildIndex === idx;
+              const isSelected = activeFamilyView === 'individual' && selectedChildIndex === idx;
+              const isMushitala = (lrn.campusName || '').includes('Mushitala') || lrn.isBoarder;
               return (
                 <button
                   key={lrn.id || idx}
                   type="button"
-                  onClick={() => setSelectedChildIndex(idx)}
+                  onClick={() => {
+                    setSelectedChildIndex(idx);
+                    setActiveFamilyView('individual');
+                  }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
                     isSelected
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
                   }`}
                 >
-                  <Users className="w-3.5 h-3.5" />
                   <span>{lrn.firstName}</span>
-                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-normal ${isSelected ? 'bg-blue-700 text-white' : 'bg-slate-200 text-slate-600'}`}>
-                    {lrn.currentClass?.name?.split(' ')[0] || 'Pupil'}
+                  <span className={`text-[9px] px-1.5 py-0.2 rounded font-semibold ${
+                    isSelected
+                      ? 'bg-blue-700 text-white'
+                      : isMushitala
+                        ? 'bg-indigo-100 text-indigo-700'
+                        : 'bg-sky-100 text-sky-700'
+                  }`}>
+                    {isMushitala ? 'Mushitala' : 'Urban'}
                   </span>
                 </button>
               );
             })}
           </div>
 
-          {/* Quick Switcher for Any Student in School */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowAllLearnersPicker(!showAllLearnersPicker)}
-              className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition flex items-center gap-1 shadow-2xs"
-            >
-              <Search className="w-3.5 h-3.5 text-blue-600" />
-              <span>Switch Ward</span>
-              <ChevronDown className="w-3 h-3 text-slate-400" />
-            </button>
+          {/* Link Guardian to Another Learner Button */}
+          <button
+            type="button"
+            onClick={() => setShowLinkModal(true)}
+            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1 shadow-2xs"
+            title="Link an additional learner/ward to this guardian account"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Link Another Ward</span>
+          </button>
+        </div>
+      </div>
 
-            {showAllLearnersPicker && (
-              <div className="absolute right-0 top-full mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-200 p-3 z-50 text-xs space-y-2 animate-in fade-in">
-                <div className="flex items-center justify-between pb-1 border-b border-slate-100">
-                  <span className="font-bold text-slate-800">Select School Ward</span>
-                  <button onClick={() => setShowAllLearnersPicker(false)} className="text-slate-400 hover:text-slate-600 font-bold">✕</button>
-                </div>
-                <input
-                  type="text"
-                  placeholder="Search student name, ID..."
-                  value={searchStudentQuery}
-                  onChange={(e) => setSearchStudentQuery(e.target.value)}
-                  className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs"
-                />
-                <div className="max-h-48 overflow-y-auto divide-y divide-slate-100">
-                  {filteredAlternativeLearners.map((learner) => (
-                    <button
-                      key={learner.id}
-                      type="button"
-                      onClick={() => handleSelectAlternativeLearner(learner)}
-                      className="w-full text-left py-1.5 px-2 hover:bg-blue-50 rounded-lg flex items-center justify-between"
-                    >
-                      <div>
-                        <span className="font-bold text-slate-900 block">{learner.learnerName}</span>
-                        <span className="text-[10px] text-slate-500">{learner.studentNumber} &bull; {learner.className}</span>
-                      </div>
-                      <span className={`text-[10px] font-bold ${learner.balance === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                        {learner.balance === 0 ? 'Cleared' : `K${learner.balance}`}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+      {/* Interactive Campus Selector Bar (Linked to Global Campus Context) */}
+      <div className="bg-slate-900 text-white p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-md border border-slate-800">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center shrink-0">
+            <Building2 className="w-5 h-5 text-amber-400" />
           </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-black tracking-wide text-white uppercase">{campusInfo.name}</span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-400/20 text-amber-300 border border-amber-400/30">
+                {campusInfo.badge}
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-300 mt-0.5">
+              Filtered Family Wards: {filteredChildren.length} of {children.length} Enrolled in Active Campus Scope
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0 flex-wrap">
+          <button
+            type="button"
+            onClick={() => setSelectedCampus('ALL')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              selectedCampus === 'ALL'
+                ? 'bg-blue-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5" />
+            <span>All Campuses (Consolidated)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCampus('MUSHITALA')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <Bed className="w-3.5 h-3.5" />
+            <span>Mushitala Campus (Near Kansanshi)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCampus('URBAN')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              selectedCampus === 'URBAN'
+                ? 'bg-sky-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+            }`}
+          >
+            <Sun className="w-3.5 h-3.5" />
+            <span>Urban Campus (Solwezi Central)</span>
+          </button>
         </div>
       </div>
 
@@ -346,7 +503,306 @@ export default function ParentPortalPage() {
         </div>
       )}
 
-      {currentChild && (
+      {/* ========================================================================= */}
+      {/* VIEW A: UNIFIED FAMILY OVERVIEW (ALL LINKED WARDS) */}
+      {/* ========================================================================= */}
+      {activeFamilyView === 'unified' && (
+        <div className="space-y-6">
+          {/* Family Consolidated Hero Banner */}
+          <div className="bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-900 rounded-3xl p-6 text-white shadow-md flex flex-col md:flex-row md:items-center justify-between gap-5 border border-blue-900/50">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold bg-amber-400/20 text-amber-300 px-3 py-1 rounded-full border border-amber-400/30 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5" /> Consolidated Family Portfolio
+                </span>
+                <span className="text-xs px-2.5 py-0.5 rounded-lg bg-blue-800/80 border border-blue-400/30 font-mono">
+                  {children.length} Enrolled Learners
+                </span>
+                <span className="text-xs px-2.5 py-0.5 rounded-lg bg-emerald-800/80 border border-emerald-400/30 font-bold">
+                  Active 2026 Academic Year
+                </span>
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight font-serif">
+                {guardianInfo.name} &bull; Family Household Dossier
+              </h2>
+              <p className="text-xs text-blue-200 flex items-center gap-2 flex-wrap">
+                <span>{guardianInfo.profession || 'Kansanshi Mining PLC Corporate Sponsorship Eligible'}</span>
+                <span>&bull;</span>
+                <span>{guardianInfo.residentialAddress}</span>
+              </p>
+            </div>
+
+            <div className="bg-white/10 backdrop-blur-xs p-5 rounded-2xl border border-white/15 text-left md:text-right shrink-0">
+              <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider block">Consolidated Family Balance</span>
+              <div className={`text-3xl font-black mt-0.5 ${familyTotalBalance === 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                K{familyTotalBalance.toLocaleString()}.00
+              </div>
+              <div className="mt-2.5 flex items-center gap-2 flex-wrap md:justify-end">
+                {familyTotalBalance > 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentAmount(familyTotalBalance);
+                      setShowPaymentModal(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-md transition"
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>Settle Family Balance (K{familyTotalBalance.toLocaleString()})</span>
+                  </button>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-500/20 text-emerald-200 border border-emerald-400/30 rounded-xl text-xs font-bold">
+                    <CheckCircle2 className="w-3.5 h-3.5" /> All Family Accounts Cleared
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowLinkModal(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-800/90 hover:bg-blue-800 text-blue-100 rounded-xl text-xs font-bold border border-blue-600 transition"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Link Ward</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Unified Family KPI Stats Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <span className="text-xs font-semibold text-slate-500">Composite Academic Index</span>
+              <p className="text-xl font-black text-slate-900 mt-1">Distinction Average ({familyAverageScore}%)</p>
+              <span className="text-[11px] text-blue-600 font-bold">
+                {children.length} Wards &bull; Across ECZ Curriculum
+              </span>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <span className="text-xs font-semibold text-slate-500">Family Attendance Benchmark</span>
+              <p className="text-xl font-black text-slate-900 mt-1">{familyAverageAttendance}% Overall</p>
+              <span className="text-[11px] text-emerald-600 font-bold">
+                Statutory MoE Form 12A Compliant (&gt;80%)
+              </span>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <span className="text-xs font-semibold text-slate-500">Total Billed vs Paid Fees</span>
+              <p className="text-xl font-black text-slate-900 mt-1">
+                K{familyTotalPaid.toLocaleString()} / K{familyTotalBilled.toLocaleString()}
+              </p>
+              <span className="text-[11px] text-slate-500 font-semibold">
+                {familyTotalBalance === 0 ? '100% Cleared' : `K${familyTotalBalance.toLocaleString()} Outstanding`}
+              </span>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-2xs">
+              <span className="text-xs font-semibold text-slate-500">Cross-Campus Distribution</span>
+              <p className="text-xl font-black text-indigo-900 mt-1">
+                {children.filter((c) => (c.learner?.campusName || '').includes('Mushitala') || c.learner?.isBoarder).length} Secondary &bull; {children.filter((c) => (c.learner?.campusName || '').includes('Urban') || !c.learner?.isBoarder).length} Primary
+              </p>
+              <span className="text-[11px] text-slate-500 font-semibold">
+                Mushitala Boarding & Urban Day
+              </span>
+            </div>
+          </div>
+
+          {/* Unified Multi-Ward Performance & Financial Table (Rule 24 Compliant) */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70">
+              <div>
+                <h3 className="text-base font-black text-slate-900">Multi-Child Academic & Financial Performance Matrix</h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Comparative overview of all children linked to this guardian profile across Solwezi campuses.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLinkModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold transition flex items-center gap-1 shadow-2xs"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>Link Additional Ward</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 text-slate-700 border-b border-slate-200 font-bold uppercase text-[10px] tracking-wider">
+                    <th className="py-3 px-4">Learner Profile</th>
+                    <th className="py-3 px-4">Campus & Accommodation</th>
+                    <th className="py-3 px-4">Class Cohort</th>
+                    <th className="py-3 px-4 text-center">Academic Standing</th>
+                    <th className="py-3 px-4 text-center">Attendance %</th>
+                    <th className="py-3 px-4 text-right">Fee Obligation</th>
+                    <th className="py-3 px-4 text-right">Balance</th>
+                    <th className="py-3 px-4 text-center">Direct Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {children.map((item, idx) => {
+                    const lrn = item.learner;
+                    const isMushitala = (lrn.campusName || '').includes('Mushitala') || lrn.isBoarder;
+                    return (
+                      <tr key={lrn.id || idx} className="hover:bg-blue-50/40 transition">
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-blue-900 text-white flex items-center justify-center font-black text-xs shrink-0">
+                              {lrn.firstName?.[0]}{lrn.lastName?.[0]}
+                            </div>
+                            <div>
+                              <span className="font-bold text-slate-900 block text-xs">{lrn.fullName}</span>
+                              <span className="font-mono text-[10px] text-slate-500">{lrn.studentNumber}</span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="py-3.5 px-4">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              isMushitala
+                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                : 'bg-sky-50 text-sky-700 border-sky-200'
+                            }`}>
+                              {isMushitala ? 'Mushitala (Near Kansanshi)' : 'Urban (Solwezi Central)'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-slate-500 block mt-0.5">
+                            {lrn.isBoarder ? 'Full Boarder (Hall)' : 'Day Scholar'}
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-4 font-bold text-slate-800">
+                          {lrn.currentClass?.name || 'Class'}
+                        </td>
+
+                        <td className="py-3.5 px-4 text-center">
+                          <span className="font-bold text-slate-900 block text-xs">{lrn.academicStanding || 'Distinction'}</span>
+                          <span className="text-[10px] text-blue-600 font-semibold">{lrn.averageScore || 85}% Average</span>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-center">
+                          <span className="font-black text-slate-900 block">{lrn.attendance?.ratePercent || 96.7}%</span>
+                          <span className="text-[10px] text-emerald-600 font-semibold">{lrn.attendance?.daysPresent || 58} Days Present</span>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right font-mono text-slate-700 font-semibold">
+                          K{lrn.totalBilled?.toLocaleString()}.00
+                        </td>
+
+                        <td className="py-3.5 px-4 text-right">
+                          <span className={`font-mono font-black block text-xs ${lrn.balance === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                            K{lrn.balance?.toLocaleString()}.00
+                          </span>
+                          <span className={`inline-flex px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                            lrn.balance === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {lrn.balance === 0 ? 'Cleared' : 'Arrears'}
+                          </span>
+                        </td>
+
+                        <td className="py-3.5 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedChildIndex(idx);
+                                setActiveFamilyView('individual');
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-700 hover:bg-blue-100 font-bold text-[11px] border border-blue-200 transition"
+                            >
+                              Open Dossier
+                            </button>
+                            {lrn.balance > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedChildIndex(idx);
+                                  setPaymentAmount(lrn.balance);
+                                  setShowPaymentModal(true);
+                                }}
+                                className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-[11px] border border-emerald-200 transition"
+                              >
+                                Pay K{lrn.balance}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedChildIndex(idx);
+                                setShowReportCardModal(true);
+                              }}
+                              className="px-2 py-1 rounded-lg bg-slate-50 text-slate-700 hover:bg-slate-100 font-bold text-[11px] border border-slate-200 transition"
+                              title="Download Report Card"
+                            >
+                              <Printer className="w-3 h-3 text-slate-500" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleUnlinkChild(idx, lrn.fullName)}
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                              title="Unlink ward from guardian"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Consolidated Family Fee Statement Breakdown */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-5 space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div>
+                <h3 className="text-sm font-black text-slate-900">Consolidated Family Fee Book & Component Ledger</h3>
+                <p className="text-xs text-slate-500">Aggregated breakdown of statutory fees across all enrolled family wards.</p>
+              </div>
+              <span className="text-xs font-mono font-bold text-blue-900 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200">
+                Total Family Obligation: K{familyTotalBilled.toLocaleString()}.00
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {children.map((c, i) => (
+                <div key={i} className="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-2">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                    <span className="font-bold text-slate-900 text-xs">{c.learner?.fullName} ({c.learner?.currentClass?.name})</span>
+                    <span className={`text-xs font-mono font-black ${c.learner?.balance === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                      Balance: K{c.learner?.balance?.toLocaleString()}.00
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {c.learner?.itemizedFees?.map((item: any) => (
+                      <div key={item.id} className="flex items-center justify-between text-xs text-slate-600">
+                        <span>{item.name}</span>
+                        <div className="flex items-center gap-2 font-mono">
+                          <span>Billed: K{item.billed}</span>
+                          <span className={item.balance === 0 ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold'}>
+                            Bal: K{item.balance}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* VIEW B: INDIVIDUAL CHILD IN-DEPTH DOSSIER */}
+      {/* ========================================================================= */}
+      {activeFamilyView === 'individual' && currentChild && (
         <div className="space-y-6">
           {/* Child Identity Card */}
           <div className="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 rounded-3xl p-6 text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-5">
@@ -1039,6 +1495,148 @@ export default function ParentPortalPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* MODAL 4: LINK GUARDIAN TO ANOTHER LEARNER */}
+      {showLinkModal && (
+        <div className="fixed inset-0 z-[90] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-blue-600" />
+                <h3 className="text-base font-black text-slate-900">Link Additional Ward to Family Portal</h3>
+              </div>
+              <button onClick={() => setShowLinkModal(false)} className="text-slate-400 hover:text-slate-600 font-bold">✕</button>
+            </div>
+            
+            <p className="text-xs text-slate-500">
+              Link a pupil to Guardian <strong>{guardianInfo.name}</strong> to enable unified academic monitoring and single-receipt Mobile Money fee settlement.
+            </p>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Search School Roster (All Solwezi Campuses)</label>
+                <div className="relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                  <input
+                    type="text"
+                    placeholder="Search by student name, ID (e.g. LSS-2026-0042), or class..."
+                    value={linkSearchQuery}
+                    onChange={(e) => setLinkSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-xl text-xs"
+                  />
+                </div>
+              </div>
+
+              {/* Search Results Picker */}
+              <div className="max-h-44 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl p-1 bg-slate-50/50">
+                {searchResultsForLinking.map((student) => {
+                  const isSelected = selectedLearnerToLink?.studentNumber === student.studentNumber;
+                  const isAlreadyLinked = children.some((c) => c.learner?.studentNumber === student.studentNumber);
+                  return (
+                    <div
+                      key={student.id}
+                      onClick={() => !isAlreadyLinked && setSelectedLearnerToLink(student)}
+                      className={`p-2 rounded-lg flex items-center justify-between transition cursor-pointer ${
+                        isSelected
+                          ? 'bg-blue-600 text-white'
+                          : isAlreadyLinked
+                            ? 'opacity-50 cursor-not-allowed bg-slate-100'
+                            : 'hover:bg-blue-50 text-slate-800'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs">{student.learnerName}</span>
+                          {isAlreadyLinked && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-slate-200 text-slate-600 font-bold">
+                              Already Linked
+                            </span>
+                          )}
+                        </div>
+                        <span className={`text-[10px] ${isSelected ? 'text-blue-100' : 'text-slate-500'}`}>
+                          {student.studentNumber} &bull; {student.className} &bull; {student.campusName}
+                        </span>
+                      </div>
+                      <span className={`text-[11px] font-mono font-bold ${
+                        isSelected
+                          ? 'text-white'
+                          : student.balance === 0
+                            ? 'text-emerald-600'
+                            : 'text-rose-600'
+                      }`}>
+                        {student.balance === 0 ? 'Cleared' : `K${student.balance}`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Relationship & Financial Details Form */}
+              {selectedLearnerToLink && (
+                <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl space-y-3 animate-in fade-in">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-blue-200">
+                    <span className="font-bold text-blue-900">Linkage Parameters for {selectedLearnerToLink.learnerName}</span>
+                    <span className="text-[10px] font-mono text-blue-700 bg-white px-2 py-0.5 rounded border border-blue-300">
+                      {selectedLearnerToLink.studentNumber}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Guardian Relationship *</label>
+                      <select
+                        value={relationshipType}
+                        onChange={(e) => setRelationshipType(e.target.value)}
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded-xl bg-white text-xs font-semibold"
+                      >
+                        <option value="FATHER">Father</option>
+                        <option value="MOTHER">Mother</option>
+                        <option value="LEGAL_GUARDIAN">Legal Guardian</option>
+                        <option value="SPONSOR">Corporate Sponsor / Kansanshi Benefactor</option>
+                        <option value="UNCLE_AUNT">Uncle / Aunt</option>
+                        <option value="ELDER_SIBLING">Elder Sibling</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Fee Obligation Authority *</label>
+                      <select
+                        value={financialRole}
+                        onChange={(e) => setFinancialRole(e.target.value)}
+                        className="w-full px-2.5 py-1.5 border border-slate-300 rounded-xl bg-white text-xs font-semibold"
+                      >
+                        <option value="FULL">Full Financial Responsibility</option>
+                        <option value="SHARED">Shared Co-Sponsorship (50%)</option>
+                        <option value="MONITORING_ONLY">Academic Progress Monitoring Only</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedLearnerToLink(null);
+                    setShowLinkModal(false);
+                  }}
+                  className="px-3 py-1.5 font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={!selectedLearnerToLink}
+                  onClick={handleConfirmLink}
+                  className="px-4 py-2 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl shadow-xs transition disabled:opacity-50"
+                >
+                  Confirm & Link Ward to Family Portal
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

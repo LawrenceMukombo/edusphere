@@ -1,6 +1,7 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { loadAppSettings } from '@/lib/appSettings';
 
 interface LegacyLogoProps {
   variant?: 'emblem' | 'compact' | 'letterhead' | 'banner';
@@ -15,6 +16,44 @@ export function LegacyLogo({
   size = 'md',
   showAddress = true,
 }: LegacyLogoProps) {
+  const [institution, setInstitution] = useState(() => {
+    try {
+      return loadAppSettings().institution;
+    } catch {
+      return {
+        name: 'Legacy School Solwezi',
+        motto: 'We Strive for Your Academic and Moral Excellence',
+        city: 'Solwezi',
+        province: 'North-Western Province',
+        address: 'Stand # S/SOLWE/3177178, Kansanshi Mine Road, Mushitala',
+        primaryPhone: '+260 974 371271',
+        officialEmail: 'legacyschool208@gmail.com',
+      };
+    }
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        setInstitution(loadAppSettings().institution);
+      } catch (e) {
+        // Safe fallback
+      }
+    };
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('edusphere:settings-updated', handleUpdate);
+    window.addEventListener('edusphere:tenant-switched', handleUpdate);
+    return () => {
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('edusphere:settings-updated', handleUpdate);
+      window.removeEventListener('edusphere:tenant-switched', handleUpdate);
+    };
+  }, []);
+
+  const schoolName = institution.name || 'Legacy School Solwezi';
+  const schoolMotto = institution.motto || 'We Strive for Your Academic and Moral Excellence';
+  const schoolCity = institution.city || 'Solwezi';
+
   // Emblem Only (The authentic flying parent & fledgling dove with arched LEGACY SCHOOL)
   if (variant === 'emblem') {
     const dim = size === 'sm' ? 44 : size === 'md' ? 58 : size === 'lg' ? 76 : 104;
@@ -22,7 +61,7 @@ export function LegacyLogo({
       <div className={`relative inline-flex items-center justify-center shrink-0 ${className}`}>
         <img
           src="/legacy-logo.png"
-          alt="Legacy School Solwezi Logo"
+          alt={`${schoolName} Emblem`}
           width={dim}
           height={dim}
           className="object-contain drop-shadow-xs select-none max-w-full"
@@ -38,18 +77,18 @@ export function LegacyLogo({
         <LegacyLogo variant="emblem" size={size} />
         <div className="flex flex-col min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className="text-base sm:text-lg font-black tracking-wider text-blue-950 font-serif leading-none whitespace-nowrap">
-              LEGACY SCHOOL
+            <span className="text-base sm:text-lg font-black tracking-wider text-blue-950 font-serif leading-none whitespace-nowrap uppercase">
+              {schoolName}
             </span>
-            <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200 whitespace-nowrap">
-              SOLWEZI
+            <span className="text-[9px] sm:text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200 whitespace-nowrap uppercase">
+              {schoolCity}
             </span>
           </div>
           <span className="text-[11px] sm:text-xs font-serif italic text-blue-700 tracking-wide mt-0.5 leading-tight truncate max-w-[210px] sm:max-w-[280px] lg:max-w-[220px] xl:max-w-none">
-            We Strive for Your Academic and Moral Excellence
+            {schoolMotto}
           </span>
           <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium hidden 2xl:block truncate">
-            Mushitala Campus (Near Kansanshi) • Urban Campus
+            {institution.address || 'Mushitala Campus (Near Kansanshi) • Urban Campus'}
           </span>
         </div>
       </div>
@@ -67,21 +106,21 @@ export function LegacyLogo({
 
           <div className="flex-1 text-center">
             <h1 className="text-3xl font-black tracking-wide text-blue-900 font-serif uppercase">
-              LEGACY SCHOOL
+              {schoolName}
             </h1>
             <p className="text-sm font-serif italic font-semibold text-blue-700 mt-0.5">
-              We Strive for Your Academic and Moral Excellence
+              {schoolMotto}
             </p>
             {showAddress && (
               <div className="mt-2 text-xs text-slate-700 space-y-0.5 font-sans">
                 <p className="font-semibold text-slate-800">
-                  Mushitala Campus (Near Kansanshi Mine, Stand # S/SOLWE/3177178) • Urban Campus (Solwezi Central)
+                  {institution.address}
                 </p>
                 <p className="text-slate-600">
-                  Plot No. 889, 890 Kansanshi Road, Mushitala • P.O Box 110558, Solwezi – Zambia
+                  {schoolCity}, {institution.province || 'North-Western Province'}, Zambia
                 </p>
                 <p className="font-bold text-blue-900">
-                  Cell: 0968/0955 441 441 / 0974 371271 • Email: legacyschool208@gmail.com
+                  Cell: {institution.primaryPhone} • Email: {institution.officialEmail}
                 </p>
               </div>
             )}
