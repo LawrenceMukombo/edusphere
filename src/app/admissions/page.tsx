@@ -37,6 +37,9 @@ import {
   FileText,
 } from 'lucide-react';
 import { OfficialDocumentGeneratorModal } from '@/components/documents/OfficialDocumentGeneratorModal';
+import { BreakGlassGuardModal } from '@/components/admin/BreakGlassGuardModal';
+import { checkSeparationOfPowers, BreakGlassIncident } from '@/lib/separationOfPowers';
+import { loadActiveUser, UserSecurityProfile } from '@/lib/authPermissions';
 
 interface LearnerRecord {
   id: string;
@@ -75,8 +78,26 @@ export default function AdmissionsPage() {
 
   // Modal States
   const [showAdmitModal, setShowAdmitModal] = useState(false);
+  const [showBreakGlassModal, setShowBreakGlassModal] = useState(false);
+  const [activeUser, setActiveUser] = useState<UserSecurityProfile | null>(null);
   const [selectedLearner, setSelectedLearner] = useState<any | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
+
+  useEffect(() => {
+    setActiveUser(loadActiveUser());
+  }, []);
+
+  const handleOpenAdmitModal = () => {
+    const user = activeUser || loadActiveUser();
+    if (user && user.role === 'SUPER_ADMIN') {
+      const sop = checkSeparationOfPowers(user, 'GRANT_LEARNER_ACCESS');
+      if (!sop.allowed && sop.requiresOverride) {
+        setShowBreakGlassModal(true);
+        return;
+      }
+    }
+    setShowAdmitModal(true);
+  };
 
   // Active Tab inside Profile Drawer
   const [activeTab, setActiveTab] = useState<'DOSSIER' | 'ACADEMICS' | 'BOARDING_FINANCE'>('DOSSIER');
@@ -449,6 +470,17 @@ export default function AdmissionsPage() {
 
   const handleAdmitSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const user = activeUser || loadActiveUser();
+    if (user && user.role === 'SUPER_ADMIN') {
+      const sop = checkSeparationOfPowers(user, 'GRANT_LEARNER_ACCESS');
+      if (!sop.allowed && sop.requiresOverride) {
+        setShowAdmitModal(false);
+        setShowBreakGlassModal(true);
+        return;
+      }
+    }
+
     try {
       const payload: any = {
         studentNumber: formData.studentNumber,
@@ -622,7 +654,7 @@ export default function AdmissionsPage() {
           </Link>
 
           <button
-            onClick={() => setShowAdmitModal(true)}
+            onClick={handleOpenAdmitModal}
             className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold shadow-xs transition"
           >
             <UserPlus className="w-4 h-4" />
@@ -630,6 +662,33 @@ export default function AdmissionsPage() {
           </button>
         </div>
       </div>
+
+      {/* Institutional Separation of Powers Advisory for System Administrators */}
+      {activeUser?.role === 'SUPER_ADMIN' && (
+        <div className="p-4 bg-gradient-to-r from-rose-950 via-slate-900 to-amber-950 rounded-2xl border-2 border-rose-500/50 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-400/40 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5 text-rose-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-500 text-white">
+                  Institutional Separation of Powers Protected
+                </span>
+                <span className="text-xs text-rose-200 font-mono">Role: SUPER_ADMIN</span>
+              </div>
+              <p className="text-xs text-slate-300 mt-1">
+                Admitting learners and enrolling students into active academic registers is an operational prerogative reserved for the Admissions Office and School Registrar. System Administrators cannot admit learners or alter enrollment status without an authenticated emergency Break-Glass justification, which triggers instant dispatches to School Manager (Dr. K. Musonda) and CEO (Mr. E. Mwansa).
+              </p>
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="text-[11px] font-bold text-amber-400 bg-amber-400/10 px-3 py-1.5 rounded-xl border border-amber-400/30 inline-block">
+              Emergency Protocol Armed
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Dynamic Enrolment & Demographic KPI Deck (Granular Data Driven) */}
       {(() => {
@@ -1687,6 +1746,19 @@ export default function AdmissionsPage() {
           }}
         />
       )}
+
+      {/* Break-Glass Authorization Modal for System Administrators */}
+      <BreakGlassGuardModal
+        isOpen={showBreakGlassModal}
+        onClose={() => setShowBreakGlassModal(false)}
+        taskType="GRANT_LEARNER_ACCESS"
+        taskDescription={`Enrolment and granting of system/school access to learner: ${formData.firstName || 'Candidate'} ${formData.lastName || 'Learner'} (${formData.studentNumber})`}
+        targetEntityId={formData.studentNumber}
+        onOverrideSuccess={(incident) => {
+          setShowBreakGlassModal(false);
+          setShowAdmitModal(true);
+        }}
+      />
       </div>
     </ModuleGate>
   );

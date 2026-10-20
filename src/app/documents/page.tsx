@@ -50,6 +50,9 @@ import {
   generateLegacyLearners,
 } from '@/server/services/legacySchoolData';
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
+import { BreakGlassGuardModal } from '@/components/admin/BreakGlassGuardModal';
+import { checkSeparationOfPowers, BreakGlassIncident } from '@/lib/separationOfPowers';
+import { loadActiveUser, UserSecurityProfile } from '@/lib/authPermissions';
 
 export interface ArchivedDocumentRecord {
   id: string;
@@ -164,6 +167,15 @@ export default function DocumentGeneratorPage() {
   const [purpose, setPurpose] = useState('Study Permit Verification & Dependent Exemption');
   const [copied, setCopied] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Separation of Powers: Super Admin Break-Glass State
+  const [activeUser, setActiveUser] = useState<UserSecurityProfile | null>(null);
+  const [showBreakGlassModal, setShowBreakGlassModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'PRINT' | 'ARCHIVE' | null>(null);
+
+  useEffect(() => {
+    setActiveUser(loadActiveUser());
+  }, []);
 
   // In-Place Authorized Content Editing ("Allow users with relevant rights to edit the letters")
   const [isEditingContent, setIsEditingContent] = useState(true);
@@ -406,8 +418,8 @@ export default function DocumentGeneratorPage() {
     customTableFooters,
   ]);
 
-  // Save current generated document to the timestamped archive
-  const handleSaveAndArchive = () => {
+  // Actual execution of document archiving
+  const executeSaveAndArchive = () => {
     const now = new Date();
     const formattedTimestamp = now.toLocaleString('en-GB', {
       day: 'numeric',
@@ -449,12 +461,39 @@ export default function DocumentGeneratorPage() {
     setTimeout(() => setToastMessage(null), 4500);
   };
 
-  const handlePrint = () => {
-    // Automatically save an archival copy with timestamp whenever official print is requested
-    handleSaveAndArchive();
+  const executePrint = () => {
+    executeSaveAndArchive();
     setTimeout(() => {
       window.print();
     }, 400);
+  };
+
+  // Guarded Save: Intercepted for System Administrator under Separation of Powers
+  const handleSaveAndArchive = () => {
+    const user = activeUser || loadActiveUser();
+    if (user && user.role === 'SUPER_ADMIN') {
+      const sop = checkSeparationOfPowers(user, 'GENERATE_OFFICIAL_DOCUMENT');
+      if (!sop.allowed && sop.requiresOverride) {
+        setPendingAction('ARCHIVE');
+        setShowBreakGlassModal(true);
+        return;
+      }
+    }
+    executeSaveAndArchive();
+  };
+
+  // Guarded Print: Intercepted for System Administrator under Separation of Powers
+  const handlePrint = () => {
+    const user = activeUser || loadActiveUser();
+    if (user && user.role === 'SUPER_ADMIN') {
+      const sop = checkSeparationOfPowers(user, 'GENERATE_OFFICIAL_DOCUMENT');
+      if (!sop.allowed && sop.requiresOverride) {
+        setPendingAction('PRINT');
+        setShowBreakGlassModal(true);
+        return;
+      }
+    }
+    executePrint();
   };
 
   const handleCopyText = () => {
@@ -624,6 +663,33 @@ export default function DocumentGeneratorPage() {
           </button>
         </div>
       </div>
+
+      {/* Institutional Separation of Powers Advisory for System Administrators */}
+      {activeUser?.role === 'SUPER_ADMIN' && (
+        <div className="no-print p-4 bg-gradient-to-r from-rose-950 via-slate-900 to-amber-950 rounded-2xl border-2 border-rose-500/50 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-400/40 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-5 h-5 text-rose-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-500 text-white">
+                  Institutional Separation of Powers Protected
+                </span>
+                <span className="text-xs text-rose-200 font-mono">Role: SUPER_ADMIN</span>
+              </div>
+              <p className="text-xs text-slate-300 mt-1">
+                Official institutional correspondence and certificates carry legal authority reserved for the School Principal & Academic Dean. System Administrators cannot generate or archive letters without an audited emergency Break-Glass justification, which triggers instant dispatches to School Manager (Dr. K. Musonda) and CEO (Mr. E. Mwansa).
+              </p>
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="text-[11px] font-bold text-amber-400 bg-amber-400/10 px-3 py-1.5 rounded-xl border border-amber-400/30 inline-block">
+              Emergency Protocol Armed
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Main Two-Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -1524,6 +1590,29 @@ export default function DocumentGeneratorPage() {
           )}
         />
       </div>
+
+      {/* Break-Glass Authorization Modal for System Administrators */}
+      <BreakGlassGuardModal
+        isOpen={showBreakGlassModal}
+        onClose={() => {
+          setShowBreakGlassModal(false);
+          setPendingAction(null);
+        }}
+        taskType="GENERATE_OFFICIAL_DOCUMENT"
+        taskDescription={`Administrative generation and archival of official school correspondence (${activeDocument.title}) for ${
+          recipientCategory === 'LEARNER' ? selectedLearner.learnerName : `${selectedStaff.firstName} ${selectedStaff.lastName}`
+        }`}
+        targetEntityId={activeDocument.referenceNumber}
+        onOverrideSuccess={(incident) => {
+          setShowBreakGlassModal(false);
+          if (pendingAction === 'PRINT') {
+            executePrint();
+          } else {
+            executeSaveAndArchive();
+          }
+          setPendingAction(null);
+        }}
+      />
     </div>
   );
 }

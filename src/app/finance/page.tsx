@@ -50,6 +50,8 @@ import { Finance2FAModal } from '@/components/Finance2FAModal';
 import { LegacyLogo } from '@/components/LegacyLogo';
 import { is2FAVerifiedForSession, clear2FASession, loadActiveUser } from '@/lib/authPermissions';
 import { saveAdminAuditLogs, AdminAuditLog } from '@/lib/appSettings';
+import { BreakGlassGuardModal } from '@/components/admin/BreakGlassGuardModal';
+import { checkSeparationOfPowers, BreakGlassIncident } from '@/lib/separationOfPowers';
 import {
   LEGACY_EXPENDITURES,
   LEGACY_FEE_TRANSACTIONS,
@@ -179,6 +181,7 @@ export default function FinancePage() {
 
   // Modals & History Drawer
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showBreakGlassModal, setShowBreakGlassModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<any | null>(null);
   const [selectedLearnerHistory, setSelectedLearnerHistory] = useState<any | null>(null);
@@ -602,9 +605,33 @@ export default function FinancePage() {
     showToast(`SMS Arrears Notice dispatched to guardian for ${learner.learnerName} (Overdue: K${learner.balance.toLocaleString()}). Audit trail logged.`);
   };
 
+  // Open Payment Modal guarded by Separation of Powers for SUPER_ADMIN
+  const handleOpenPaymentModal = () => {
+    const user = activeUser || loadActiveUser();
+    if (user && user.role === 'SUPER_ADMIN') {
+      const sop = checkSeparationOfPowers(user, 'RECORD_PAYMENT');
+      if (!sop.allowed && sop.requiresOverride) {
+        setShowBreakGlassModal(true);
+        return;
+      }
+    }
+    setShowPaymentModal(true);
+  };
+
   // Record Payment with Immediate Ledger Update & Immutable Audit Log
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const user = activeUser || loadActiveUser();
+    if (user && user.role === 'SUPER_ADMIN') {
+      const sop = checkSeparationOfPowers(user, 'RECORD_PAYMENT');
+      if (!sop.allowed && sop.requiresOverride) {
+        setShowPaymentModal(false);
+        setShowBreakGlassModal(true);
+        return;
+      }
+    }
+
     const newTxn = {
       receiptNumber: `REC-SOL-2026-00${Math.floor(420 + Math.random() * 80)}`,
       amount: paymentForm.amount,
@@ -1135,7 +1162,7 @@ export default function FinancePage() {
 
           <button
             type="button"
-            onClick={() => setShowPaymentModal(true)}
+            onClick={handleOpenPaymentModal}
             className="px-3.5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs transition flex items-center gap-1.5"
           >
             <Plus className="w-4 h-4" />
@@ -1143,6 +1170,33 @@ export default function FinancePage() {
           </button>
         </div>
       </div>
+
+      {/* Institutional Separation of Powers Advisory for System Administrators */}
+      {activeUser?.role === 'SUPER_ADMIN' && (
+        <div className="p-4 bg-gradient-to-r from-rose-950 via-slate-900 to-amber-950 rounded-2xl border-2 border-rose-500/50 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-500/20 border border-rose-400/40 flex items-center justify-center shrink-0">
+              <ShieldAlert className="w-5 h-5 text-rose-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-500 text-white">
+                  Institutional Separation of Powers Protected
+                </span>
+                <span className="text-xs text-rose-200 font-mono">Role: SUPER_ADMIN</span>
+              </div>
+              <p className="text-xs text-slate-300 mt-1">
+                Fee collection and treasury accounting are restricted to the School Bursar and Accounts Office. System Administrators cannot record tuition receipts or handle fee inflows without an authenticated emergency Break-Glass justification, which triggers instant dispatches to School Manager (Dr. K. Musonda) and CEO (Mr. E. Mwansa).
+              </p>
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="text-[11px] font-bold text-amber-400 bg-amber-400/10 px-3 py-1.5 rounded-xl border border-amber-400/30 inline-block">
+              Emergency Protocol Armed
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Institutional Reconciliation & Audit Status Bar */}
       <div className="bg-slate-900 text-white rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-3 text-xs shadow-md border border-slate-800">
@@ -2692,6 +2746,19 @@ export default function FinancePage() {
           </div>
         </div>
       )}
+
+      {/* Break-Glass Emergency Modal for System Administrators */}
+      <BreakGlassGuardModal
+        isOpen={showBreakGlassModal}
+        onClose={() => setShowBreakGlassModal(false)}
+        taskType="RECORD_PAYMENT"
+        taskDescription={`Administrative receipting / recording of fee payment (K${paymentForm.amount.toLocaleString()} for ${paymentForm.learnerName})`}
+        targetEntityId={paymentForm.studentNumber}
+        onOverrideSuccess={(incident) => {
+          setShowBreakGlassModal(false);
+          setShowPaymentModal(true);
+        }}
+      />
       </div>
     </ModuleGate>
   );

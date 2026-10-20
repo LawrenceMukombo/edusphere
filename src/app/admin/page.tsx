@@ -37,6 +37,7 @@ import { RolePermissionsMatrix } from '@/components/admin/RolePermissionsMatrix'
 import { StaffSecurityManager } from '@/components/admin/StaffSecurityManager';
 import { PasswordPolicyManager } from '@/components/admin/PasswordPolicyManager';
 import { DataSovereigntyBackupConsole } from '@/components/admin/DataSovereigntyBackupConsole';
+import { UserManagementConsole } from '@/components/admin/UserManagementConsole';
 import {
   getActiveTenant,
   loadAllTenants,
@@ -73,7 +74,7 @@ const THEME_PRESETS = [
 ];
 
 export default function AdminPage() {
-  const [adminTab, setAdminTab] = useState<'tenants' | 'permissions' | 'passwords' | 'policy' | 'backups'>('tenants');
+  const [adminTab, setAdminTab] = useState<'tenants' | 'users' | 'permissions' | 'passwords' | 'policy' | 'backups'>('tenants');
   const [organisations, setOrganisations] = useState<OrgRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showProvisionModal, setShowProvisionModal] = useState(false);
@@ -728,6 +729,22 @@ export default function AdminPage() {
 
         <button
           type="button"
+          onClick={() => setAdminTab('users')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap ${
+            adminTab === 'users'
+              ? 'bg-blue-900 text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Users className="w-4 h-4 text-sky-400" />
+          <span>Identity, Users & Separation of Powers</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-500 text-slate-900 font-bold uppercase">
+            SoP Guarded
+          </span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setAdminTab('permissions')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap ${
             adminTab === 'permissions'
@@ -805,6 +822,13 @@ export default function AdminPage() {
             onRowClick={(row) => openEditTenant(row)}
             exportFilename="edusphere-saas-tenants"
           />
+        </div>
+      )}
+
+      {/* TAB: User Accounts & Separation of Powers Break-Glass Governance */}
+      {adminTab === 'users' && (
+        <div className="animate-in fade-in">
+          <UserManagementConsole />
         </div>
       )}
 
