@@ -83,21 +83,62 @@ interface CampusContextType {
   setSelectedCampus: (campus: CampusId) => void;
   campusInfo: CampusMetadata;
   allCampuses: CampusMetadata[];
+  allowedCampuses: CampusMetadata[];
+  isCampusRestricted: boolean;
+  userCampusId: CampusId;
 }
 
 const CampusContext = createContext<CampusContextType | undefined>(undefined);
 
 export function CampusProvider({ children }: { children: ReactNode }) {
   const [selectedCampus, setSelectedCampusState] = useState<CampusId>('ALL');
+  const [activeUserCampus, setActiveUserCampus] = useState<CampusId>('ALL');
 
   useEffect(() => {
-    const saved = localStorage.getItem('edusphere_selected_campus') as CampusId;
-    if (saved && (saved === 'ALL' || saved === 'MUSHITALA' || saved === 'URBAN' || saved === 'KANSANSHI')) {
-      setSelectedCampusState(saved);
-    }
+    const syncUserAndCampus = () => {
+      try {
+        const raw = localStorage.getItem('edusphere_active_user_v1');
+        let userCampus: CampusId = 'ALL';
+        if (raw) {
+          const user = JSON.parse(raw);
+          if (user?.campusId) {
+            userCampus = user.campusId;
+          }
+        }
+        setActiveUserCampus(userCampus);
+
+        // If user is restricted to a single campus, enforce that campus immediately
+        if (userCampus !== 'ALL') {
+          setSelectedCampusState(userCampus);
+          localStorage.setItem('edusphere_selected_campus', userCampus);
+        } else {
+          // If user has multi-campus access, respect previous selection or default to ALL
+          const saved = localStorage.getItem('edusphere_selected_campus') as CampusId;
+          if (saved && (saved === 'ALL' || saved === 'MUSHITALA' || saved === 'URBAN' || saved === 'KANSANSHI')) {
+            setSelectedCampusState(saved);
+          } else {
+            setSelectedCampusState('ALL');
+          }
+        }
+      } catch (e) {
+        console.error('Error syncing user campus scope', e);
+      }
+    };
+
+    syncUserAndCampus();
+    window.addEventListener('edusphere:user-updated', syncUserAndCampus);
+    window.addEventListener('storage', syncUserAndCampus);
+    return () => {
+      window.removeEventListener('edusphere:user-updated', syncUserAndCampus);
+      window.removeEventListener('storage', syncUserAndCampus);
+    };
   }, []);
 
   const setSelectedCampus = (campus: CampusId) => {
+    // If user is restricted to a specific campus, reject switching outside their campus
+    if (activeUserCampus !== 'ALL' && campus !== activeUserCampus) {
+      return;
+    }
     setSelectedCampusState(campus);
     localStorage.setItem('edusphere_selected_campus', campus);
   };
@@ -109,6 +150,13 @@ export function CampusProvider({ children }: { children: ReactNode }) {
     LEGACY_CAMPUSES.URBAN,
   ];
 
+  // Dynamically compute campuses visible to the active user
+  const allowedCampuses = activeUserCampus === 'ALL'
+    ? allCampuses
+    : activeUserCampus === 'MUSHITALA' || activeUserCampus === 'KANSANSHI'
+    ? [LEGACY_CAMPUSES.MUSHITALA]
+    : [LEGACY_CAMPUSES.URBAN];
+
   return (
     <CampusContext.Provider
       value={{
@@ -116,6 +164,9 @@ export function CampusProvider({ children }: { children: ReactNode }) {
         setSelectedCampus,
         campusInfo,
         allCampuses,
+        allowedCampuses,
+        isCampusRestricted: activeUserCampus !== 'ALL',
+        userCampusId: activeUserCampus,
       }}
     >
       {children}

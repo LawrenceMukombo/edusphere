@@ -249,7 +249,7 @@ export default function SchoolCalendarPage() {
       planRequired="STARTER"
       pricePerTermZMW={850}
     >
-      <div className="space-y-6 max-w-7xl mx-auto pb-16">
+      <div className="space-y-6 w-full pb-16">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3.5 rounded-xl shadow-2xl flex items-center gap-3 border border-slate-700 animate-slide-up">

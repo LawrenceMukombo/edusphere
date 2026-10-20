@@ -38,6 +38,7 @@ import { StaffSecurityManager } from '@/components/admin/StaffSecurityManager';
 import { PasswordPolicyManager } from '@/components/admin/PasswordPolicyManager';
 import { DataSovereigntyBackupConsole } from '@/components/admin/DataSovereigntyBackupConsole';
 import { UserManagementConsole } from '@/components/admin/UserManagementConsole';
+import { SystemSettingsConsole } from '@/components/admin/SystemSettingsConsole';
 import {
   getActiveTenant,
   loadAllTenants,
@@ -74,7 +75,17 @@ const THEME_PRESETS = [
 ];
 
 export default function AdminPage() {
-  const [adminTab, setAdminTab] = useState<'tenants' | 'users' | 'permissions' | 'passwords' | 'policy' | 'backups'>('tenants');
+  const [adminTab, setAdminTab] = useState<'settings' | 'tenants' | 'users' | 'permissions' | 'passwords' | 'policy' | 'backups'>('settings');
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab && ['settings', 'tenants', 'users', 'permissions', 'passwords', 'policy', 'backups'].includes(tab)) {
+        setAdminTab(tab as any);
+      }
+    }
+  }, []);
   const [organisations, setOrganisations] = useState<OrgRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showProvisionModal, setShowProvisionModal] = useState(false);
@@ -601,10 +612,10 @@ export default function AdminPage() {
         <div>
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-6 h-6 text-blue-600" />
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Platform Super Administrator</h1>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Administration & System Settings</h1>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Multi-tenant SaaS oversight, subscription entitlement governance, and platform infrastructure health.
+            Unified management of system configuration, school tenants, user access, security policies, and data sovereignty.
           </p>
         </div>
 
@@ -713,6 +724,22 @@ export default function AdminPage() {
       <div className="flex items-center gap-2 overflow-x-auto border-b border-slate-200 pb-2">
         <button
           type="button"
+          onClick={() => setAdminTab('settings')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap ${
+            adminTab === 'settings'
+              ? 'bg-blue-900 text-white shadow-xs'
+              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+          }`}
+        >
+          <Sliders className="w-4 h-4 text-amber-400" />
+          <span>System Settings & Rules</span>
+          <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500 text-slate-900 font-bold uppercase">
+            Config
+          </span>
+        </button>
+
+        <button
+          type="button"
           onClick={() => setAdminTab('tenants')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-bold transition whitespace-nowrap ${
             adminTab === 'tenants'
@@ -807,6 +834,13 @@ export default function AdminPage() {
           </span>
         </button>
       </div>
+
+      {/* TAB 0: System Settings & Configuration */}
+      {adminTab === 'settings' && (
+        <div className="animate-in fade-in">
+          <SystemSettingsConsole />
+        </div>
+      )}
 
       {/* TAB 1: Tenants & Campuses */}
       {adminTab === 'tenants' && (

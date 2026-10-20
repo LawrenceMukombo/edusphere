@@ -1,7 +1,7 @@
 // src/components/MobileBottomNav.tsx
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -11,7 +11,12 @@ import {
   DollarSign,
   MessageSquare,
   Menu,
+  HeartHandshake,
+  Calendar,
+  ClipboardCheck,
+  GraduationCap,
 } from 'lucide-react';
+import { loadActiveUser, UserSecurityProfile } from '@/lib/authPermissions';
 
 interface MobileBottomNavProps {
   onToggleDrawer: () => void;
@@ -20,14 +25,45 @@ interface MobileBottomNavProps {
 
 export function MobileBottomNav({ onToggleDrawer, isDrawerOpen }: MobileBottomNavProps) {
   const pathname = usePathname();
+  const [currentUser, setCurrentUser] = useState<UserSecurityProfile>(() => loadActiveUser());
 
-  const navItems = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/messages', label: 'Messages', icon: MessageSquare },
-    { href: '/attendance', label: 'Attendance', icon: CalendarCheck },
-    { href: '/boarding', label: 'Boarding', icon: Bed },
-    { href: '/finance', label: 'Finance', icon: DollarSign },
-  ];
+  useEffect(() => {
+    const handleUserUpdate = () => setCurrentUser(loadActiveUser());
+    window.addEventListener('storage', handleUserUpdate);
+    window.addEventListener('edusphere:user-updated', handleUserUpdate);
+    return () => {
+      window.removeEventListener('storage', handleUserUpdate);
+      window.removeEventListener('edusphere:user-updated', handleUserUpdate);
+    };
+  }, []);
+
+  // Compute role-tailored quick navigation tabs
+  const getNavItems = () => {
+    if (currentUser.role === 'PARENT') {
+      return [
+        { href: '/parent', label: 'Portal', icon: HeartHandshake },
+        { href: '/calendar', label: 'Calendar', icon: Calendar },
+        { href: '/messages', label: 'Messages', icon: MessageSquare },
+      ];
+    }
+    if (currentUser.role === 'TEACHER') {
+      return [
+        { href: '/teacher', label: 'Classes', icon: ClipboardCheck },
+        { href: '/attendance', label: 'Attendance', icon: CalendarCheck },
+        { href: '/academics', label: 'Grades', icon: GraduationCap },
+        { href: '/messages', label: 'Messages', icon: MessageSquare },
+      ];
+    }
+    return [
+      { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+      { href: '/messages', label: 'Messages', icon: MessageSquare },
+      { href: '/attendance', label: 'Attendance', icon: CalendarCheck },
+      ...(currentUser.campusId !== 'URBAN' ? [{ href: '/boarding', label: 'Boarding', icon: Bed }] : []),
+      { href: '/finance', label: 'Finance', icon: DollarSign },
+    ];
+  };
+
+  const navItems = getNavItems();
 
   return (
     <nav

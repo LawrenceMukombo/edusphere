@@ -98,7 +98,7 @@ export function TopWelcomeBanner() {
 
   return (
     <div className="w-full bg-slate-950 text-white border-b border-slate-800 text-xs py-1.5 px-3 sm:px-6 lg:px-8 select-none z-30 relative shadow-xs">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+      <div className="w-full flex items-center justify-between gap-3">
         
         {/* Left: Active Staff Profile & Role Switcher */}
         <div className="flex items-center gap-2.5 min-w-0">

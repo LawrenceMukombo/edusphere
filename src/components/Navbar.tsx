@@ -36,56 +36,88 @@ import { LegacyLogo } from './LegacyLogo';
 import { OfflineIndicator } from './OfflineIndicator';
 import { MobileBottomNav } from './MobileBottomNav';
 import { loadAppSettings, checkModuleEntitlement, AppSettings, DEFAULT_APP_SETTINGS } from '@/lib/appSettings';
+import {
+  loadActiveUser,
+  UserSecurityProfile,
+  UserRole,
+  hasPermission,
+  ModulePermissionKey,
+} from '@/lib/authPermissions';
 
 interface NavItem {
   href: string;
   label: string;
   icon: any;
   badge?: string;
-  moduleKey?: string;
+  moduleKey?: ModulePermissionKey;
+  allowedRoles?: UserRole[];
+  campusLock?: 'MUSHITALA' | 'URBAN';
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { href: '/', label: 'Executive Dashboard', icon: LayoutDashboard },
+  { href: '/', label: 'Executive Dashboard', icon: LayoutDashboard, allowedRoles: ['SUPER_ADMIN', 'PRINCIPAL', 'FINANCE_DIRECTOR', 'BURSAR', 'ACADEMIC_HEAD', 'ESTATE_MANAGER', 'HR_OFFICER'] },
   { href: '/messages', label: 'In-App Messaging', icon: MessageSquare, badge: 'WhatsApp' },
-  { href: '/documents', label: 'Document Generator', icon: FileText, badge: 'Letters' },
-  { href: '/attendance', label: 'Operations & Attendance', icon: CalendarCheck, badge: 'Live', moduleKey: 'attendance' },
+  { href: '/documents', label: 'Document Generator', icon: FileText, badge: 'Letters', allowedRoles: ['SUPER_ADMIN', 'PRINCIPAL', 'ACADEMIC_HEAD', 'HR_OFFICER', 'BURSAR'] },
+  { href: '/attendance', label: 'Operations & Attendance', icon: CalendarCheck, badge: 'Live', moduleKey: 'attendance', allowedRoles: ['SUPER_ADMIN', 'PRINCIPAL', 'TEACHER', 'ACADEMIC_HEAD', 'BOARDING_MASTER'] },
   { href: '/calendar', label: 'School Calendar & Birthdays', icon: Calendar, badge: '2026', moduleKey: 'calendar' },
-  { href: '/boarding', label: 'Boarding Houses & Village', icon: Bed, badge: 'Village', moduleKey: 'boarding' },
-  { href: '/finance', label: 'Fees & Expenditures', icon: DollarSign, badge: 'Ledger', moduleKey: 'fees' },
-  { href: '/assets', label: 'School Asset Manager', icon: Boxes, badge: 'Capital', moduleKey: 'assets' },
-  { href: '/hr', label: 'Staff & HR Suite', icon: Briefcase, badge: 'TCZ', moduleKey: 'hr' },
-  { href: '/gis', label: 'Solwezi Campuses & GIS', icon: Compass, moduleKey: 'gis' },
-  { href: '/admissions', label: 'Admissions & SIS', icon: Users, moduleKey: 'admissions' },
-  { href: '/academics', label: 'Academics & Reports', icon: GraduationCap, moduleKey: 'academics' },
-  { href: '/teacher', label: 'Teacher Workspace', icon: ClipboardCheck, moduleKey: 'teacher' },
-  { href: '/parent', label: 'Parent Portal', icon: HeartHandshake, moduleKey: 'parentPortal' },
-  { href: '/settings', label: 'System Settings', icon: Sliders, badge: 'Config' },
-  { href: '/admin', label: 'Platform Admin', icon: ShieldCheck },
+  { href: '/boarding', label: 'Boarding Houses & Village', icon: Bed, badge: 'Village', moduleKey: 'boarding', allowedRoles: ['SUPER_ADMIN', 'PRINCIPAL', 'BOARDING_MASTER'], campusLock: 'MUSHITALA' },
+  { href: '/finance', label: 'Fees & Expenditures', icon: DollarSign, badge: 'Ledger', moduleKey: 'fees', allowedRoles: ['SUPER_ADMIN', 'PRINCIPAL', 'FINANCE_DIRECTOR', 'BURSAR'] },
+  { href: '/assets', label: 'School Asset Manager', icon: Boxes, badge: 'Capital', moduleKey: 'assets', allowedRoles: ['SUPER_ADMIN', 'PRINCIPAL', 'ESTATE_MANAGER', 'FINANCE_DIRECTOR', 'BURSAR'] },
+  { href: '/hr', label: 'Staff & HR Suite', icon: Briefcase, badge: 'TCZ', moduleKey: 'hr', allowedRoles: ['SUPER_ADMIN', 'PRINCIPAL', 'HR_OFFICER'] },
+  { href: '/gis', label: 'Solwezi Campuses & GIS', icon: Compass, moduleKey: 'gis', allowedRoles: ['SUPER_ADMIN', 'PRINCIPAL', 'ESTATE_MANAGER', 'FINANCE_DIRECTOR'] },
+  { href: '/admissions', label: 'Admissions & SIS', icon: Users, moduleKey: 'admissions', allowedRoles: ['SUPER_ADMIN', 'PRINCIPAL', 'ACADEMIC_HEAD', 'BURSAR'] },
+  { href: '/academics', label: 'Academics & Reports', icon: GraduationCap, moduleKey: 'academics', allowedRoles: ['SUPER_ADMIN', 'PRINCIPAL', 'ACADEMIC_HEAD', 'TEACHER'] },
+  { href: '/teacher', label: 'Teacher Workspace', icon: ClipboardCheck, moduleKey: 'teacher', allowedRoles: ['SUPER_ADMIN', 'PRINCIPAL', 'ACADEMIC_HEAD', 'TEACHER'] },
+  { href: '/parent', label: 'Parent Portal', icon: HeartHandshake, moduleKey: 'parentPortal', allowedRoles: ['PARENT', 'PRINCIPAL', 'SUPER_ADMIN'] },
+  { href: '/admin', label: 'Administration & Settings', icon: ShieldCheck, badge: 'Admin', allowedRoles: ['SUPER_ADMIN', 'PRINCIPAL'] },
 ];
 
 export function Navbar() {
   const pathname = usePathname();
-  const { selectedCampus, setSelectedCampus, campusInfo } = useCampus();
+  const { selectedCampus, setSelectedCampus, campusInfo, allowedCampuses, isCampusRestricted } = useCampus();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [settings, setSettings] = useState<AppSettings>(DEFAULT_APP_SETTINGS);
+  const [currentUser, setCurrentUser] = useState<UserSecurityProfile>(() => loadActiveUser());
 
   // Close mobile drawer on route transition
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [pathname]);
 
-  // Sync settings
+  // Sync settings and active user
   useEffect(() => {
-    const handleUpdate = () => setSettings(loadAppSettings());
-    handleUpdate();
-    window.addEventListener('storage', handleUpdate);
-    window.addEventListener('edusphere:settings-updated', handleUpdate);
+    const handleSettingsUpdate = () => setSettings(loadAppSettings());
+    const handleUserUpdate = () => setCurrentUser(loadActiveUser());
+
+    handleSettingsUpdate();
+    handleUserUpdate();
+
+    window.addEventListener('storage', handleSettingsUpdate);
+    window.addEventListener('storage', handleUserUpdate);
+    window.addEventListener('edusphere:settings-updated', handleSettingsUpdate);
+    window.addEventListener('edusphere:user-updated', handleUserUpdate);
     return () => {
-      window.removeEventListener('storage', handleUpdate);
-      window.removeEventListener('edusphere:settings-updated', handleUpdate);
+      window.removeEventListener('storage', handleSettingsUpdate);
+      window.removeEventListener('storage', handleUserUpdate);
+      window.removeEventListener('edusphere:settings-updated', handleSettingsUpdate);
+      window.removeEventListener('edusphere:user-updated', handleUserUpdate);
     };
   }, []);
+
+  const isItemVisible = (item: NavItem): boolean => {
+    if (item.allowedRoles && !item.allowedRoles.includes(currentUser.role)) {
+      return false;
+    }
+    if (item.moduleKey && !hasPermission(currentUser.role, item.moduleKey, 'view')) {
+      return false;
+    }
+    if (item.campusLock && currentUser.campusId === 'URBAN') {
+      return false;
+    }
+    return true;
+  };
+
+  const visibleNavItems = NAV_ITEMS.filter(isItemVisible);
 
   return (
     <>
@@ -100,49 +132,42 @@ export function Navbar() {
             </div>
 
             {/* Center: Campus Switcher (Management Control) */}
-            <div className="hidden lg:flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 shadow-inner shrink-0">
-              <button
-                type="button"
-                onClick={() => setSelectedCampus('ALL')}
-                className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
-                  selectedCampus === 'ALL'
-                    ? 'bg-blue-900 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Layers className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden xl:inline">All Campuses (Consolidated)</span>
-                <span className="xl:hidden">All Campuses</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSelectedCampus('MUSHITALA')}
-                className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
-                  selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI'
-                    ? 'bg-indigo-700 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Bed className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden 2xl:inline">Mushitala Campus (Near Kansanshi)</span>
-                <span className="2xl:hidden">Mushitala Campus</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setSelectedCampus('URBAN')}
-                className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
-                  selectedCampus === 'URBAN'
-                    ? 'bg-sky-600 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                <Sun className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden 2xl:inline">Urban Campus (Solwezi Central)</span>
-                <span className="2xl:hidden">Urban Campus</span>
-              </button>
-            </div>
+            {allowedCampuses.length === 1 ? (
+              <div className="hidden lg:flex items-center gap-2 bg-indigo-50 border border-indigo-200/80 text-indigo-950 px-3 py-1.5 rounded-xl shadow-2xs">
+                <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span className="text-xs font-bold">{allowedCampuses[0].name}</span>
+                <span className="text-[10px] font-bold uppercase bg-indigo-200/60 text-indigo-800 px-1.5 py-0.5 rounded">
+                  Assigned Location
+                </span>
+              </div>
+            ) : (
+              <div className="hidden lg:flex items-center bg-slate-100/90 p-1 rounded-xl border border-slate-200/80 shadow-inner shrink-0">
+                {allowedCampuses.map((camp) => {
+                  const isSelected = selectedCampus === camp.id;
+                  return (
+                    <button
+                      key={camp.id}
+                      type="button"
+                      onClick={() => setSelectedCampus(camp.id)}
+                      className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
+                        isSelected
+                          ? 'bg-blue-900 text-white shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                    >
+                      {camp.id === 'ALL' ? (
+                        <Layers className="w-3.5 h-3.5 shrink-0" />
+                      ) : camp.id === 'MUSHITALA' ? (
+                        <Bed className="w-3.5 h-3.5 shrink-0" />
+                      ) : (
+                        <Sun className="w-3.5 h-3.5 shrink-0" />
+                      )}
+                      <span>{camp.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Quick Links & Active User */}
             <div className="flex items-center gap-2 sm:gap-3">
@@ -169,10 +194,16 @@ export function Navbar() {
                 </Link>
 
                 <div
-                  className="w-8 h-8 rounded-full bg-blue-900 text-amber-300 font-bold text-xs flex items-center justify-center ring-2 ring-blue-100 shadow-xs ml-1"
-                  title="Mr. Emmanuel Mwansa — School Director & Principal"
+                  className="w-8 h-8 rounded-full bg-blue-900 text-amber-300 font-bold text-xs flex items-center justify-center ring-2 ring-blue-100 shadow-2xs ml-1"
+                  title={`${currentUser.fullName} — ${currentUser.role.replace(/_/g, ' ')}`}
                 >
-                  EM
+                  {currentUser.fullName
+                    .split(' ')
+                    .filter((n) => !['Mr.', 'Mrs.', 'Ms.', 'Dr.', 'Eng.'].includes(n))
+                    .map((n) => n[0])
+                    .join('')
+                    .slice(0, 2)
+                    .toUpperCase() || 'ES'}
                 </div>
               </div>
 
@@ -191,15 +222,24 @@ export function Navbar() {
           {/* Mobile Campus Selector */}
           <div className="lg:hidden pb-3 flex items-center justify-between border-t border-slate-100 pt-2 gap-2">
             <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider shrink-0">Campus View:</span>
-            <select
-              value={selectedCampus}
-              onChange={(e) => setSelectedCampus(e.target.value as CampusId)}
-              className="text-xs font-bold bg-slate-100 border border-slate-300 rounded-lg px-2.5 py-1 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 flex-1 truncate"
-            >
-              <option value="ALL">All Campuses (Consolidated)</option>
-              <option value="MUSHITALA">Mushitala Campus (Near Kansanshi - Boarding)</option>
-              <option value="URBAN">Urban Campus (Solwezi Central - ECE & Primary)</option>
-            </select>
+            {allowedCampuses.length === 1 ? (
+              <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg">
+                <MapPin className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span className="truncate">{allowedCampuses[0].name}</span>
+              </div>
+            ) : (
+              <select
+                value={selectedCampus}
+                onChange={(e) => setSelectedCampus(e.target.value as CampusId)}
+                className="text-xs font-bold bg-slate-100 border border-slate-300 rounded-lg px-2.5 py-1 text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 flex-1 truncate"
+              >
+                {allowedCampuses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
 
@@ -210,7 +250,7 @@ export function Navbar() {
               {/* Campus Status Card in Drawer */}
               <div className="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-blue-900 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                  <div className="w-9 h-9 rounded-xl bg-blue-900 text-white flex items-center justify-center font-bold text-xs shadow-2xs">
                     <Building2 className="w-4 h-4" />
                   </div>
                   <div>
@@ -227,10 +267,10 @@ export function Navbar() {
               {/* Navigation Workspaces */}
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-2 block mb-1.5">
-                  Management Workspaces (14 Modules)
+                  Management Workspaces ({visibleNavItems.length} Permitted Modules)
                 </span>
                 <nav className="space-y-1">
-                  {NAV_ITEMS.map((item) => {
+                  {visibleNavItems.map((item) => {
                     const Icon = item.icon;
                     const isActive = pathname === item.href;
 
