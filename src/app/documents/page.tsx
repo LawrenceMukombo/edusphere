@@ -664,7 +664,7 @@ export default function DocumentGeneratorPage() {
         </div>
       </div>
 
-      {/* Institutional Separation of Powers Advisory for System Administrators */}
+      {/* Administrative Access Advisory for System Administrators */}
       {activeUser?.role === 'SUPER_ADMIN' && (
         <div className="no-print p-4 bg-gradient-to-r from-rose-950 via-slate-900 to-amber-950 rounded-2xl border-2 border-rose-500/50 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -674,18 +674,18 @@ export default function DocumentGeneratorPage() {
             <div>
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-500 text-white">
-                  Institutional Separation of Powers Protected
+                  Administrative Access Notice
                 </span>
                 <span className="text-xs text-rose-200 font-mono">Role: SUPER_ADMIN</span>
               </div>
               <p className="text-xs text-slate-300 mt-1">
-                Official institutional correspondence and certificates carry legal authority reserved for the School Principal & Academic Dean. System Administrators cannot generate or archive letters without an audited emergency Break-Glass justification, which triggers instant dispatches to School Manager (Dr. K. Musonda) and CEO (Mr. E. Mwansa).
+                Official institutional correspondence and certificates carry legal authority reserved for the School Principal & Academic Dean. System Administrators cannot generate or archive letters without documented administrative override, which immediately alerts the School Manager (Dr. K. Musonda) and CEO (Mr. E. Mwansa).
               </p>
             </div>
           </div>
           <div className="text-right shrink-0">
             <span className="text-[11px] font-bold text-amber-400 bg-amber-400/10 px-3 py-1.5 rounded-xl border border-amber-400/30 inline-block">
-              Emergency Protocol Armed
+              Override Controls Active
             </span>
           </div>
         </div>

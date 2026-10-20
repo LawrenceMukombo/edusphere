@@ -737,9 +737,9 @@ export default function AdminPage() {
           }`}
         >
           <Users className="w-4 h-4 text-sky-400" />
-          <span>Identity, Users & Separation of Powers</span>
+          <span>User Management</span>
           <span className="text-[10px] px-1.5 py-0.2 rounded bg-sky-500 text-slate-900 font-bold uppercase">
-            SoP Guarded
+            Users
           </span>
         </button>
 
@@ -825,7 +825,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* TAB: User Accounts & Separation of Powers Break-Glass Governance */}
+      {/* TAB: User Management & Access Control */}
       {adminTab === 'users' && (
         <div className="animate-in fade-in">
           <UserManagementConsole />

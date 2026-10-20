@@ -157,7 +157,7 @@ export function checkSeparationOfPowers(
       return {
         allowed: true,
         requiresOverride: false,
-        message: 'Active Emergency Break-Glass Override Authorized. Actions are logged and monitored.',
+        message: 'Administrative Override Authorized. Actions are logged and monitored.',
         taskMeta,
       };
     }
@@ -165,7 +165,7 @@ export function checkSeparationOfPowers(
     return {
       allowed: false,
       requiresOverride: true,
-      message: `Institutional Separation of Powers: System Administrators are restricted from performing "${taskMeta.title}". This duty belongs to ${taskMeta.intendedRole}. An emergency Break-Glass Override with mandatory justification is required.`,
+      message: `Administrative Access Restricted: System Administrators are restricted from performing "${taskMeta.title}". This duty belongs to ${taskMeta.intendedRole}. An authenticated administrative override with a documented reason is required.`,
       taskMeta,
     };
   }

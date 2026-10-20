@@ -107,12 +107,12 @@ export function BreakGlassGuardModal({
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white px-2 py-0.5 rounded-full">
-                  Separation of Powers Restricted
+                  Administrative Access Notice
                 </span>
-                <span className="text-xs text-rose-600 font-bold font-mono">Break-Glass Protocol</span>
+                <span className="text-xs text-rose-600 font-bold font-mono">Emergency Authorization</span>
               </div>
               <h3 className="text-lg font-black text-slate-900 mt-0.5">
-                Administrative Override Required
+                Restricted Operational Task
               </h3>
             </div>
           </div>
@@ -125,15 +125,15 @@ export function BreakGlassGuardModal({
           </button>
         </div>
 
-        {/* Legal & Policy Notice */}
+        {/* Policy Notice */}
         <div className="p-3.5 bg-rose-50/80 rounded-2xl border border-rose-200 text-xs text-rose-950 space-y-2">
           <div className="flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
             <div className="leading-relaxed">
-              <strong>System Administrators are barred from executing operational school duties:</strong>
+              <strong>System Administrators are restricted from direct school operations:</strong>
               <p className="text-slate-700 mt-1">
                 You are attempting to execute: <span className="font-bold text-slate-950">{taskMeta.title}</span>.
-                Under institutional corporate governance, this responsibility belongs exclusively to{' '}
+                Under institutional governance policy, this responsibility is assigned to{' '}
                 <span className="font-bold text-rose-900">{taskMeta.intendedRole}</span>.
               </p>
             </div>
@@ -224,7 +224,7 @@ export function BreakGlassGuardModal({
                 className="mt-0.5 rounded border-amber-400 text-rose-600 focus:ring-rose-500"
               />
               <span className="text-[11px] text-amber-950 font-semibold leading-tight">
-                I solemnly certify this is a bona fide operational emergency. I understand my action is permanently logged in the Break-Glass Ledger and an instant alert will be dispatched to the School Manager and CEO.
+                I certify that this is a valid operational requirement. I understand that this action will be permanently recorded in the administrative audit log and immediately communicated to the School Manager and CEO.
               </span>
             </label>
           </div>
@@ -243,7 +243,7 @@ export function BreakGlassGuardModal({
               onClick={onClose}
               className="px-4 py-2 font-semibold text-slate-600 hover:bg-slate-100 rounded-xl transition"
             >
-              Cancel / Abort Action
+              Cancel
             </button>
             <button
               type="submit"
@@ -251,7 +251,7 @@ export function BreakGlassGuardModal({
               className="inline-flex items-center gap-1.5 px-5 py-2.5 bg-rose-700 hover:bg-rose-800 text-white font-bold rounded-xl shadow-md transition disabled:opacity-50"
             >
               <Send className="w-4 h-4" />
-              <span>{isSubmitting ? 'Dispatching Executive Alert...' : 'Authorize Override & Alert CEO'}</span>
+              <span>{isSubmitting ? 'Sending Executive Notice...' : 'Authorize Administrative Override'}</span>
             </button>
           </div>
         </form>

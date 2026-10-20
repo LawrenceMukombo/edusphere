@@ -16,8 +16,16 @@ describe('Institutional Separation of Powers & Executive Governance Guardrails',
     username: 'admin.ict',
     fullName: 'System Administrator (IT Dept)',
     role: 'SUPER_ADMIN',
-    campusScope: 'ALL',
+    campusId: 'ALL',
     email: 'ict.admin@legacyschool.edu.zm',
+    phone: '+260 977 000001',
+    staffId: 'STAFF-IT-001',
+    is2FAEnabled: true,
+    is2FAVerified: true,
+    passwordLastChanged: new Date().toISOString(),
+    mustChangePassword: false,
+    failedLoginAttempts: 0,
+    accountLocked: false,
   };
 
   const bursarUser: UserSecurityProfile = {
@@ -25,17 +33,33 @@ describe('Institutional Separation of Powers & Executive Governance Guardrails',
     username: 'bursar.office',
     fullName: 'Mrs. Mary Chisenga',
     role: 'BURSAR',
-    campusScope: 'ALL',
+    campusId: 'ALL',
     email: 'bursar@legacyschool.edu.zm',
+    phone: '+260 977 000002',
+    staffId: 'STAFF-FIN-001',
+    is2FAEnabled: true,
+    is2FAVerified: true,
+    passwordLastChanged: new Date().toISOString(),
+    mustChangePassword: false,
+    failedLoginAttempts: 0,
+    accountLocked: false,
   };
 
-  const registrarUser: UserSecurityProfile = {
-    id: 'usr-reg-001',
-    username: 'admissions.reg',
-    fullName: 'Mr. Patrick Chanda',
-    role: 'REGISTRAR',
-    campusScope: 'ALL',
-    email: 'admissions@legacyschool.edu.zm',
+  const principalUser: UserSecurityProfile = {
+    id: 'usr-prin-001',
+    username: 'principal.office',
+    fullName: 'Mr. Emmanuel Mwansa',
+    role: 'PRINCIPAL',
+    campusId: 'ALL',
+    email: 'principal@legacyschool.edu.zm',
+    phone: '+260 977 000003',
+    staffId: 'STAFF-EXEC-001',
+    is2FAEnabled: true,
+    is2FAVerified: true,
+    passwordLastChanged: new Date().toISOString(),
+    mustChangePassword: false,
+    failedLoginAttempts: 0,
+    accountLocked: false,
   };
 
   beforeEach(() => {
@@ -59,7 +83,7 @@ describe('Institutional Separation of Powers & Executive Governance Guardrails',
       const check = checkSeparationOfPowers(superAdminUser, task);
       expect(check.allowed).toBe(false);
       expect(check.requiresOverride).toBe(true);
-      expect(check.message).toContain('Separation of Powers');
+      expect(check.message).toContain('Administrative Access Restricted');
       expect(EXECUTIVE_DISPATCH_RECIPIENTS).toHaveLength(2);
     }
   });
@@ -70,10 +94,10 @@ describe('Institutional Separation of Powers & Executive Governance Guardrails',
     expect(bursarCheck.allowed).toBe(true);
     expect(bursarCheck.requiresOverride).toBe(false);
 
-    // Registrar can grant learner access and admissions
-    const regCheck = checkSeparationOfPowers(registrarUser, 'GRANT_LEARNER_ACCESS');
-    expect(regCheck.allowed).toBe(true);
-    expect(regCheck.requiresOverride).toBe(false);
+    // Principal can grant learner access and admissions
+    const principalCheck = checkSeparationOfPowers(principalUser, 'GRANT_LEARNER_ACCESS');
+    expect(principalCheck.allowed).toBe(true);
+    expect(principalCheck.requiresOverride).toBe(false);
   });
 
   it('rejects break-glass override if emergency reason is insufficient (<15 characters)', () => {

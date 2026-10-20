@@ -509,11 +509,11 @@ export function UserManagementConsole() {
           <div className="flex items-center gap-2">
             <Users className="w-6 h-6 text-blue-600" />
             <h2 className="text-xl font-black text-slate-900 tracking-tight">
-              Identity & Access Governance (User Management)
+              User Management
             </h2>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Provision user accounts, assign role permissions, and enforce institutional Separation of Powers.
+            Provision user accounts, assign role permissions, and manage administrative access privileges.
           </p>
         </div>
 
@@ -544,7 +544,7 @@ export function UserManagementConsole() {
         </div>
       </div>
 
-      {/* SEPARATION OF POWERS COMPLIANCE CARD */}
+      {/* ADMINISTRATIVE ACCESS CONTROL CARD */}
       <div className="p-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 rounded-2xl text-white border border-slate-800 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start gap-3">
           <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-400/30 flex items-center justify-center shrink-0 mt-0.5">
@@ -553,12 +553,12 @@ export function UserManagementConsole() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-400/20 text-amber-300 border border-amber-400/30">
-                Institutional Separation of Powers Active
+                Administrative Access Controls Active
               </span>
-              <span className="text-xs text-slate-400 font-mono">Zambia Corporate Governance ISO-27001</span>
+              <span className="text-xs text-slate-400 font-mono">Governance Compliance</span>
             </div>
             <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
-              System Administrators are strictly prohibited from performing operational school tasks (e.g. collecting money, admitting learners, generating official letters). System Admin duties (user creation, backups, settings) are logged silently in the audit trail without reporting. Any emergency override on school tasks requires a mandatory reason and is instantly dispatched to the <strong>School Manager (Dr. K. Musonda)</strong> and the <strong>CEO (Mr. E. Mwansa)</strong>.
+              System Administrators are restricted from direct school operations (fee collection, admissions, official letters). Administrative actions like user management and backups are logged in the standard audit trail. Any emergency override on school operational tasks requires a mandatory documented reason and is communicated immediately to the <strong>School Manager (Dr. K. Musonda)</strong> and the <strong>CEO (Mr. E. Mwansa)</strong>.
             </p>
           </div>
         </div>
@@ -585,7 +585,7 @@ export function UserManagementConsole() {
             }`}
           >
             <ShieldAlert className="w-3.5 h-3.5 text-rose-300" />
-            <span>Break-Glass Overrides ({incidents.length})</span>
+            <span>Administrative Overrides ({incidents.length})</span>
           </button>
         </div>
       </div>
@@ -605,25 +605,25 @@ export function UserManagementConsole() {
         </div>
       )}
 
-      {/* VIEW 2: BREAK-GLASS OVERRIDES & EXECUTIVE DISPATCHES */}
+      {/* VIEW 2: ADMINISTRATIVE OVERRIDES & EXECUTIVE LOG */}
       {subTab === 'incidents' && (
         <div className="space-y-4 animate-in fade-in">
           <div className="p-4 bg-rose-50 border border-rose-200 rounded-2xl flex items-start gap-3">
             <ShieldAlert className="w-5 h-5 text-rose-700 shrink-0 mt-0.5" />
             <div className="text-xs text-rose-950">
-              <span className="font-bold block">Immutable Separation of Powers Audit Ledger</span>
-              Every instance where a System Administrator exercised an emergency break-glass override on operational school tasks (e.g. payments, documents, admissions) is documented here with verbatim justification and confirmation of instant dispatch to the School Manager and CEO.
+              <span className="font-bold block">Administrative Override Audit Log</span>
+              Every instance where a System Administrator exercised an administrative override on operational school tasks (e.g. payments, documents, admissions) is documented here with recorded justification and confirmation of instant dispatch to the School Manager and CEO.
             </div>
           </div>
 
           <EnterpriseTable
-            title="Emergency Administrative Overrides & Executive Incident Dispatches"
-            description="Immutable log of all operational school tasks accessed via emergency break-glass authorization."
+            title="Administrative Overrides & Executive Incident Log"
+            description="Official audit log of operational school tasks accessed via administrative override."
             data={incidents}
             columns={incidentColumns}
             isLoading={false}
             onRefresh={() => setIncidents(loadBreakGlassIncidents())}
-            exportFilename="edusphere-breakglass-overrides"
+            exportFilename="edusphere-administrative-overrides"
           />
         </div>
       )}
@@ -761,7 +761,7 @@ export function UserManagementConsole() {
                   <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-900 text-[11px] flex items-start gap-2">
                     <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
                     <span>
-                      <strong>Separation of Powers Notice:</strong> This user will be restricted to System Admin duties only. They will be barred from collecting money, admitting learners, or generating letters unless invoking an audited Break-Glass override.
+                      <strong>Administrative Role Notice:</strong> This user will be restricted to system administration only. They cannot record payments, admit learners, or generate letters without documented administrative override.
                     </span>
                   </div>
                 ) : (
