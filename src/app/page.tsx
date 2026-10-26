@@ -1,770 +1,946 @@
-// src/app/page.tsx — Executive Management Dashboard for Legacy School Solwezi
-'use client';
-
-import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
-  Users,
   GraduationCap,
-  CreditCard,
-  Briefcase,
-  CheckCircle2,
-  Clock,
-  ArrowRight,
-  TrendingUp,
   ShieldCheck,
-  Building2,
-  CalendarCheck,
-  AlertCircle,
-  Bed,
-  Sun,
-  Activity,
-  Zap,
-  DollarSign,
-  FileText,
-  UserCheck,
-  Fuel,
-  Droplets,
   Award,
-  Layers,
+  CheckCircle2,
+  Stethoscope,
+  HeartPulse,
+  BookOpenCheck,
+  Building2,
+  MapPin,
+  Phone,
+  Mail,
+  ArrowRight,
+  Clock,
+  Calendar,
+  FileText,
+  Users,
+  Compass,
   Sparkles,
-  Presentation,
-  Smartphone,
-  Download,
-  BookOpen,
+  ChevronRight,
+  ExternalLink,
+  Lock,
+  LogIn,
+  Hospital,
+  Bed,
+  Layers,
+  Search,
 } from 'lucide-react';
-import { InteractiveChart } from '@/components/InteractiveChart';
-import { useCampus } from '@/components/CampusContext';
-import { getFinancialSummary } from '@/server/services/financeReporting.service';
-import {
-  generateLegacyLearners,
-  LEGACY_STAFF_MEMBERS,
-  LEGACY_EXPENDITURES,
-  LEGACY_BOARDING_EXEATS,
-  LEGACY_STAFF_EVALUATIONS,
-  LEGACY_JOB_POSTINGS,
-  LEGACY_APPLICANTS,
-  LegacyLearnerBalance,
-  LegacyStaffMember,
-} from '@/server/services/legacySchoolData';
-import { SEED_SCHOOL_ASSETS, SchoolAssetItem } from '@/server/services/schoolAssetData';
+import { NwuchasLogo, NWUCHAS_IDENTITY } from '@/components/NwuchasLogo';
 
-export default function HomePage() {
-  const { selectedCampus, setSelectedCampus, campusInfo } = useCampus();
+export const metadata = {
+  title: 'North Western University College of Health and Applied Sciences (NWUCHAS)',
+  description:
+    'Official Portal of North Western University College of Health and Applied Sciences (NWUCHAS) in Manyama, Lumwana, Zambia. NMCZ & HPCZ accredited training in Registered Nursing, Clinical Medicine, and Public Health.',
+};
 
-  // 1. Authoritative Granular Datasets
-  const allLearners = useMemo(() => generateLegacyLearners(780), []);
-
-  // Filter learners granularly by active campus
-  const campusLearners = useMemo(() => {
-    if (selectedCampus === 'URBAN') {
-      return allLearners.filter((l) => l.campusName.includes('Urban'));
-    }
-    if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
-      return allLearners.filter(
-        (l) => l.campusName.includes('Mushitala') || l.campusName.includes('Kansanshi')
-      );
-    }
-    return allLearners;
-  }, [allLearners, selectedCampus]);
-
-  // Filter staff granularly by active campus
-  const campusStaff = useMemo(() => {
-    return LEGACY_STAFF_MEMBERS.filter((s) => {
-      if (selectedCampus === 'ALL') return true;
-      if (selectedCampus === 'URBAN') return s.campusId === 'LSS-URB' || s.campusId === 'CENTRAL';
-      return (
-        s.campusId === 'LSS-MSC' ||
-        s.campusId === 'LSS-KBC' ||
-        s.campusId === 'LSS-MDC' ||
-        s.campusId === 'CENTRAL'
-      );
-    });
-  }, [selectedCampus]);
-
-  // Financial summary from authoritative financial service
-  const finSummary = useMemo(() => {
-    return getFinancialSummary((selectedCampus as any) || 'ALL');
-  }, [selectedCampus]);
-
-  // 2. Granular Demographic & Attendance Metrics
-  const enrolled = campusLearners.length;
-  const capacity = selectedCampus === 'URBAN' ? 450 : selectedCampus === 'ALL' ? 1100 : 650;
-
-  const presentCount = useMemo(() => {
-    return campusLearners.filter(
-      (l) => l.todayAttendance === 'PRESENT' || l.todayAttendance === 'LATE'
-    ).length;
-  }, [campusLearners]);
-
-  const absentCount = useMemo(() => {
-    return campusLearners.filter((l) => l.todayAttendance === 'ABSENT').length;
-  }, [campusLearners]);
-
-  const todayAttendanceRate =
-    enrolled > 0 ? Number(((presentCount / enrolled) * 100).toFixed(1)) : 100;
-
-  // Boarders breakdown
-  const boarders = useMemo(() => {
-    return campusLearners.filter((l) => l.studentType === 'BOARDER');
-  }, [campusLearners]);
-
-  const boardersTotal = boarders.length;
-  const boardersPresent = useMemo(() => {
-    return boarders.filter(
-      (l) => l.todayAttendance === 'PRESENT' || l.todayAttendance === 'LATE'
-    ).length;
-  }, [boarders]);
-
-  const boysBoardersCount = useMemo(() => {
-    return boarders.filter((l) => l.gender === 'MALE').length;
-  }, [boarders]);
-
-  const girlsBoardersCount = useMemo(() => {
-    return boarders.filter((l) => l.gender === 'FEMALE').length;
-  }, [boarders]);
-
-  const dayScholarsCount = useMemo(() => {
-    return campusLearners.filter((l) => l.studentType !== 'BOARDER').length;
-  }, [campusLearners]);
-
-  const sickbayCount = useMemo(() => {
-    return campusLearners.filter((l) => (l.medicalProfile?.sickbayVisitsCount || 0) > 0).length;
-  }, [campusLearners]);
-
-  const activeExeats = useMemo(() => {
-    return LEGACY_BOARDING_EXEATS.filter((e) => {
-      if (selectedCampus === 'URBAN') return false;
-      return e.securityGateStatus !== 'RETURNED_ON_TIME';
-    }).length;
-  }, [selectedCampus]);
-
-  // 3. Granular HR & TCZ Metrics
-  const staffTotal = campusStaff.length;
-  const staffOnDuty = useMemo(() => {
-    return campusStaff.filter((s) => s.leaveBalanceDays > 0).length;
-  }, [campusStaff]);
-
-  const staffOnLeave = staffTotal - staffOnDuty;
-
-  const tczCompliantCount = useMemo(() => {
-    return campusStaff.filter((s) => s.tczStatus === 'COMPLIANT').length;
-  }, [campusStaff]);
-
-  const tczExpiringCount = useMemo(() => {
-    return campusStaff.filter((s) => s.tczStatus === 'EXPIRING_SOON').length;
-  }, [campusStaff]);
-
-  const tczComplianceRate =
-    staffTotal > 0 ? Number(((tczCompliantCount / staffTotal) * 100).toFixed(1)) : 100;
-
-  const activeVacanciesCount = useMemo(() => {
-    return LEGACY_JOB_POSTINGS.filter((j) => {
-      if (j.status !== 'ACTIVE') return false;
-      if (selectedCampus === 'ALL') return true;
-      if (selectedCampus === 'URBAN') return j.campusName.includes('Urban');
-      return j.campusName.includes('Mushitala') || j.campusName.includes('Kansanshi');
-    }).reduce((sum, j) => sum + j.vacancies, 0);
-  }, [selectedCampus]);
-
-  const applicantsCount = useMemo(() => {
-    return LEGACY_APPLICANTS.length;
-  }, []);
-
-  const completedAppraisalsCount = useMemo(() => {
-    return LEGACY_STAFF_EVALUATIONS.filter((e) => {
-      if (selectedCampus === 'ALL') return true;
-      return campusStaff.some((s) => s.id === e.staffId);
-    }).length;
-  }, [campusStaff, selectedCampus]);
-
-  // 4. Granular Fleet & Infrastructure Assets
-  const campusFleet = useMemo(() => {
-    return SEED_SCHOOL_ASSETS.filter((a: SchoolAssetItem) => {
-      if (a.category !== 'FLEET_TRANSPORT') return false;
-      if (selectedCampus === 'URBAN') return a.campus.includes('Urban');
-      if (selectedCampus === 'MUSHITALA') return a.campus.includes('Mushitala');
-      return true;
-    });
-  }, [selectedCampus]);
-
-  const campusPowerAsset = useMemo(() => {
-    return (
-      SEED_SCHOOL_ASSETS.find((a: SchoolAssetItem) => {
-        if (a.category !== 'POWER_ENERGY') return false;
-        if (selectedCampus === 'URBAN') return a.campus.includes('Urban');
-        return a.campus.includes('Mushitala');
-      }) || SEED_SCHOOL_ASSETS.find((a: SchoolAssetItem) => a.category === 'POWER_ENERGY')
-    );
-  }, [selectedCampus]);
-
-  const boysHallCapacity = 180;
-  const girlsHallCapacity = 170;
-
-  // 4. Granular Attendance Breakdown Chart (Aggregated per Class Cohort)
-  const attendanceChartData = useMemo(() => {
-    const classMap = new Map<string, { total: number; present: number; stage: string }>();
-
-    campusLearners.forEach((l) => {
-      const entry = classMap.get(l.className) || { total: 0, present: 0, stage: l.stage };
-      entry.total += 1;
-      if (l.todayAttendance === 'PRESENT' || l.todayAttendance === 'LATE') {
-        entry.present += 1;
-      }
-      classMap.set(l.className, entry);
-    });
-
-    return Array.from(classMap.entries()).map(([className, counts]) => ({
-      label: className.split('(')[0].trim(),
-      value: counts.total,
-      secondaryValue: counts.present,
-      category: counts.stage.replace(/_/g, ' '),
-    }));
-  }, [campusLearners]);
-
-  const attendanceSubtitle = useMemo(() => {
-    if (selectedCampus === 'URBAN') {
-      return `Real-time roll-call across Urban Day School (${enrolled} pupils enrolled across Early Childhood & Primary Wings, Solwezi Central)`;
-    } else if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
-      return `Real-time roll-call across Mushitala Campus (${enrolled} pupils enrolled across Boarding & Day Wings, near Kansanshi Mining Corridor)`;
-    } else {
-      return `Consolidated roll-call across all ${enrolled} learners at Mushitala Boarding Wing and Urban Day Scholar Campus`;
-    }
-  }, [selectedCampus, enrolled]);
-
-  // 5. Granular Expenditure Allocations from Audited Outflow Vouchers
-  const expenseBreakdown = useMemo(() => {
-    const disbursed = LEGACY_EXPENDITURES.filter((e) => {
-      if (e.status !== 'DISBURSED') return false;
-      if (selectedCampus === 'ALL') return true;
-      if (selectedCampus === 'URBAN') return e.campusId === 'LSS-URB' || e.campusId === 'CENTRAL';
-      return (
-        e.campusId === 'LSS-MSC' ||
-        e.campusId === 'LSS-KBC' ||
-        e.campusId === 'LSS-MDC' ||
-        e.campusId === 'CENTRAL'
-      );
-    });
-
-    const categoryMap = new Map<string, number>();
-    let total = 0;
-    disbursed.forEach((e) => {
-      categoryMap.set(e.categoryLabel, (categoryMap.get(e.categoryLabel) || 0) + e.amountZMW);
-      total += e.amountZMW;
-    });
-
-    const colors = [
-      'bg-amber-500',
-      'bg-blue-600',
-      'bg-emerald-600',
-      'bg-indigo-600',
-      'bg-purple-600',
-      'bg-slate-500',
-      'bg-rose-600',
-    ];
-
-    return Array.from(categoryMap.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([category, amount], idx) => ({
-        category,
-        amount,
-        pct: total > 0 ? Number(((amount / total) * 100).toFixed(1)) : 0,
-        color: colors[idx % colors.length],
-      }));
-  }, [selectedCampus]);
-
-  const expenseSubtitle = useMemo(() => {
-    if (selectedCampus === 'URBAN') {
-      return 'Audited outflows supporting Urban Day School teachers, solar power, shuttle buses, and classroom consumables.';
-    } else if (selectedCampus === 'MUSHITALA' || selectedCampus === 'KANSANSHI') {
-      return 'Audited outflows supporting boarding dining kitchen, mining corridor 250kVA generator backup, and STEM laboratories.';
-    } else {
-      return 'Audited outflows supporting boarding kitchen provisions, mining corridor power backup, teacher remuneration, and laboratories.';
-    }
-  }, [selectedCampus]);
-
-  const isUrban = selectedCampus === 'URBAN';
-
+export default function PublicCollegeLandingPage() {
   return (
-    <div className="space-y-8">
-      {/* Executive Welcome & Institutional Mission Banner */}
-      <div className="bg-gradient-to-r from-blue-950 via-blue-900 to-indigo-950 rounded-2xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden border border-blue-800/40">
-        <div className="relative z-10 max-w-3xl">
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold border border-amber-400/30">
-              <Award className="w-3.5 h-3.5 text-amber-300" />
-              Legacy School Solwezi • Stand # S/SOLWE/3177178
+    <div className="min-h-screen bg-slate-50 text-slate-800 selection:bg-blue-600 selection:text-white">
+      {/* Top Statutory & Intake Announcement Strip */}
+      <div className="bg-[#0b2545] text-slate-200 text-xs py-2 px-4 border-b border-blue-900/40">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-[#8DC63F]/20 px-2.5 py-0.5 text-[11px] font-bold text-[#8DC63F] border border-[#8DC63F]/40">
+              <Sparkles className="h-3 w-3 text-[#8DC63F]" />
+              2026 Admissions Open
             </span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-200 text-xs font-semibold border border-blue-400/20">
-              {campusInfo.badge}
+            <span className="hidden sm:inline text-slate-300">
+              January & Mid-Year Intakes: Diploma in Registered Nursing & Clinical Medicine.
             </span>
           </div>
 
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-white">
-            {campusInfo.name}
-          </h1>
-          <p className="mt-2 text-sm text-blue-100/90 leading-relaxed max-w-2xl">
-            Centralized operations, real-time morning and boarding attendance registers, transparent multi-channel fees reconciliation, and comprehensive staff management at your fingertips.
-          </p>
-
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className="flex items-center gap-4 text-xs font-medium">
             <Link
-              href="/attendance"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black shadow-md transition"
+              href="/apply"
+              className="text-[#8DC63F] hover:text-lime-200 font-bold flex items-center gap-1 transition"
             >
-              <CalendarCheck className="w-4 h-4 text-slate-900" />
-              <span>Operations & Attendance Register</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              Apply Online Now <ArrowRight className="h-3 w-3" />
             </Link>
-
+            <span className="text-slate-500">|</span>
             <Link
-              href="/finance"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-800/80 hover:bg-blue-700 text-white text-xs font-bold border border-blue-500/30 backdrop-blur-sm transition"
+              href="/login"
+              className="text-slate-300 hover:text-white flex items-center gap-1 transition"
             >
-              <DollarSign className="w-4 h-4 text-emerald-400" />
-              <span>Fees Ledger & Expenditures</span>
-            </Link>
-
-            <Link
-              href="/hr"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-800/80 hover:bg-blue-700 text-white text-xs font-bold border border-blue-500/30 backdrop-blur-sm transition"
-            >
-              <Briefcase className="w-4 h-4 text-amber-300" />
-              <span>Staff & HR Suite</span>
+              <Lock className="h-3 w-3 text-slate-400" /> Staff & Student Portals
             </Link>
           </div>
         </div>
-
-        {/* Ambient background decoration */}
-        <div className="absolute right-0 top-0 bottom-0 w-96 bg-gradient-to-l from-indigo-500/10 to-transparent pointer-events-none" />
       </div>
 
-      {/* KPI Cards Row — Operational Heartbeat (Granularly Computed from System Data) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* KPI 1: Enrollment & Capacity */}
-        <Link
-          href="/admissions"
-          className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between hover:shadow-md hover:border-blue-300 transition group cursor-pointer"
-        >
-          <div>
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-blue-700 transition">
-              Active Enrollment
-            </span>
-            <div className="text-2xl font-black text-slate-900 mt-1">
-              {enrolled} <span className="text-xs font-semibold text-slate-400">/ {capacity}</span>
-            </div>
-            <span className="text-[11px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
-              <TrendingUp className="w-3 h-3" />
-              {Math.round((enrolled / capacity) * 100)}% Campus Capacity
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-800 flex items-center justify-center ring-1 ring-blue-100 group-hover:bg-blue-600 group-hover:text-white transition">
-            <Users className="w-6 h-6" />
-          </div>
-        </Link>
+      {/* Main Public Navigation Header */}
+      <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20">
+            {/* Official NWUCHAS Brandmark & Emblem */}
+            <Link href="/" className="flex items-center gap-3.5 group hover:opacity-95 transition">
+              <NwuchasLogo variant="compact" size="md" />
+            </Link>
 
-        {/* KPI 2: Today's Attendance Rate */}
-        <Link
-          href="/attendance"
-          className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between hover:shadow-md hover:border-emerald-300 transition group cursor-pointer"
-        >
-          <div>
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-emerald-700 transition">
-              Today&apos;s Attendance
-            </span>
-            <div className="text-2xl font-black text-slate-900 mt-1">
-              {todayAttendanceRate}%
-            </div>
-            <span className="text-[11px] text-slate-600 font-medium flex items-center gap-1 mt-0.5">
-              <span className="w-2 h-2 rounded-full bg-rose-500" />
-              {absentCount} absentees logged today
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center ring-1 ring-emerald-100 group-hover:bg-emerald-600 group-hover:text-white transition">
-            <CalendarCheck className="w-6 h-6" />
-          </div>
-        </Link>
-
-        {/* KPI 3: Fee Collections Rate */}
-        <Link
-          href="/finance"
-          className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between hover:shadow-md hover:border-amber-300 transition group cursor-pointer"
-        >
-          <div>
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-amber-700 transition">
-              Term 3 Fees Recovery
-            </span>
-            <div className="text-2xl font-black text-slate-900 mt-1">
-              {finSummary.collectionRatePct}%
-            </div>
-            <span className="text-[11px] text-blue-700 font-bold flex items-center gap-1 mt-0.5">
-              ZMW {finSummary.formatted.totalCollected} collected
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 flex items-center justify-center ring-1 ring-amber-100 group-hover:bg-amber-500 group-hover:text-white transition">
-            <CreditCard className="w-6 h-6" />
-          </div>
-        </Link>
-
-        {/* KPI 4: Monthly Disbursed Expenses */}
-        <Link
-          href="/finance?tab=expenditures"
-          className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center justify-between hover:shadow-md hover:border-rose-300 transition group cursor-pointer"
-        >
-          <div>
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-rose-700 transition">
-              Operational Outflows
-            </span>
-            <div className="text-2xl font-black text-rose-700 mt-1">
-              ZMW {finSummary.formatted.totalExpenditures}
-            </div>
-            <span className="text-[11px] text-emerald-700 font-bold flex items-center gap-1 mt-0.5">
-              Net Surplus: {finSummary.formatted.cashSurplus}
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-700 flex items-center justify-center ring-1 ring-rose-100 group-hover:bg-rose-600 group-hover:text-white transition">
-            <DollarSign className="w-6 h-6" />
-          </div>
-        </Link>
-      </div>
-
-      {/* Boarding Village vs Day-Scholar Operations & Solwezi Corridor Infrastructure */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Card 1: Boarding Village (Mushitala) OR Day-Scholar Services (Urban) */}
-        {isUrban ? (
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
-                  <Sun className="w-4 h-4 text-amber-500" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">Urban Day-Scholar Services</h3>
-                  <span className="text-[10px] text-slate-500">Solwezi Central Day Operations</span>
-                </div>
-              </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                {dayScholarsCount} Day Scholars
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <span className="text-slate-500 block text-[10px] uppercase font-bold">Day Catering Hall</span>
-                <span className="text-base font-black text-slate-900 mt-0.5 block">{dayScholarsCount} / {dayScholarsCount} Lunches</span>
-                <span className="text-[10px] text-emerald-600 font-semibold">100% Accounted • Head: M. Bwalya</span>
-              </div>
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <span className="text-slate-500 block text-[10px] uppercase font-bold">Central Shuttle Fleet</span>
-                <span className="text-base font-black text-slate-900 mt-0.5 block">{campusFleet.length} Vehicles Active</span>
-                <span className="text-[10px] text-emerald-600 font-semibold">100% Monitored • Fleet Supervisor: M. Chilufya</span>
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-1 border-t border-slate-100 text-xs">
-              <div className="flex items-center justify-between text-slate-700">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  Morning Assembly Registration:
-                </span>
-                <span className="font-bold text-emerald-700">
-                  {todayAttendanceRate}% ({presentCount} / {enrolled} Present)
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-slate-700">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-500" />
-                  Afternoon Prep & Activities:
-                </span>
-                <span className="font-bold text-amber-700">100% Supervised</span>
-              </div>
-              <div className="flex items-center justify-between text-slate-700">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-blue-500" />
-                  Sickbay / First Aid Station:
-                </span>
-                <span className="font-bold text-blue-700">{sickbayCount} Minor Consultations</span>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Link
-                href="/attendance"
-                className="block text-center w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs rounded-xl transition"
-              >
-                Manage Day Attendance & Bus Routes &rarr;
+            {/* Desktop Navigation Links */}
+            <nav className="hidden lg:flex items-center gap-7 text-sm font-semibold text-slate-700">
+              <Link href="#about" className="hover:text-[#007B99] transition">
+                About Us
               </Link>
-              <button
-                type="button"
-                onClick={() => setSelectedCampus('MUSHITALA')}
-                className="w-full text-center py-1 text-slate-500 hover:text-indigo-700 text-[11px] font-semibold transition"
+              <Link href="#vision" className="hover:text-[#007B99] transition">
+                Vision & Mission
+              </Link>
+              <Link href="#programmes" className="hover:text-[#007B99] transition">
+                Academic Programmes
+              </Link>
+              <Link href="#admissions" className="hover:text-[#007B99] transition">
+                Admissions
+              </Link>
+              <Link href="#clinical" className="hover:text-[#007B99] transition">
+                Clinical Rotations
+              </Link>
+              <Link href="#facilities" className="hover:text-[#007B99] transition">
+                Campus Facilities
+              </Link>
+              <Link href="#contact" className="hover:text-[#007B99] transition">
+                Contact
+              </Link>
+            </nav>
+
+            {/* Call to Actions */}
+            <div className="flex items-center gap-3">
+              <Link
+                href="/login"
+                className="hidden sm:inline-flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-xs font-semibold text-slate-700 hover:border-[#007B99] hover:text-[#007B99] hover:bg-sky-50/50 transition"
               >
-                Switch to Mushitala Boarding Wing &rarr;
-              </button>
+                <LogIn className="h-3.5 w-3.5" /> Sign In
+              </Link>
+              <Link
+                href="/apply"
+                className="inline-flex items-center gap-2 rounded-lg bg-[#007B99] px-4 py-2.5 text-xs sm:text-sm font-bold text-white shadow-sm hover:bg-[#00627a] transition active:scale-95"
+              >
+                Apply Online <ArrowRight className="h-4 w-4" />
+              </Link>
             </div>
           </div>
-        ) : (
-          <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold">
-                  <Bed className="w-4 h-4" />
+        </div>
+      </header>
+
+      {/* Hero Section */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#0b2545] via-[#0e315d] to-[#123e75] text-white pt-16 pb-24 lg:pt-20 lg:pb-32">
+        {/* Subtle decorative grid background */}
+        <div
+          className="absolute inset-0 opacity-10 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none"
+          aria-hidden="true"
+        />
+
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-12 gap-12 items-center">
+            {/* Left Hero Content */}
+            <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+              <div className="inline-flex flex-wrap items-center justify-center lg:justify-start gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#8DC63F]/20 border border-[#8DC63F]/40 px-3 py-1 text-xs font-bold text-[#8DC63F]">
+                  <ShieldCheck className="h-3.5 w-3.5 text-[#8DC63F]" />
+                  HPCZ & NMCZ Verified Institution
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#007B99]/20 border border-[#007B99]/40 px-3 py-1 text-xs font-bold text-sky-200">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-[#007B99]" />
+                  Higher Education Authority (HEA) Registered
+                </span>
+              </div>
+
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.15]">
+                Empowering the Next Generation of{' '}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-200 via-lime-200 to-pink-200">
+                  Healthcare Pioneers
+                </span>
+              </h1>
+
+              <p className="text-base sm:text-lg text-slate-200 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-normal">
+                North Western University College of Health and Applied Sciences (NWUCHAS) is a premier
+                tertiary healthcare institution situated in Manyama, Lumwana, Zambia. We deliver rigorous,
+                hands-on clinical education in Registered Nursing, Clinical Medicine, and Public Health.
+              </p>
+
+              <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
+                <Link
+                  href="/apply"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl bg-[#8DC63F] hover:bg-[#72a330] text-slate-950 font-black px-7 py-3.5 text-sm sm:text-base shadow-lg shadow-[#8DC63F]/25 transition active:scale-95 cursor-pointer"
+                >
+                  <GraduationCap className="h-5 w-5" />
+                  Start 2026 Application
+                </Link>
+
+                <Link
+                  href="#programmes"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[#007B99] hover:bg-[#00627a] text-white font-bold px-6 py-3.5 text-sm sm:text-base border border-[#007B99]/40 shadow-sm transition"
+                >
+                  <BookOpenCheck className="h-5 w-5 text-white" />
+                  Explore Programmes
+                </Link>
+
+                <Link
+                  href="/apply?tab=track"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl text-blue-200 hover:text-white px-4 py-3.5 text-sm font-semibold transition"
+                >
+                  <Search className="h-4 w-4" /> Track Existing Application
+                </Link>
+              </div>
+
+              {/* Fast Facts Pillars */}
+              <div className="pt-6 grid grid-cols-2 sm:grid-cols-3 gap-4 border-t border-blue-800/40 text-left">
+                <div>
+                  <div className="text-2xl font-black text-white">100%</div>
+                  <div className="text-xs text-blue-200">Accredited Curricula</div>
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">Boarding Village Operations</h3>
-                  <span className="text-[10px] text-slate-500">Kansanshi Boarding Wing (Mushitala)</span>
+                  <div className="text-2xl font-black text-white">Practical</div>
+                  <div className="text-xs text-blue-200">Hospital Ward Rotations</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-black text-white">Manyama</div>
+                  <div className="text-xs text-blue-200">Kalumbila Campus</div>
                 </div>
               </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                {boardersTotal} Boarders
-              </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <span className="text-slate-500 block text-[10px] uppercase font-bold">Kansanshi Boys Hall</span>
-                <span className="text-base font-black text-slate-900 mt-0.5 block">{boysBoardersCount} / {boysHallCapacity} Beds</span>
-                <span className="text-[10px] text-emerald-600 font-semibold">{Math.round((boysBoardersCount / boysHallCapacity) * 100)}% Occupied • Warden: K. Phiri</span>
-              </div>
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <span className="text-slate-500 block text-[10px] uppercase font-bold">Kalumbila Girls Hall</span>
-                <span className="text-base font-black text-slate-900 mt-0.5 block">{girlsBoardersCount} / {girlsHallCapacity} Beds</span>
-                <span className="text-[10px] text-emerald-600 font-semibold">{Math.round((girlsBoardersCount / girlsHallCapacity) * 100)}% Occupied • Matron: B. Kalenga</span>
-              </div>
-            </div>
+            {/* Right Hero Feature Card */}
+            <div className="lg:col-span-5">
+              <div className="rounded-2xl border border-white/15 bg-white/10 p-6 sm:p-8 backdrop-blur-md shadow-2xl space-y-6">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="grid h-10 w-10 place-items-center rounded-lg bg-[#007B99]/30 text-sky-200 border border-[#007B99]/50">
+                      <Stethoscope className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-white text-base">Key Admission Windows</h3>
+                      <p className="text-xs text-blue-200">2026 Academic Calendar</p>
+                    </div>
+                  </div>
+                  <span className="rounded-full bg-[#EC008C]/20 text-[#EC008C] text-[11px] font-black px-2.5 py-0.5 border border-[#EC008C]/40 animate-pulse">
+                    Active Intake
+                  </span>
+                </div>
 
-            <div className="space-y-2 pt-1 border-t border-slate-100 text-xs">
-              <div className="flex items-center justify-between text-slate-700">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                  Evening Prep Roll-Call Status:
-                </span>
-                <span className="font-bold text-emerald-700">
-                  {boardersTotal > 0 ? Number(((boardersPresent / boardersTotal) * 100).toFixed(1)) : 100}% Accounted
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-slate-700">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-amber-500" />
-                  Active Authorized Exeats:
-                </span>
-                <span className="font-bold text-amber-700">{activeExeats} Students</span>
-              </div>
-              <div className="flex items-center justify-between text-slate-700">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-blue-500" />
-                  Sickbay In-Patients:
-                </span>
-                <span className="font-bold text-blue-700">{sickbayCount} In-Patients Monitored</span>
-              </div>
-            </div>
+                <div className="space-y-4">
+                  <div className="rounded-xl bg-white/5 border border-white/10 p-4 transition hover:bg-white/10">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sm text-white">January 2026 Main Intake</span>
+                      <span className="text-xs font-bold text-[#8DC63F]">Enrollment Open</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-1">
+                      Full-time Diploma in Registered Nursing (RN) & Diploma in Clinical Medicine (COG).
+                    </p>
+                    <div className="mt-3 flex items-center justify-between text-xs text-blue-200">
+                      <span>Requirement: 5 O-Level Credits</span>
+                      <Link href="/apply" className="text-[#8DC63F] font-bold hover:underline flex items-center gap-1">
+                        Apply Now →
+                      </Link>
+                    </div>
+                  </div>
 
-            <Link
-              href="/boarding"
-              className="block text-center w-full py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-800 font-bold text-xs rounded-xl transition"
-            >
-              Manage Boarding Roll-Calls & Exeats &rarr;
-            </Link>
-          </div>
-        )}
+                  <div className="rounded-xl bg-white/5 border border-white/10 p-4 transition hover:bg-white/10">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-sm text-white">July 2026 Mid-Year Intake</span>
+                      <span className="text-xs font-semibold text-blue-200">Advance Registration</span>
+                    </div>
+                    <p className="text-xs text-slate-300 mt-1">
+                      Diploma in Public Health & In-Service Bridging Programmes.
+                    </p>
+                    <div className="mt-3 flex items-center justify-between text-xs text-blue-200">
+                      <span>Campus: Manyama Main Campus</span>
+                      <Link href="/apply" className="text-blue-300 font-bold hover:underline flex items-center gap-1">
+                        Pre-register →
+                      </Link>
+                    </div>
+                  </div>
+                </div>
 
-        {/* Solwezi Mining Corridor Utility & Power Monitor */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center font-bold">
-                <Zap className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Solwezi Utilities & Infrastructure</h3>
-                <span className="text-[10px] text-slate-500">
-                  {isUrban ? 'Solwezi Central Campus Resiliency' : 'Kansanshi & Mushitala Resiliency'}
-                </span>
-              </div>
-            </div>
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              100% Operational
-            </span>
-          </div>
-
-          <div className="space-y-3 text-xs">
-            <div>
-              <div className="flex justify-between font-bold text-slate-800 mb-1">
-                <span className="flex items-center gap-1.5">
-                  <Fuel className="w-3.5 h-3.5 text-amber-600" />
-                  {campusPowerAsset?.name || (isUrban ? '50kVA Hybrid Solar Inverter' : '250kVA Standby Diesel Generator')}
-                </span>
-                <span className="text-emerald-700">Status: {campusPowerAsset?.condition || 'EXCELLENT'}</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-2">
-                <div className="bg-amber-500 h-2 rounded-full transition-all duration-500" style={{ width: isUrban ? '90%' : '82%' }} />
-              </div>
-              <span className="text-[10px] text-slate-500 block mt-0.5">
-                Asset: {campusPowerAsset?.assetTag || 'LSS-PWR-001'} • Custodian: {campusPowerAsset?.custodianName || 'Patrick Banda'}
-              </span>
-            </div>
-
-            <div className="pt-2 border-t border-slate-100 space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-slate-600">
-                  <Droplets className="w-3.5 h-3.5 text-sky-600" />
-                  Solar Water Boreholes:
-                </span>
-                <span className="font-bold text-slate-900">
-                  {isUrban ? 'Solar Pumping Active' : 'Dual-Tank Storage Full'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-slate-600">
-                  <Activity className="w-3.5 h-3.5 text-emerald-600" />
-                  High-Speed Starlink / Liquid Mesh:
-                </span>
-                <span className="font-bold text-emerald-700">
-                  {isUrban ? '184 Mbps Low Latency' : '220 Mbps Dedicated Mining Corridor'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-1.5 text-slate-600">
-                  <Building2 className="w-3.5 h-3.5 text-blue-600" />
-                  Campus Transit Fleet:
-                </span>
-                <span className="font-bold text-slate-900">
-                  {campusFleet.length} Vehicles Active ({campusFleet.map((f: SchoolAssetItem) => f.name.includes('Reg:') ? f.name.split('Reg:')[1].replace(')', '').trim() : f.name.split(' ')[0]).join(', ')})
-                </span>
+                <div className="rounded-xl bg-blue-900/60 border border-blue-700/50 p-4 flex items-start gap-3">
+                  <Hospital className="h-5 w-5 text-blue-300 shrink-0 mt-0.5" />
+                  <div className="text-xs text-blue-100 leading-relaxed">
+                    <strong className="text-white">Accredited Clinical Attachment Sites:</strong> Ward rotations
+                    conducted at Solwezi General Hospital, Lumwana First Level Hospital, and district health centres.
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-
-          <Link
-            href="/gis"
-            className="block text-center w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold text-xs rounded-xl transition"
-          >
-            View Solwezi Campuses GIS & Transit &rarr;
-          </Link>
         </div>
+      </section>
 
-        {/* Staff & HR Suite Snapshot */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center font-bold">
-                <Briefcase className="w-4 h-4" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Staffing & TCZ Compliance</h3>
-                <span className="text-[10px] text-slate-500">Zambia Education Standard 2026</span>
-              </div>
-            </div>
-            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-              {staffOnDuty} / {staffTotal} on Duty
+      {/* Institutional Vision, Mission & Strategic Pillars (#vision) */}
+      <section id="vision" className="py-20 bg-white border-b border-slate-200 scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#007B99]">
+              Institutional Foundation
             </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0b2545] tracking-tight">
+              Vision, Mission & Core Values
+            </h2>
+            <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+              NWUCHAS was founded to address healthcare workforce deficits in Zambia by cultivating clinicians
+              and nurses with unyielding professional integrity, diagnostic proficiency, and empathetic care.
+            </p>
           </div>
 
-          <div className="space-y-3 text-xs">
-            <div className="bg-emerald-50/60 p-3 rounded-xl border border-emerald-200/60">
-              <div className="flex items-center justify-between font-bold text-emerald-900">
-                <span>TCZ Practising Certificate Audit</span>
-                <span>{tczComplianceRate}% Compliant</span>
+          <div className="mt-14 grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Vision Card */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-8 shadow-xs hover:shadow-md transition">
+              <div className="grid h-12 w-12 place-items-center rounded-xl bg-sky-50 text-[#007B99] border border-[#007B99]/30 mb-6">
+                <Compass className="h-6 w-6" />
               </div>
-              <p className="text-[11px] text-emerald-700 mt-0.5">
-                {tczCompliantCount} of {staffTotal} staff certified with Teaching Council of Zambia; {tczExpiringCount} renewal pending.
+              <h3 className="text-xl font-bold text-[#0b2545]">Our Institutional Vision</h3>
+              <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+                To be a centre of excellence in the education, training, and development of ethical, competent,
+                and innovative health professionals in Zambia and across the Southern African sub-region.
               </p>
             </div>
 
-            <div className="space-y-2 pt-1 border-t border-slate-100 text-xs">
-              <div className="flex items-center justify-between text-slate-700">
-                <span>Staff on Approved Leave:</span>
-                <span className="font-bold text-amber-700">
-                  {staffOnLeave} Staff Member{staffOnLeave === 1 ? '' : 's'}
-                </span>
+            {/* Mission Card */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-8 shadow-xs hover:shadow-md transition">
+              <div className="grid h-12 w-12 place-items-center rounded-xl bg-lime-50 text-[#5c8426] border border-[#8DC63F]/40 mb-6">
+                <HeartPulse className="h-6 w-6" />
               </div>
-              <div className="flex items-center justify-between text-slate-700">
-                <span>Active Recruitment Vacancies:</span>
-                <span className="font-bold text-blue-700">
-                  {activeVacanciesCount} Position{activeVacanciesCount === 1 ? '' : 's'} ({applicantsCount} Applicants)
-                </span>
+              <h3 className="text-xl font-bold text-[#0b2545]">Our Mission</h3>
+              <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+                To provide quality, learner-centred, and practice-driven education and research in health and applied
+                sciences that directly responds to community healthcare needs and global standards.
+              </p>
+            </div>
+
+            {/* Core Values Card */}
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-8 shadow-xs hover:shadow-md transition md:col-span-2 lg:col-span-1">
+              <div className="grid h-12 w-12 place-items-center rounded-xl bg-pink-50 text-[#EC008C] border border-[#EC008C]/30 mb-6">
+                <Award className="h-6 w-6" />
               </div>
-              <div className="flex items-center justify-between text-slate-700">
-                <span>Completed Term Appraisals:</span>
-                <span className="font-bold text-slate-900">
-                  {completedAppraisalsCount} / {staffTotal} Staff Evaluated
-                </span>
-              </div>
+              <h3 className="text-xl font-bold text-[#0b2545]">Core Values</h3>
+              <ul className="mt-3 space-y-2 text-sm text-slate-600">
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-[#8DC63F] shrink-0" />
+                  <strong>Clinical Excellence:</strong> High mastery of skills & diagnosis.
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-[#8DC63F] shrink-0" />
+                  <strong>Compassion:</strong> Patient-first, dignified care.
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-[#8DC63F] shrink-0" />
+                  <strong>Integrity:</strong> Honest and accountable professional conduct.
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-[#8DC63F] shrink-0" />
+                  <strong>Community Impact:</strong> Serving rural and industrial health needs.
+                </li>
+              </ul>
             </div>
           </div>
-
-          <Link
-            href="/hr"
-            className="block text-center w-full py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 font-bold text-xs rounded-xl transition"
-          >
-            Open Full HR & Recruitment Suite &rarr;
-          </Link>
         </div>
-      </div>
+      </section>
 
-      {/* Analytics Row: Attendance Breakdown & Expenditure Inflows vs Outflows */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Analytics Card 1: Attendance Distribution */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Classroom Morning Roll-Call Adherence</h3>
-              <p className="text-xs text-slate-500 mt-0.5">{attendanceSubtitle}</p>
+      {/* Academic Programmes Catalogue (#programmes) */}
+      <section id="programmes" className="py-20 bg-slate-100/70 border-b border-slate-200 scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="max-w-2xl space-y-2">
+              <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#007B99]">
+                Tertiary Health Education
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0b2545] tracking-tight">
+                Academic Programmes & Curricula
+              </h2>
+              <p className="text-sm sm:text-base text-slate-600">
+                Our accredited tertiary programmes combine rigorous didactic classroom theory with simulated lab practice
+                and hospital clinical attachments.
+              </p>
             </div>
             <Link
-              href="/attendance"
-              className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1 transition"
+              href="/apply"
+              className="inline-flex items-center gap-2 text-sm font-bold text-[#007B99] hover:text-[#00627a] transition"
             >
-              <span>Full Register</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              View Application Requirements →
             </Link>
           </div>
 
-          <InteractiveChart
-            type="bar"
-            data={attendanceChartData}
-            title="Class Attendance Breakdown (Enrolled vs Present Today)"
-            primaryLabel="Enrolled Pupils"
-            secondaryLabel="Present Today"
-          />
-        </div>
+          <div className="mt-12 grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {/* Programme 1: Registered Nursing */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm hover:shadow-lg transition-all flex flex-col justify-between hover:border-[#8DC63F]/50">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="rounded-md bg-[#8DC63F]/15 text-[#5c8426] border border-[#8DC63F]/40 text-xs font-bold px-2.5 py-1">
+                    NMCZ Accredited
+                  </span>
+                  <span className="text-xs font-semibold text-slate-500">3 Years • Full Time</span>
+                </div>
+                <h3 className="text-xl font-bold text-[#0b2545]">
+                  Diploma in Registered Nursing (RN)
+                </h3>
+                <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+                  Prepares professional registered nurses to deliver comprehensive general, pediatric, psychiatric,
+                  and community nursing care with high clinical competencies and leadership.
+                </p>
 
-        {/* Analytics Card 2: Operational Expenditures Breakdown */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <div>
-              <h3 className="text-base font-bold text-slate-900">Monthly Disbursed Expenditures</h3>
-              <p className="text-xs text-slate-500 mt-0.5">{expenseSubtitle}</p>
+                <div className="mt-6 pt-6 border-t border-slate-100 space-y-2 text-xs">
+                  <div className="font-bold text-slate-700">Entry Requirements:</div>
+                  <p className="text-slate-600">
+                    Five (5) O-Level Credits in ECZ/GCE or equivalent: English Language, Mathematics,
+                    Biology / Science, and two other subjects.
+                  </p>
+                  <div className="font-bold text-slate-700 pt-2">Professional Body:</div>
+                  <p className="text-slate-600">Nursing and Midwifery Council of Zambia (NMCZ)</p>
+                </div>
+              </div>
+
+              <div className="mt-8 pt-4 border-t border-slate-100">
+                <Link
+                  href="/apply?programme=nursing"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#007B99] hover:bg-[#00627a] text-white font-bold py-2.5 text-xs shadow-xs transition"
+                >
+                  Apply for Registered Nursing <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
             </div>
-            <Link
-              href="/finance?tab=expenditures"
-              className="text-xs font-bold text-blue-700 hover:text-blue-900 flex items-center gap-1 transition"
-            >
-              <span>Expense Ledger</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+
+            {/* Programme 2: Clinical Medicine */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm hover:shadow-lg transition-all flex flex-col justify-between hover:border-[#007B99]/50">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="rounded-md bg-[#007B99]/15 text-[#007B99] border border-[#007B99]/40 text-xs font-bold px-2.5 py-1">
+                    HPCZ Accredited
+                  </span>
+                  <span className="text-xs font-semibold text-slate-500">3 Years • Full Time</span>
+                </div>
+                <h3 className="text-xl font-bold text-[#0b2545]">
+                  Diploma in Clinical Medicine (COG)
+                </h3>
+                <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+                  Trains Clinical Officers (General) to diagnose, manage medical emergencies, perform essential
+                  minor surgical and obstetric procedures, and administer primary healthcare.
+                </p>
+
+                <div className="mt-6 pt-6 border-t border-slate-100 space-y-2 text-xs">
+                  <div className="font-bold text-slate-700">Entry Requirements:</div>
+                  <p className="text-slate-600">
+                    Five (5) O-Level Credits in ECZ/GCE: English Language, Mathematics, Biology,
+                    Physical Science / Chemistry / Physics, and any other subject.
+                  </p>
+                  <div className="font-bold text-slate-700 pt-2">Professional Body:</div>
+                  <p className="text-slate-600">Health Professions Council of Zambia (HPCZ)</p>
+                </div>
+              </div>
+
+              <div className="mt-8 pt-4 border-t border-slate-100">
+                <Link
+                  href="/apply?programme=clinical"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#007B99] hover:bg-[#00627a] text-white font-bold py-2.5 text-xs shadow-xs transition"
+                >
+                  Apply for Clinical Medicine <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </div>
+
+            {/* Programme 3: Public Health */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-7 shadow-sm hover:shadow-lg transition-all flex flex-col justify-between md:col-span-2 lg:col-span-1 hover:border-[#EC008C]/50">
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <span className="rounded-md bg-[#EC008C]/15 text-[#c70076] border border-[#EC008C]/30 text-xs font-bold px-2.5 py-1">
+                    HPCZ & HEA Approved
+                  </span>
+                  <span className="text-xs font-semibold text-slate-500">3 Years • Full / Blended</span>
+                </div>
+                <h3 className="text-xl font-bold text-[#0b2545]">
+                  Diploma in Public Health
+                </h3>
+                <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+                  Equips professionals with epidemiological surveillance, occupational health & safety in mining,
+                  environmental sanitation, infectious disease control, and health policy management.
+                </p>
+
+                <div className="mt-6 pt-6 border-t border-slate-100 space-y-2 text-xs">
+                  <div className="font-bold text-slate-700">Entry Requirements:</div>
+                  <p className="text-slate-600">
+                    Five (5) O-Level Credits in ECZ/GCE or equivalent including English Language, Mathematics,
+                    and a Science subject.
+                  </p>
+                  <div className="font-bold text-slate-700 pt-2">Focus Areas:</div>
+                  <p className="text-slate-600">Community Health, Mining Health & Epidemiology</p>
+                </div>
+              </div>
+
+              <div className="mt-8 pt-4 border-t border-slate-100">
+                <Link
+                  href="/apply?programme=public-health"
+                  className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#007B99] hover:bg-[#00627a] text-white font-bold py-2.5 text-xs shadow-xs transition"
+                >
+                  Apply for Public Health <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Admissions Journey & How to Apply (#admissions) */}
+      <section id="admissions" className="py-20 bg-white border-b border-slate-200 scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#007B99]">
+              Admissions Portal
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0b2545] tracking-tight">
+              How to Apply — Step-by-Step Guide
+            </h2>
+            <p className="text-sm sm:text-base text-slate-600">
+              Applying to NWUCHAS is completely streamlined. Follow these five transparent steps to secure your place.
+            </p>
           </div>
 
-          {/* Granular Categories Progress Bars */}
-          <div className="space-y-3 pt-2">
-            {expenseBreakdown.map((item, idx) => (
-              <div key={idx} className="space-y-1">
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="text-slate-800">{item.category}</span>
-                  <span className="font-mono text-slate-900">
-                    ZMW {item.amount.toLocaleString()} ({item.pct}%)
+          <div className="mt-16 grid sm:grid-cols-2 lg:grid-cols-5 gap-6">
+            {/* Step 1 */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 relative">
+              <span className="text-3xl font-black text-blue-200">01</span>
+              <h3 className="font-bold text-slate-900 mt-2 text-base">Check Criteria</h3>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                Ensure you meet the minimum entry requirements: 5 O-Level credits in Zambian GCE / ECZ.
+              </p>
+            </div>
+
+            {/* Step 2 */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 relative">
+              <span className="text-3xl font-black text-blue-200">02</span>
+              <h3 className="font-bold text-slate-900 mt-2 text-base">Prepare Docs</h3>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                Have certified copies of your ECZ statement of results, NRC, and passport photograph ready.
+              </p>
+            </div>
+
+            {/* Step 3 */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 relative">
+              <span className="text-3xl font-black text-blue-200">03</span>
+              <h3 className="font-bold text-slate-900 mt-2 text-base">Apply Online</h3>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                Complete the online form and immediately obtain your unique NWU-APP tracking number.
+              </p>
+            </div>
+
+            {/* Step 4 */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 relative">
+              <span className="text-3xl font-black text-blue-200">04</span>
+              <h3 className="font-bold text-slate-900 mt-2 text-base">Screening</h3>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                The admissions registry verifies qualifications and communicates selection committee decisions.
+              </p>
+            </div>
+
+            {/* Step 5 */}
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 relative">
+              <span className="text-3xl font-black text-blue-200">05</span>
+              <h3 className="font-bold text-slate-900 mt-2 text-base">Enrollment</h3>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                Receive your provisional admission offer letter, accept online, and complete professional indexing.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-12 text-center">
+            <Link
+              href="/apply"
+              className="inline-flex items-center gap-2 rounded-xl bg-[#8DC63F] hover:bg-[#72a330] text-slate-950 font-black px-8 py-3.5 text-sm shadow-md shadow-[#8DC63F]/25 transition active:scale-95 cursor-pointer"
+            >
+              Start Your Online Application Now <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* Clinical Attachments & Hospital Rotations (#clinical) */}
+      <section id="clinical" className="py-20 bg-slate-900 text-white scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-6 space-y-5">
+              <span className="text-xs font-bold uppercase tracking-[0.18em] text-cyan-400">
+                Real Clinical Experience
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
+                Hospital Rotations & Hands-On Ward Attachments
+              </h2>
+              <p className="text-sm sm:text-base text-slate-300 leading-relaxed">
+                At NWUCHAS, healthcare education goes beyond lectures. Our students complete intensive, accredited
+                clinical rotations under the direct supervision of certified preceptors, medical doctors, and nurse tutors.
+              </p>
+
+              <div className="space-y-3 pt-2">
+                <div className="flex items-start gap-3">
+                  <div className="grid h-8 w-8 place-items-center rounded-lg bg-cyan-500/20 text-cyan-300 shrink-0 mt-0.5">
+                    <Hospital className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-white">Solwezi General Hospital</h3>
+                    <p className="text-xs text-slate-400">
+                      Provincial tertiary hospital providing major surgical, internal medicine, pediatric, and obstetric rotations.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="grid h-8 w-8 place-items-center rounded-lg bg-cyan-500/20 text-cyan-300 shrink-0 mt-0.5">
+                    <Hospital className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-white">Lumwana First Level Hospital</h3>
+                    <p className="text-xs text-slate-400">
+                      Emergency medicine, trauma management, and industrial healthcare clinical placements.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <div className="grid h-8 w-8 place-items-center rounded-lg bg-cyan-500/20 text-cyan-300 shrink-0 mt-0.5">
+                    <Hospital className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-white">Manyama Rural Health Facilities</h3>
+                    <p className="text-xs text-slate-400">
+                      Maternal child health (MCH), immunisation outreach, and primary community healthcare.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-6">
+              <div className="rounded-2xl border border-slate-800 bg-slate-800/60 p-8 space-y-6">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                  <HeartPulse className="h-5 w-5 text-cyan-400" /> Clinical Competency Assurance
+                </h3>
+                <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                  Every clinical student maintains an electronic logbook tracking ward hours, procedures observed,
+                  assisted, and performed independently in compliance with NMCZ and HPCZ logbook regulations.
+                </p>
+
+                <div className="grid grid-cols-2 gap-4 pt-2">
+                  <div className="rounded-xl bg-slate-900/80 p-4 border border-slate-700">
+                    <div className="text-2xl font-black text-cyan-400">100%</div>
+                    <div className="text-xs text-slate-300 mt-1">Preceptor Supervised</div>
+                  </div>
+                  <div className="rounded-xl bg-slate-900/80 p-4 border border-slate-700">
+                    <div className="text-2xl font-black text-cyan-400">85%</div>
+                    <div className="text-xs text-slate-300 mt-1">Attendance Threshold</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Campus Facilities (#facilities) */}
+      <section id="facilities" className="py-20 bg-slate-50 border-b border-slate-200 scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#007B99]">
+              Campus Infrastructure
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0b2545] tracking-tight">
+              World-Class Health Sciences Facilities
+            </h2>
+            <p className="text-sm sm:text-base text-slate-600">
+              Situated in Manyama, Lumwana, our purpose-built campus provides a safe, modern, and academically
+              conducive environment for healthcare trainees.
+            </p>
+          </div>
+
+          <div className="mt-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs hover:shadow-md transition">
+              <div className="grid h-10 w-10 place-items-center rounded-lg bg-sky-50 text-[#007B99] mb-4">
+                <Stethoscope className="h-5 w-5" />
+              </div>
+              <h3 className="font-bold text-slate-900 text-base">Skills & Simulation Lab</h3>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                High-fidelity adult, pediatric, and birthing simulators for pre-clinical procedural practice.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs hover:shadow-md transition">
+              <div className="grid h-10 w-10 place-items-center rounded-lg bg-lime-50 text-[#5c8426] mb-4">
+                <BookOpenCheck className="h-5 w-5" />
+              </div>
+              <h3 className="font-bold text-slate-900 text-base">Digital Medical Library</h3>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                Comprehensive collection of medical textbooks, quiet study zones, and online clinical journal subscriptions.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs hover:shadow-md transition">
+              <div className="grid h-10 w-10 place-items-center rounded-lg bg-pink-50 text-[#EC008C] mb-4">
+                <Bed className="h-5 w-5" />
+              </div>
+              <h3 className="font-bold text-slate-900 text-base">Student Residences</h3>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                Secure on-campus hostels including Florence Nightingale residence with 24/7 power, water, and security.
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-xs hover:shadow-md transition">
+              <div className="grid h-10 w-10 place-items-center rounded-lg bg-sky-50 text-[#007B99] mb-4">
+                <Building2 className="h-5 w-5" />
+              </div>
+              <h3 className="font-bold text-slate-900 text-base">Modern Lecture Theatres</h3>
+              <p className="text-xs text-slate-600 mt-2 leading-relaxed">
+                Spacious amphitheatre-style lecture halls equipped with digital multimedia projectors and sound systems.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* About NWUCHAS Section (#about) */}
+      <section id="about" className="py-20 bg-white border-b border-slate-200 scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-7 space-y-4">
+              <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#007B99]">
+                About Our Institution
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0b2545] tracking-tight">
+                North Western University College of Health and Applied Sciences
+              </h2>
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+                Located in the Manyama Educational Corridor along Lumwana Road in Kalumbila District, NWUCHAS is an
+                established Zambian higher education institution dedicated exclusively to health sciences.
+              </p>
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
+                Our curriculum aligns with the national healthcare priorities articulated by the Ministry of Health (MOH)
+                and verified by the Higher Education Authority (HEA), the Nursing and Midwifery Council of Zambia (NMCZ),
+                and the Health Professions Council of Zambia (HPCZ).
+              </p>
+
+              <div className="pt-4 grid sm:grid-cols-2 gap-4 text-xs font-semibold text-slate-700">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-[#8DC63F] shrink-0" />
+                  Registered Higher Education Institution
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-[#8DC63F] shrink-0" />
+                  NMCZ Accredited Nursing School
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-[#8DC63F] shrink-0" />
+                  HPCZ Verified Clinical Training
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-[#8DC63F] shrink-0" />
+                  Affiliated Hospital Attachments
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-5">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 sm:p-8 space-y-4">
+                <h3 className="font-bold text-slate-900 text-lg">Institutional Credentials</h3>
+                <div className="space-y-3 text-xs text-slate-600">
+                  <div className="border-b border-slate-200 pb-2">
+                    <span className="font-bold text-slate-800 block">Institution Name:</span>
+                    North Western University College of Health and Applied Sciences (NWUCHAS)
+                  </div>
+                  <div className="border-b border-slate-200 pb-2">
+                    <span className="font-bold text-slate-800 block">Campus Location:</span>
+                    Plot 511/518 Shilenda Road, Manyama, Lumwana, Zambia
+                  </div>
+                  <div className="border-b border-slate-200 pb-2">
+                    <span className="font-bold text-slate-800 block">Accrediting Councils:</span>
+                    Nursing and Midwifery Council of Zambia (NMCZ) & Health Professions Council of Zambia (HPCZ)
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-800 block">Official Website Reference:</span>
+                    <a
+                      href="https://nwuc.edu.zm"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#007B99] hover:underline inline-flex items-center gap-1 font-semibold"
+                    >
+                      nwuc.edu.zm <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Public Contact & Location (#contact) */}
+      <section id="contact" className="py-20 bg-slate-100/70 scroll-mt-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto space-y-3">
+            <span className="text-xs font-bold uppercase tracking-[0.18em] text-[#007B99]">
+              Get in Touch
+            </span>
+            <h2 className="text-3xl sm:text-4xl font-extrabold text-[#0b2545] tracking-tight">
+              Admissions Inquiries & Campus Contacts
+            </h2>
+            <p className="text-sm sm:text-base text-slate-600">
+              Our registry and admissions officers are available to assist prospective applicants, sponsors,
+              and healthcare partners.
+            </p>
+          </div>
+
+          <div className="mt-14 grid md:grid-cols-3 gap-8">
+            <div className="rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-xs hover:border-[#007B99]/50 transition">
+              <div className="grid h-12 w-12 place-items-center rounded-xl bg-sky-50 text-[#007B99] mx-auto mb-4">
+                <MapPin className="h-6 w-6" />
+              </div>
+              <h3 className="font-bold text-slate-900 text-base">Campus Location</h3>
+              <p className="text-xs text-slate-700 mt-2 leading-relaxed font-medium">
+                Plot 511/518 Shilenda Road<br />
+                Manyama, Lumwana, Zambia<br />
+                <span className="text-[11px] text-slate-500">Kalumbila District, North-Western Province</span>
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-xs hover:border-[#8DC63F]/50 transition">
+              <div className="grid h-12 w-12 place-items-center rounded-xl bg-lime-50 text-[#5c8426] mx-auto mb-4">
+                <Mail className="h-6 w-6" />
+              </div>
+              <h3 className="font-bold text-slate-900 text-base">Inquiries & Web</h3>
+              <p className="text-xs text-slate-700 mt-2 leading-relaxed font-medium">
+                Official: <strong className="text-[#007B99]">info@nwuc.edu.zm</strong><br />
+                Admissions: <strong className="text-slate-800">admissions@nwuc.edu.zm</strong><br />
+                <span className="text-[11px] text-slate-500">Website: nwuc.edu.zm</span>
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-7 text-center shadow-xs hover:border-[#EC008C]/50 transition">
+              <div className="grid h-12 w-12 place-items-center rounded-xl bg-pink-50 text-[#EC008C] mx-auto mb-4">
+                <Phone className="h-6 w-6" />
+              </div>
+              <h3 className="font-bold text-slate-900 text-base">Contact Hotlines</h3>
+              <p className="text-xs text-slate-700 mt-2 leading-relaxed font-medium">
+                Hotline: <strong className="text-slate-900">0964240051</strong> / 0955550051<br />
+                0979000051 / 0974896096 / 0974240051<br />
+                <span className="text-[11px] text-[#5c8426] font-semibold">WhatsApp: +260 775747848</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Public Footer */}
+      <footer className="bg-[#0b2545] text-slate-300 text-xs py-14 border-t border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#007B99] text-white">
+                  <GraduationCap className="h-6 w-6" />
+                </div>
+                <div>
+                  <span className="font-black text-[#8DC63F] text-sm tracking-tight uppercase block leading-none">
+                    North Western
+                  </span>
+                  <span className="font-black text-[#007B99] text-sm tracking-tight uppercase block leading-none mt-0.5">
+                    University College
                   </span>
                 </div>
-                <div className="w-full bg-slate-100 rounded-full h-2">
-                  <div
-                    className={`${item.color} h-2 rounded-full transition-all duration-500`}
-                    style={{ width: `${item.pct}%` }}
-                  />
-                </div>
               </div>
-            ))}
+              <p className="text-slate-400 leading-relaxed text-xs">
+                North Western University College of Health and Applied Sciences. Registered tertiary
+                institution dedicated to clinical excellence and compassionate healthcare.
+              </p>
+              <div className="text-[11px] text-slate-400 font-medium">
+                Plot 511/518 Shilenda Road, Manyama, Lumwana, Zambia.
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-bold text-white text-sm mb-3">Academic Programmes</h3>
+              <ul className="space-y-2 text-slate-400">
+                <li>
+                  <Link href="/apply?programme=nursing" className="hover:text-white transition">
+                    Diploma in Registered Nursing
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/apply?programme=clinical" className="hover:text-white transition">
+                    Diploma in Clinical Medicine
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/apply?programme=public-health" className="hover:text-white transition">
+                    Diploma in Public Health
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/apply" className="hover:text-white transition">
+                    In-Service & Bridging Courses
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-bold text-white text-sm mb-3">Admissions & Portals</h3>
+              <ul className="space-y-2 text-slate-400">
+                <li>
+                  <Link href="/apply" className="hover:text-white transition">
+                    Apply Online (2026 Intake)
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/apply?tab=track" className="hover:text-white transition">
+                    Track Application Status
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/login" className="hover:text-white transition">
+                    Student & Sponsor Portal
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/login" className="hover:text-white transition">
+                    Staff & Faculty Sign In
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="font-bold text-white text-sm mb-3">Regulatory Accreditations</h3>
+              <p className="text-slate-400 leading-relaxed text-[11px]">
+                NWUCHAS programmes are recognized and regulated under the laws of Zambia:
+              </p>
+              <ul className="mt-2 space-y-1.5 text-[11px] text-slate-300 font-medium">
+                <li>• Higher Education Authority (HEA)</li>
+                <li>• Health Professions Council of Zambia (HPCZ)</li>
+                <li>• Nursing and Midwifery Council of Zambia (NMCZ)</li>
+              </ul>
+            </div>
           </div>
+
+          <div className="pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
+            <div>
+              © 2026 North Western University College of Health and Applied Sciences. All rights reserved.
+            </div>
+            <div className="flex items-center gap-6">
+              <Link href="/login" className="hover:text-slate-400 transition">
+                Portal Sign In
+              </Link>
+              <span>•</span>
+              <a
+                href="https://nwuc.edu.zm"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-slate-400 transition inline-flex items-center gap-1"
+              >
+                Official Site <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* Authentic Signature Lime Green Footer Bar Matching nwuc.edu.zm */}
+      <div className="bg-[#8DC63F] text-slate-950 py-3 px-4 text-xs font-bold">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+          <span>© 2026 North Western University College of Health and Applied Sciences. All rights reserved.</span>
+          <span>Plot 511/518 Shilenda Road, Manyama, Lumwana, Zambia • Tel: 0964240051</span>
         </div>
       </div>
     </div>

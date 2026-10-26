@@ -1,79 +1,176 @@
-// src/app/api/boarding/route.ts
-// Comprehensive Boarding Village API serving resident boarders, multi-year accommodation histories, fee histories, and academic records.
-
+// src/app/api/boarding/route.ts — Database-Backed NWUCHAS Hostel Accommodation & Residential Halls API
 import { NextRequest, NextResponse } from 'next/server';
-import { LEGACY_SOLWEZI_BALANCES, LegacyLearnerBalance } from '@/server/services/legacySchoolData';
+import { prisma } from '@/server/db';
+import { extractAuthHeader, verifyToken } from '@/server/auth';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const house = searchParams.get('house'); // MOPANI_BOYS_HALL | MUKWA_GIRLS_HALL
-  const grade = searchParams.get('grade');
-  const studentType = searchParams.get('type'); // BOARDER | DAY_SCHOLAR
-  const search = searchParams.get('search')?.toLowerCase();
+  try {
+    const { searchParams } = new URL(request.url);
+    const hallName = searchParams.get('house');
+    const programme = searchParams.get('grade');
+    const search = searchParams.get('search')?.toLowerCase();
 
-  let learners: LegacyLearnerBalance[] = LEGACY_SOLWEZI_BALANCES;
+    const token = extractAuthHeader(request.headers.get('authorization'));
+    const session = token ? verifyToken(token) : null;
 
-  // Filter by student type
-  if (studentType === 'BOARDER') {
-    learners = learners.filter((l) => l.studentType === 'BOARDER');
-  } else if (studentType === 'DAY_SCHOLAR') {
-    learners = learners.filter((l) => l.studentType === 'DAY_SCHOLAR');
+    let orgId = session?.organisationId;
+    if (!orgId) {
+      const nwuchasOrg = await prisma.organisation.findFirst({
+        where: { code: 'NWUCHAS' },
+      });
+      orgId = nwuchasOrg?.id || null;
+    }
+
+    // 1. Fetch hostel buildings and bed capacities
+    const buildings = await prisma.hostelBuilding.findMany({
+      include: {
+        campus: { select: { id: true, name: true } },
+        rooms: {
+          include: {
+            beds: {
+              include: {
+                allocations: {
+                  where: { isApproved: true },
+                  include: {
+                    learner: {
+                      select: {
+                        id: true,
+                        studentNumber: true,
+                        firstName: true,
+                        lastName: true,
+                        gender: true,
+                        status: true,
+                        residentialArea: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    let totalBeds = 0;
+    let totalOccupied = 0;
+    const buildingStats: Record<string, any> = {};
+
+    buildings.forEach((b) => {
+      let bBeds = 0;
+      let bOccupied = 0;
+      b.rooms.forEach((r) => {
+        bBeds += r.capacityBeds || r.beds.length;
+        r.beds.forEach((bed) => {
+          if (bed.isOccupied || bed.allocations.length > 0) {
+            bOccupied++;
+          }
+        });
+      });
+
+      totalBeds += bBeds;
+      totalOccupied += bOccupied;
+
+      buildingStats[b.name] = {
+        id: b.id,
+        name: b.name,
+        campusName: b.campus?.name || 'NWUCHAS Main Campus',
+        genderPolicy: b.genderPolicy,
+        capacity: bBeds,
+        occupied: bOccupied,
+        occupancyRate: bBeds > 0 ? Number(((bOccupied / bBeds) * 100).toFixed(1)) : 0,
+        warden: b.wardenName || 'Dean of Students Office',
+        wardenPhone: b.wardenPhone || '+260 218 821 400',
+        feePerSemesterZMW: b.feePerSemesterZMW ? Number(b.feePerSemesterZMW) : 2200,
+      };
+    });
+
+    // 2. Fetch all resident learners allocated to beds
+    const allocations = await prisma.hostelAllocation.findMany({
+      where: { isApproved: true },
+      include: {
+        learner: {
+          select: {
+            id: true,
+            studentNumber: true,
+            firstName: true,
+            lastName: true,
+            gender: true,
+            currentClass: { select: { name: true } },
+          },
+        },
+        bed: {
+          include: {
+            room: {
+              include: {
+                building: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { checkInDate: 'desc' },
+    });
+
+    let residentStudents = allocations.map((a) => ({
+      allocationId: a.id,
+      studentId: a.learner.id,
+      studentNumber: a.learner.studentNumber,
+      learnerName: `${a.learner.firstName} ${a.learner.lastName}`,
+      gender: a.learner.gender,
+      className: a.learner.currentClass?.name || 'Tertiary Health Programme',
+      studentType: 'BOARDER',
+      academicYear: a.academicYear,
+      semesterNumber: a.semesterNumber,
+      checkInDate: a.checkInDate.toISOString().split('T')[0],
+      currentAccommodation: {
+        boardingHouse: a.bed.room.building.name,
+        dormRoom: a.bed.room.roomNumber,
+        bedNumber: a.bed.bedNumber,
+        genderPolicy: a.bed.room.building.genderPolicy,
+      },
+    }));
+
+    if (hallName) {
+      residentStudents = residentStudents.filter(
+        (s) => s.currentAccommodation.boardingHouse.toLowerCase() === hallName.toLowerCase()
+      );
+    }
+    if (programme) {
+      residentStudents = residentStudents.filter(
+        (s) => s.className.toLowerCase().includes(programme.toLowerCase())
+      );
+    }
+    if (search) {
+      residentStudents = residentStudents.filter(
+        (s) =>
+          s.learnerName.toLowerCase().includes(search) ||
+          s.studentNumber.toLowerCase().includes(search) ||
+          s.className.toLowerCase().includes(search) ||
+          s.currentAccommodation.dormRoom.toLowerCase().includes(search) ||
+          s.currentAccommodation.bedNumber.toLowerCase().includes(search)
+      );
+    }
+
+    const stats = {
+      totalBedCapacity: totalBeds,
+      activeBoarders: totalOccupied,
+      overallOccupancyRate: totalBeds > 0 ? Number(((totalOccupied / totalBeds) * 100).toFixed(1)) : 0,
+      buildings: buildingStats,
+      standbyPower: 'Solar Hybrid & Automatic Generator Support Active',
+      campusClinic: 'NWUCHAS Student Health Centre (Nurse & Clinical Officer On-Call)',
+    };
+
+    return NextResponse.json({
+      success: true,
+      stats,
+      count: residentStudents.length,
+      learners: residentStudents,
+    });
+  } catch (error: any) {
+    console.error('Error fetching boarding data:', error);
+    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
   }
-
-  // Filter by boarding house
-  if (house) {
-    learners = learners.filter((l) => l.currentAccommodation?.boardingHouse === house);
-  }
-
-  // Filter by grade
-  if (grade) {
-    learners = learners.filter((l) => l.className === grade);
-  }
-
-  // Free-text search
-  if (search) {
-    learners = learners.filter(
-      (l) =>
-        l.learnerName.toLowerCase().includes(search) ||
-        l.studentNumber.toLowerCase().includes(search) ||
-        l.className.toLowerCase().includes(search) ||
-        (l.currentAccommodation?.dormRoom && l.currentAccommodation.dormRoom.toLowerCase().includes(search)) ||
-        (l.currentAccommodation?.bedNumber && l.currentAccommodation.bedNumber.toLowerCase().includes(search))
-    );
-  }
-
-  // Boarding Village Statistics
-  const totalBoarders = LEGACY_SOLWEZI_BALANCES.filter((l) => l.studentType === 'BOARDER');
-  const mopaniBoarders = totalBoarders.filter((l) => l.currentAccommodation?.boardingHouse === 'MOPANI_BOYS_HALL');
-  const mukwaBoarders = totalBoarders.filter((l) => l.currentAccommodation?.boardingHouse === 'MUKWA_GIRLS_HALL');
-
-  const stats = {
-    totalBedCapacity: 350,
-    activeBoarders: totalBoarders.length,
-    overallOccupancyRate: Number(((totalBoarders.length / 350) * 100).toFixed(1)),
-    mopani: {
-      capacity: 180,
-      occupied: mopaniBoarders.length,
-      occupancyRate: Number(((mopaniBoarders.length / 180) * 100).toFixed(1)),
-      housemaster: 'Mr. Kelvin Phiri (Senior Housemaster & Sports Director)',
-      assistant: 'Mr. Derrick Musonda (Assistant Housemaster)',
-    },
-    mukwa: {
-      capacity: 170,
-      occupied: mukwaBoarders.length,
-      occupancyRate: Number(((mukwaBoarders.length / 170) * 100).toFixed(1)),
-      matron: 'Mrs. Constance Kangwa (Senior Boarding Matron)',
-      assistant: 'Mrs. Eneless Tembo (Assistant Boarding Matron)',
-    },
-    standbyGeneratorKVA: 250,
-    standbyGeneratorStatus: 'ONLINE / AUTOMATIC ATS ACTIVE',
-    residentNurse: 'Mrs. Mary Mumba (RN - Solwezi School of Nursing)',
-  };
-
-  return NextResponse.json({
-    success: true,
-    stats,
-    count: learners.length,
-    learners,
-  });
 }

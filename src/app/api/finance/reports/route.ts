@@ -1,220 +1,50 @@
-// GET /api/finance/reports
+// src/app/api/finance/reports/route.ts — Pure Database-Backed Financial Reports API
 import { NextResponse } from 'next/server';
 import { FinanceService } from '@/server/services/finance.service';
 import { prisma } from '@/server/db';
 import { extractAuthHeader, verifyToken } from '@/server/auth';
-import { generateLegacyLearners, LegacyLearnerBalance } from '@/server/services/legacySchoolData';
 
-const LEGACY_REPORTS_FIXTURE = {
-  cashbook: [
-    { date: '2026-10-16', cash: 2600, bank: 15600, airtel: 0, mtn: 2800, cheque: 0, total: 21000, transactions: 3 },
-    { date: '2026-10-15', cash: 0, bank: 10400, airtel: 3750, mtn: 0, cheque: 0, total: 14150, transactions: 2 },
-    { date: '2026-10-14', cash: 2600, bank: 1850, airtel: 0, mtn: 5200, cheque: 0, total: 9650, transactions: 3 },
-    { date: '2026-10-13', cash: 0, bank: 20800, airtel: 0, mtn: 0, cheque: 0, total: 20800, transactions: 2 },
-  ],
-  categories: [
-    { category: 'BOARDING_AND_TUITION', billed: 2912000, collectedEstimate: 2480500 },
-    { category: 'PRIMARY_DAY_TUITION', billed: 1148000, collectedEstimate: 980000 },
-    { category: 'ECE_TUITION', billed: 260000, collectedEstimate: 234000 },
-    { category: 'EXAMINATION_LEVY', billed: 185000, collectedEstimate: 162000 },
-    { category: 'MINIBUS_TRANSPORT', billed: 142000, collectedEstimate: 128000 },
-  ],
-  classes: [
-    { className: 'Form 4 Green (Boarding)', stage: 'SENIOR_SECONDARY', totalBilled: 416000, totalPaid: 395200, totalBalance: 20800, recoveryRate: 95.0 },
-    { className: 'Form 5 Sciences (Boarding)', stage: 'SENIOR_SECONDARY', totalBilled: 441000, totalPaid: 410000, totalBalance: 31000, recoveryRate: 93.0 },
-    { className: 'Form 3 Blue (Boarding)', stage: 'JUNIOR_SECONDARY', totalBilled: 416000, totalPaid: 374400, totalBalance: 41600, recoveryRate: 90.0 },
-    { className: 'Grade 7 Gold (Day)', stage: 'PRIMARY', totalBilled: 126000, totalPaid: 113400, totalBalance: 12600, recoveryRate: 90.0 },
-    { className: 'Grade 5 Blue (Day)', stage: 'PRIMARY', totalBilled: 112000, totalPaid: 98000, totalBalance: 14000, recoveryRate: 87.5 },
-    { className: 'Reception Stars (Day)', stage: 'EARLY_CHILDHOOD', totalBilled: 83200, totalPaid: 76800, totalBalance: 6400, recoveryRate: 92.3 },
-  ],
-  agedSummary: {
-    current: 310500,
-    days31to60: 98200,
-    days61to90: 38400,
-    over90days: 17900,
-    totalOverdue: 465000,
-  },
-};
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const orgCode = searchParams.get('orgCode');
 
-    const campus = searchParams.get('campus') || 'ALL';
-
     const token = extractAuthHeader(req.headers.get('authorization'));
     const session = token ? verifyToken(token) : null;
 
     let orgId = session?.organisationId;
     if (!orgId && orgCode) {
-      try {
-        const org = await prisma.organisation.findUnique({ where: { code: orgCode } });
-        orgId = org?.id || null;
-      } catch (err) {
-        orgId = null;
-      }
+      const org = await prisma.organisation.findUnique({ where: { code: orgCode } });
+      orgId = org?.id || null;
     }
     if (!orgId) {
-      try {
-        const defaultOrg = await prisma.organisation.findFirst({ orderBy: { createdAt: 'asc' } });
-        orgId = defaultOrg?.id || null;
-      } catch (err) {
-        orgId = null;
-      }
+      const nwuchasOrg = await prisma.organisation.findFirst({
+        where: { code: 'NWUCHAS' },
+      });
+      orgId = nwuchasOrg?.id || null;
     }
 
-    let reports = null;
-    if (orgId) {
-      try {
-        reports = await FinanceService.getFinancialReports(orgId);
-      } catch (e) {
-        reports = null;
-      }
+    if (!orgId) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          totals: { totalBilled: 0, totalCollected: 0, totalOutstanding: 0, overallCollectionRate: 0 },
+          cashbook: [],
+          categoryRevenue: [],
+          classComparison: [],
+          ageingSummary: { current: 0, days31to60: 0, days61to90: 0, over90days: 0, totalOutstanding: 0 },
+        },
+      });
     }
 
-    if (!reports || !reports.classComparison || reports.classComparison.length < 5) {
-      const all780: LegacyLearnerBalance[] = generateLegacyLearners(780);
-      let learners: LegacyLearnerBalance[] = all780;
-      if (campus && campus !== 'ALL') {
-        if (campus === 'MUSHITALA' || campus === 'KANSANSHI' || campus === 'LSS-MSC' || campus === 'LSS-KBC') {
-          learners = all780.filter((b: LegacyLearnerBalance) => b.campusName.includes('Mushitala') || b.campusName.includes('Kansanshi'));
-        } else if (campus === 'URBAN' || campus === 'LSS-URB' || campus === 'LSS-MDC') {
-          learners = all780.filter((b: LegacyLearnerBalance) => b.campusName.includes('Urban'));
-        }
-      }
-
-      // 1. Reconciled Totals
-      const totalBilled = learners.reduce((sum: number, l: LegacyLearnerBalance) => sum + l.totalBilled, 0);
-      const totalCollected = learners.reduce((sum: number, l: LegacyLearnerBalance) => sum + l.totalPaid, 0);
-      const totalOutstanding = learners.reduce((sum: number, l: LegacyLearnerBalance) => sum + l.balance, 0);
-      const overallCollectionRate = totalBilled > 0 ? Number(((totalCollected / totalBilled) * 100).toFixed(1)) : 0;
-
-      // 2. Class Comparison (100% Reconciled Across All Classes)
-      const classMap = new Map<string, { className: string; stage: string; learnerCount: number; billed: number; collected: number; outstanding: number }>();
-      learners.forEach((l: LegacyLearnerBalance) => {
-        const item = classMap.get(l.className) || {
-          className: l.className,
-          stage: l.stage,
-          learnerCount: 0,
-          billed: 0,
-          collected: 0,
-          outstanding: 0,
-        };
-        item.learnerCount += 1;
-        item.billed += l.totalBilled;
-        item.collected += l.totalPaid;
-        item.outstanding += l.balance;
-        classMap.set(l.className, item);
-      });
-
-      const classComparison = Array.from(classMap.values()).map((c) => ({
-        classId: c.className.toLowerCase().replace(/\s+/g, '-'),
-        className: c.className,
-        stage: c.stage,
-        learnerCount: c.learnerCount,
-        billed: c.billed,
-        collected: c.collected,
-        outstanding: c.outstanding,
-        collectionRate: c.billed > 0 ? Number(((c.collected / c.billed) * 100).toFixed(1)) : 0,
-      })).sort((a, b) => b.billed - a.billed);
-
-      // 3. Category Revenue with REAL DISTINCT RECOVERY PERCENTAGES
-      let boardingBilled = 0, boardingPaid = 0;
-      let primaryBilled = 0, primaryPaid = 0;
-      let eceBilled = 0, ecePaid = 0;
-
-      learners.forEach((l: LegacyLearnerBalance) => {
-        if (l.studentType === 'BOARDER') {
-          boardingBilled += l.totalBilled;
-          boardingPaid += l.totalPaid;
-        } else if (l.stage === 'PRIMARY') {
-          primaryBilled += l.totalBilled;
-          primaryPaid += l.totalPaid;
-        } else {
-          eceBilled += l.totalBilled;
-          ecePaid += l.totalPaid;
-        }
-      });
-
-      // Distinct, realistic levies with dedicated recovery metrics
-      const examBilled = Math.round(totalBilled * 0.045);
-      const examPaid = Math.round(examBilled * 0.824); // 82.4% distinct rate
-      const transportBilled = Math.round(totalBilled * 0.028);
-      const transportPaid = Math.round(transportBilled * 0.638); // 63.8% distinct rate
-
-      const categoryRevenue = [
-        ...(boardingBilled > 0 ? [{ category: 'BOARDING_AND_TUITION', billed: boardingBilled, collectedEstimate: boardingPaid }] : []),
-        ...(primaryBilled > 0 ? [{ category: 'PRIMARY_DAY_TUITION', billed: primaryBilled, collectedEstimate: primaryPaid }] : []),
-        ...(eceBilled > 0 ? [{ category: 'ECE_TUITION', billed: eceBilled, collectedEstimate: ecePaid }] : []),
-        { category: 'EXAMINATION_LEVY', billed: examBilled, collectedEstimate: examPaid },
-        { category: 'MINIBUS_TRANSPORT', billed: transportBilled, collectedEstimate: transportPaid },
-      ];
-
-      // 4. Ageing Summary (Accurately Summed from Learner Dossiers)
-      let current = 0, days31to60 = 0, days61to90 = 0, over90days = 0;
-      learners.forEach((l: LegacyLearnerBalance) => {
-        current += l.ageing.current;
-        days31to60 += l.ageing.days31to60;
-        days61to90 += l.ageing.days61to90;
-        over90days += l.ageing.over90days;
-      });
-
-      // 5. Daily Cashbook (Exact Sum Reconciled)
-      const cashbook = [
-        {
-          date: '2026-10-18',
-          bank: 685400,
-          mtn: 284500,
-          airtel: 215600,
-          cash: 156492,
-          total: 1341992,
-          transactions: 126,
-        },
-        {
-          date: '2026-10-17',
-          bank: 592800,
-          mtn: 265400,
-          airtel: 184500,
-          cash: 131543,
-          total: 1174243,
-          transactions: 105,
-        },
-        {
-          date: '2026-10-16',
-          bank: 421500,
-          mtn: 189200,
-          airtel: 128400,
-          cash: 99645,
-          total: 838745,
-          transactions: 84,
-        },
-      ];
-
-      const reportData = {
-        totals: {
-          totalBilled,
-          totalCollected,
-          totalOutstanding,
-          overallCollectionRate,
-        },
-        cashbook,
-        categoryRevenue,
-        classComparison,
-        ageingSummary: {
-          current,
-          days31to60,
-          days61to90,
-          over90days,
-          totalOutstanding,
-        },
-      };
-
-      return NextResponse.json({ success: true, data: reportData });
-    }
-
+    const reports = await FinanceService.getFinancialReports(orgId);
     return NextResponse.json({ success: true, data: reports });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, message: error.message || 'Error generating financial reports' },
+      { status: 500 }
+    );
   }
 }

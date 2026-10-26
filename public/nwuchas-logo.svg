@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 140" width="100%" height="100%">
+  <!-- Definitions -->
+  <defs>
+    <!-- Teal-blue Gradient -->
+    <linearGradient id="nwuBlueGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0090b3" />
+      <stop offset="100%" stop-color="#007B99" />
+    </linearGradient>
+    <!-- Lime-green Gradient -->
+    <linearGradient id="nwuLimeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9ad446" />
+      <stop offset="100%" stop-color="#8DC63F" />
+    </linearGradient>
+    <!-- Pink Gradient -->
+    <linearGradient id="nwuPinkGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff1493" />
+      <stop offset="100%" stop-color="#EC008C" />
+    </linearGradient>
+    <!-- Shadow Filter -->
+    <filter id="subtleShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.12" />
+    </filter>
+  </defs>
+
+  <!-- ========================================================================= -->
+  <!-- 1. CIRCULAR COMMUNITY EMBLEM WITH HEART & ECG PULSE                       -->
+  <!-- ========================================================================= -->
+  <g transform="translate(10, 8)" filter="url(#subtleShadow)">
+    <!-- Base Outer Circular Ring Segments -->
+    <!-- Top-Right Arc (Teal-blue #007B99) -->
+    <path
+      d="M 62,12 A 50,50 0 0,1 112,62 A 50,50 0 0,1 98,96 L 85,83 A 34,34 0 0,0 96,62 A 34,34 0 0,0 62,28 Z"
+      fill="#007B99"
+    />
+    <!-- Left-Bottom Arc (Lime-green #8DC63F) -->
+    <path
+      d="M 62,12 A 50,50 0 0,0 12,62 A 50,50 0 0,0 62,112 A 50,50 0 0,0 98,96 L 85,83 A 34,34 0 0,1 62,96 A 34,34 0 0,1 28,62 A 34,34 0 0,1 62,28 Z"
+      fill="#8DC63F"
+    />
+
+    <!-- Three Figure Heads (Stylized People in Community) -->
+    <!-- Figure 1 Head (Top Right - Teal-blue #007B99) -->
+    <circle cx="98" cy="26" r="10.5" fill="#007B99" />
+    <!-- Figure 2 Head (Top Left - Teal-blue #007B99) -->
+    <circle cx="26" cy="26" r="10.5" fill="#007B99" />
+    <!-- Figure 3 Head (Bottom Center - Lime-green #8DC63F) -->
+    <circle cx="62" cy="118" r="10.5" fill="#8DC63F" />
+
+    <!-- Figure Arms / Connecting Gap Accents -->
+    <circle cx="106" cy="62" r="5" fill="#ffffff" />
+    <circle cx="18" cy="62" r="5" fill="#ffffff" />
+
+    <!-- Center Medical Pink Heart (#EC008C) -->
+    <g transform="translate(62, 62) scale(0.95)">
+      <!-- Heart Path -->
+      <path
+        d="M 0,-16
+           C 6,-26 22,-24 22,-8
+           C 22,6 8,16 0,24
+           C -8,16 -22,6 -22,-8
+           C -22,-24 -6,-26 0,-16 Z"
+        fill="url(#nwuPinkGrad)"
+      />
+
+      <!-- White ECG Heartbeat Pulse Line -->
+      <path
+        d="M -18,2 L -8,2 L -4,-6 L 0,8 L 4,-10 L 8,5 L 11,2 L 18,2"
+        fill="none"
+        stroke="#ffffff"
+        stroke-width="2.6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </g>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- 2. OFFICIAL WORDMARK TYPOGRAPHY                                           -->
+  <!-- ========================================================================= -->
+  <g transform="translate(150, 20)">
+    <!-- NORTH WESTERN (Lime-green #8DC63F) -->
+    <text
+      x="0"
+      y="38"
+      font-family="'Montserrat', 'Arial Black', -apple-system, sans-serif"
+      font-size="34"
+      font-weight="900"
+      fill="#8DC63F"
+      letter-spacing="0.5"
+    >NORTH WESTERN</text>
+
+    <!-- UNIVERSITY COLLEGE (Teal-blue #007B99) -->
+    <text
+      x="0"
+      y="76"
+      font-family="'Montserrat', 'Arial Black', -apple-system, sans-serif"
+      font-size="34"
+      font-weight="900"
+      fill="#007B99"
+      letter-spacing="0.5"
+    >UNIVERSITY COLLEGE</text>
+
+    <!-- of Health and Applied Sciences (Clean Slate Grey) -->
+    <text
+      x="2"
+      y="104"
+      font-family="'Inter', 'Segoe UI', Arial, sans-serif"
+      font-size="22"
+      font-weight="400"
+      fill="#334155"
+      letter-spacing="0.2"
+    >of Health and Applied Sciences</text>
+  </g>
+</svg>

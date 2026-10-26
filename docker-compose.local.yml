@@ -1,0 +1,6 @@
+# Local development override only. The base compose file intentionally exposes
+# no data-service ports; this file is never used for deployments.
+services:
+  db:
+    ports:
+      - "127.0.0.1:5434:5432"

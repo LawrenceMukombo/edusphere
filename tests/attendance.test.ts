@@ -78,4 +78,18 @@ describe('AC-08 & AC-09: Attendance & Offline Reconciliation', () => {
     });
     expect(record!.status).toBe(AttendanceStatus.PRESENT);
   });
+
+  it('SAFE-002: Future dates are strictly blocked from attendance recording', async () => {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + 7);
+
+    await expect(
+      AttendanceService.submitRegister({
+        classId,
+        termId,
+        date: futureDate.toISOString(),
+        records: [{ learnerId: pupilId, status: AttendanceStatus.PRESENT }],
+      })
+    ).rejects.toThrow('Future dates are blocked');
+  });
 });

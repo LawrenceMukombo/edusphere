@@ -5,7 +5,21 @@
  * Aligned with the Ministry of Education Zambia (MoE) 2026 Tri-Term Framework
  */
 
-import { generateLegacyLearners, LegacyLearnerBalance } from './legacySchoolData';
+export interface CalendarLearnerRecord {
+  id: string;
+  studentNumber: string;
+  learnerName: string;
+  className: string;
+  campusName: string;
+  studentType: 'DAY_SCHOLAR' | 'BOARDER';
+  hallName?: string;
+  gender: 'MALE' | 'FEMALE';
+  dateOfBirth?: string;
+  guardian?: {
+    name: string;
+    phone: string;
+  };
+}
 
 export interface ZambianPublicHoliday {
   id: string;
@@ -453,11 +467,11 @@ export const SCHOOL_EVENTS_2026: SchoolCalendarEvent[] = [
 // ----------------------------------------------------------------------------
 // 4. LEARNER BIRTHDAYS REGISTRY & STATS
 // ----------------------------------------------------------------------------
-let cachedLearners: LegacyLearnerBalance[] | null = null;
+let cachedLearners: CalendarLearnerRecord[] | null = null;
 
-function getCachedLearners(): LegacyLearnerBalance[] {
+function getCachedLearners(): CalendarLearnerRecord[] {
   if (!cachedLearners) {
-    cachedLearners = generateLegacyLearners(780);
+    cachedLearners = [];
   }
   return cachedLearners;
 }
@@ -485,8 +499,8 @@ export function getAllLearnerBirthdays(): LearnerBirthdayProfile[] {
       birthMonth,
       birthDay,
       turningAge,
-      guardianName: l.guardian.name,
-      guardianPhone: l.guardian.phone,
+      guardianName: l.guardian?.name || 'Guardian',
+      guardianPhone: l.guardian?.phone || '+260 970 000000',
     };
   });
 }

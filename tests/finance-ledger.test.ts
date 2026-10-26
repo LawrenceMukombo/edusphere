@@ -11,7 +11,7 @@ describe('AC-06 & AC-07: Financial Ledger Integrity, Idempotency & Reversals', (
   let termId: string;
 
   beforeAll(async () => {
-    const org = await prisma.organisation.findUnique({ where: { code: 'EDS-ZM-001' } });
+    const org = (await prisma.organisation.findUnique({ where: { code: 'NWUCHAS' } })) ?? (await prisma.organisation.findFirst());
     orgId = org!.id;
 
     const pupil = await prisma.learner.findFirst({ where: { organisationId: orgId } });

@@ -123,14 +123,14 @@ const CATEGORIES: NavCategory[] = [
       },
       {
         href: '/gis',
-        label: 'Solwezi Campuses & GIS',
+        label: 'College Campuses & GIS',
         icon: Compass,
         moduleKey: 'gis',
         allowedRoles: ['SUPER_ADMIN', 'PRINCIPAL', 'ESTATE_MANAGER', 'FINANCE_DIRECTOR'],
       },
       {
         href: '/assets',
-        label: 'School Asset Manager',
+        label: 'College Asset Manager',
         icon: Boxes,
         badge: 'Capital',
         moduleKey: 'assets',
@@ -164,7 +164,7 @@ const CATEGORIES: NavCategory[] = [
       },
       {
         href: '/calendar',
-        label: 'School Calendar & Events',
+        label: 'Academic Calendar & Events',
         icon: Calendar,
         badge: '2026',
         moduleKey: 'calendar',
@@ -361,7 +361,7 @@ export function Sidebar() {
                           prefetch={true}
                           className={`flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold transition ${
                             isActive
-                              ? 'bg-blue-900 text-white shadow-xs shadow-blue-900/30 font-bold'
+                              ? 'bg-[#007B99] text-white shadow-xs shadow-[#007B99]/30 font-bold'
                               : isUnsubscribed || isDisabled
                               ? 'text-slate-400 hover:bg-slate-50 hover:text-slate-700'
                               : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
@@ -371,7 +371,7 @@ export function Sidebar() {
                             <Icon
                               className={`w-4 h-4 shrink-0 ${
                                 isActive
-                                  ? 'text-amber-300'
+                                  ? 'text-[#8DC63F]'
                                   : isUnsubscribed || isDisabled
                                   ? 'text-slate-300'
                                   : 'text-slate-400'

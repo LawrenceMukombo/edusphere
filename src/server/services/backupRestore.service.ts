@@ -258,59 +258,56 @@ export async function exportBackupToSqlDump(): Promise<string> {
       `INSERT INTO staff_members (id, staff_number, first_name, last_name, job_title, department, campus_id, tcz_number, tcz_status, phone, email) VALUES ('${s.id}', '${s.staffNumber}', '${escapeSql(s.firstName)}', '${escapeSql(s.lastName)}', '${escapeSql(s.jobTitle)}', '${escapeSql(s.department)}', '${s.campusId}', '${escapeSql(s.tczNumber)}', '${s.tczStatus}', '${s.phone}', '${escapeSql(s.email)}');`
     );
   }
-  sqlLines.push('\n');
+  sqlLines.push('');
 
-  // 3. Students / Learners
-  sqlLines.push('-- 3. STUDENTS & LEARNER BALANCES');
+  // 3. Students & Learner Balances
+  sqlLines.push('-- 3. STUDENTS & FEE BALANCES');
   sqlLines.push(`CREATE TABLE IF NOT EXISTS students (
   id VARCHAR(50) PRIMARY KEY,
   student_number VARCHAR(50) UNIQUE NOT NULL,
-  first_name VARCHAR(100) NOT NULL,
-  last_name VARCHAR(100) NOT NULL,
-  grade_level VARCHAR(50),
-  campus_name VARCHAR(150),
+  learner_name VARCHAR(150) NOT NULL,
+  class_name VARCHAR(50),
+  campus_name VARCHAR(100),
   student_type VARCHAR(50),
-  current_balance_zmw DECIMAL(12,2),
-  payment_status VARCHAR(50)
+  hall_name VARCHAR(100),
+  gender VARCHAR(20),
+  date_of_birth DATE,
+  fee_balance_zmw DECIMAL(10,2)
 );`);
-  for (const stu of pkg.students.slice(0, 150)) {
-    // sample bulk write
-    const fn = stu.firstName || stu.learnerName?.split(' ')[0] || 'Learner';
-    const ln = stu.lastName || stu.learnerName?.split(' ')[1] || 'Surname';
+  for (const st of pkg.students) {
     sqlLines.push(
-      `INSERT INTO students (id, student_number, first_name, last_name, grade_level, campus_name, student_type, current_balance_zmw, payment_status) VALUES ('${stu.id}', '${stu.studentNumber || stu.id}', '${escapeSql(fn)}', '${escapeSql(ln)}', '${escapeSql(stu.gradeName || 'Grade 1')}', '${escapeSql(stu.campusName || 'Mushitala')}', '${stu.studentType || 'DAY_SCHOLAR'}', ${stu.currentBalanceZMW || 0}, '${stu.paymentStatus || 'CLEARED'}');`
+      `INSERT INTO students (id, student_number, learner_name, class_name, campus_name, student_type, hall_name, gender, date_of_birth, fee_balance_zmw) VALUES ('${st.id}', '${st.studentNumber}', '${escapeSql(st.learnerName)}', '${escapeSql(st.className)}', '${escapeSql(st.campusName)}', '${st.studentType}', '${escapeSql(st.hallName || '')}', '${st.gender}', '${st.dateOfBirth}', ${st.currentBalanceZMW});`
     );
   }
-  sqlLines.push('\n');
+  sqlLines.push('');
 
   // 4. School Assets
-  sqlLines.push('-- 4. SCHOOL ASSET MASTER REGISTER');
+  sqlLines.push('-- 4. SCHOOL ASSETS');
   sqlLines.push(`CREATE TABLE IF NOT EXISTS school_assets (
   id VARCHAR(50) PRIMARY KEY,
   asset_tag VARCHAR(50) UNIQUE NOT NULL,
-  name VARCHAR(255) NOT NULL,
-  category VARCHAR(100),
-  purchase_date DATE,
-  purchase_cost_zmw DECIMAL(12,2),
-  net_book_value_zmw DECIMAL(12,2),
-  condition VARCHAR(50),
-  custodian_name VARCHAR(150)
+  name VARCHAR(150) NOT NULL,
+  category VARCHAR(50),
+  location VARCHAR(100),
+  campus_id VARCHAR(50),
+  status VARCHAR(50),
+  purchase_value_zmw DECIMAL(12,2)
 );`);
-  for (const ast of pkg.assets) {
+  for (const a of pkg.assets) {
     sqlLines.push(
-      `INSERT INTO school_assets (id, asset_tag, name, category, purchase_date, purchase_cost_zmw, net_book_value_zmw, condition, custodian_name) VALUES ('${ast.id}', '${ast.assetTag}', '${escapeSql(ast.name)}', '${ast.category}', '${ast.purchaseDate}', ${ast.purchaseCostZMW}, ${ast.currentNetBookValueZMW}, '${ast.condition}', '${escapeSql(ast.custodianName)}');`
+      `INSERT INTO school_assets (id, asset_tag, name, category, location, campus_id, status, purchase_value_zmw) VALUES ('${a.id}', '${a.assetTag}', '${escapeSql(a.name)}', '${a.category}', '${escapeSql(a.locationRoom)}', '${escapeSql(a.campus)}', '${a.condition}', ${a.purchaseCostZMW});`
     );
   }
-  sqlLines.push('\n');
+  sqlLines.push('');
 
   // 5. Expenditures
-  sqlLines.push('-- 5. EXPENDITURE LEDGER');
+  sqlLines.push('-- 5. EXPENDITURES');
   sqlLines.push(`CREATE TABLE IF NOT EXISTS expenditures (
   id VARCHAR(50) PRIMARY KEY,
   expense_number VARCHAR(50) UNIQUE NOT NULL,
   expense_date DATE NOT NULL,
   title VARCHAR(255) NOT NULL,
-  vendor_name VARCHAR(255),
+  vendor_name VARCHAR(255) NOT NULL,
   amount_zmw DECIMAL(12,2) NOT NULL,
   voucher_number VARCHAR(50),
   status VARCHAR(50)

@@ -8,8 +8,29 @@ describe('AC-02: Guardian Relationship & Immediate Revocation', () => {
   let pupil2Id: string;
 
   beforeAll(async () => {
-    const guardian = await prisma.guardian.findFirst({ where: { phone: '+260977889900' } });
-    guardianId = guardian!.id;
+    let guardian = await prisma.guardian.findFirst({ where: { phone: '+260977889900' } });
+    if (!guardian) {
+      const org = await prisma.organisation.findFirst();
+      const learners = await prisma.learner.findMany({ take: 2 });
+      guardian = await prisma.guardian.create({
+        data: {
+          organisationId: org!.id,
+          firstName: 'Joseph',
+          lastName: 'Mwamba',
+          phone: '+260977889900',
+        },
+      });
+
+      if (learners.length >= 2) {
+        await prisma.learnerGuardianRelationship.create({
+          data: { guardianId: guardian.id, learnerId: learners[0].id, relationship: 'FATHER' },
+        });
+        await prisma.learnerGuardianRelationship.create({
+          data: { guardianId: guardian.id, learnerId: learners[1].id, relationship: 'LEGAL_GUARDIAN' },
+        });
+      }
+    }
+    guardianId = guardian.id;
 
     const rels = await prisma.learnerGuardianRelationship.findMany({
       where: { guardianId },

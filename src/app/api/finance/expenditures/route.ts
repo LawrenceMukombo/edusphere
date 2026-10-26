@@ -1,28 +1,68 @@
-// src/app/api/finance/expenditures/route.ts
+// src/app/api/finance/expenditures/route.ts — Pure Database-Backed Expenditures & Payment Vouchers API
 import { NextResponse } from 'next/server';
-import { LEGACY_EXPENDITURES, ExpenditureRecord } from '@/server/services/legacySchoolData';
+import { prisma } from '@/server/db';
+import { extractAuthHeader, verifyToken } from '@/server/auth';
 
-// In-memory store initialized with rich Legacy School Solwezi fixtures
-let expendituresStore: ExpenditureRecord[] = [...LEGACY_EXPENDITURES];
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
-    const campusId = searchParams.get('campusId');
     const category = searchParams.get('category');
     const search = searchParams.get('search')?.toLowerCase();
 
-    let list = expendituresStore;
+    const token = extractAuthHeader(req.headers.get('authorization'));
+    const session = token ? verifyToken(token) : null;
 
-    if (campusId && campusId !== 'ALL') {
-      if (campusId === 'MUSHITALA' || campusId === 'KANSANSHI' || campusId === 'LSS-MSC' || campusId === 'LSS-KBC') {
-        list = list.filter((e) => e.campusId === 'LSS-MSC' || e.campusId === 'LSS-KBC' || e.campusId === 'CENTRAL' || e.campusName.includes('Mushitala') || e.campusName.includes('Kansanshi'));
-      } else if (campusId === 'URBAN' || campusId === 'LSS-URB' || campusId === 'LSS-MDC') {
-        list = list.filter((e) => e.campusId === 'LSS-URB' || e.campusId === 'LSS-MDC' || e.campusId === 'CENTRAL' || e.campusName.includes('Urban'));
-      } else {
-        list = list.filter((e) => e.campusId === campusId || e.campusId === 'CENTRAL');
-      }
+    let orgId = session?.organisationId;
+    if (!orgId) {
+      const org = await prisma.organisation.findFirst({ where: { code: 'NWUCHAS' } });
+      orgId = org?.id || null;
     }
+
+    if (!orgId) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          expenditures: [],
+          summary: { totalCount: 0, totalDisbursedZMW: 0, pendingApprovalZMW: 0, categoryTotals: {} },
+        },
+      });
+    }
+
+    const records = await prisma.moduleWorkspaceRecord.findMany({
+      where: {
+        organisationId: orgId,
+        moduleSlug: 'finance-expenditures',
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    let list = records.map((r) => {
+      let meta: any = {};
+      try {
+        meta = r.metadataJson ? JSON.parse(r.metadataJson) : {};
+      } catch {}
+      return {
+        id: r.id,
+        title: r.title,
+        status: r.status,
+        description: r.summary,
+        amountZMW: meta.amountZMW || 0,
+        expenseNumber: meta.expenseNumber || r.id,
+        voucherNumber: meta.voucherNumber || '',
+        category: meta.category || 'GENERAL_OPERATING',
+        categoryLabel: meta.categoryLabel || 'General Operating Provisions',
+        vendorName: meta.vendorName || '',
+        vendorTpin: meta.vendorTpin || '',
+        paymentMethod: meta.paymentMethod || 'BANK_EFT',
+        referenceNumber: meta.referenceNumber || '',
+        expenseDate: meta.expenseDate || r.createdAt.toISOString().split('T')[0],
+        initiatedBy: meta.initiatedBy || '',
+        verifiedBy: meta.verifiedBy || '',
+        approvedBy: meta.approvedBy || '',
+      };
+    });
 
     if (category && category !== 'ALL') {
       list = list.filter((e) => e.category === category);
@@ -47,7 +87,6 @@ export async function GET(req: Request) {
       .filter((e) => e.status === 'PENDING_APPROVAL')
       .reduce((sum, e) => sum + e.amountZMW, 0);
 
-    // Grouping by category
     const categoryTotals: Record<string, number> = {};
     for (const item of list) {
       categoryTotals[item.categoryLabel] = (categoryTotals[item.categoryLabel] || 0) + item.amountZMW;
@@ -72,6 +111,8 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const token = extractAuthHeader(req.headers.get('authorization'));
+    const session = token ? verifyToken(token) : null;
     const body = await req.json();
 
     if (!body.title || !body.amountZMW || !body.vendorName) {
@@ -81,35 +122,59 @@ export async function POST(req: Request) {
       );
     }
 
-    const newExpense: ExpenditureRecord = {
-      id: `exp-${Date.now()}`,
-      expenseNumber: `EXP-SOL-2026-${String(expendituresStore.length + 1).padStart(3, '0')}`,
-      expenseDate: body.expenseDate || new Date().toISOString().split('T')[0],
-      fiscalPeriod: '2026 Term 1',
-      campusId: body.campusId || 'LSS-MSC',
-      campusName: body.campusName || 'Mushitala Campus (Near Kansanshi)',
-      category: body.category || 'FOOD_BOARDING_RATIONS',
-      categoryLabel: body.categoryLabel || 'Food & Boarding Dining Provisions',
-      title: body.title,
-      description: body.description || '',
-      vendorName: body.vendorName,
-      vendorTpin: body.vendorTpin || '100' + Math.floor(1000000 + Math.random() * 9000000),
+    let orgId = session?.organisationId;
+    if (!orgId) {
+      const org = await prisma.organisation.findFirst({ where: { code: 'NWUCHAS' } });
+      orgId = org?.id || null;
+    }
+
+    if (!orgId) {
+      return NextResponse.json(
+        { success: false, message: 'NWUCHAS institution scope required.' },
+        { status: 400 }
+      );
+    }
+
+    const voucherSeq = Date.now().toString().slice(-4);
+    const voucherNumber = `PV-2026-${voucherSeq}`;
+    const expenseNumber = `EXP-2026-${voucherSeq}`;
+
+    const metadata = {
+      expenseNumber,
+      voucherNumber,
       amountZMW: Number(body.amountZMW),
+      vendorName: body.vendorName.trim(),
+      vendorTpin: body.vendorTpin?.trim() || '',
+      category: body.category || 'CLINICAL_SUPPLIES',
+      categoryLabel: body.categoryLabel || 'Clinical Lab & Training Supplies',
       paymentMethod: body.paymentMethod || 'BANK_EFT',
-      referenceNumber: body.referenceNumber || `REF-${Date.now().toString().slice(-6)}`,
-      voucherNumber: `PV-2026-${String(expendituresStore.length + 190)}`,
-      initiatedBy: body.initiatedBy || 'Staff Member',
-      verifiedBy: 'Mr. C. Mulenga (Bursar)',
-      approvedBy: 'Mr. E. Mwansa (Director)',
-      status: body.status || 'DISBURSED',
+      referenceNumber: body.referenceNumber || `REF-${voucherSeq}`,
+      expenseDate: body.expenseDate || new Date().toISOString().split('T')[0],
+      initiatedBy: session?.userId || 'Authorized Staff',
+      verifiedBy: 'Finance Officer',
+      approvedBy: 'Bursar',
     };
 
-    expendituresStore.unshift(newExpense);
+    const created = await prisma.moduleWorkspaceRecord.create({
+      data: {
+        organisationId: orgId,
+        moduleSlug: 'finance-expenditures',
+        title: body.title.trim(),
+        status: body.status || 'PENDING_APPROVAL',
+        summary: body.description || `Expenditure voucher for ${body.vendorName}`,
+        metadataJson: JSON.stringify(metadata),
+      },
+    });
 
     return NextResponse.json({
       success: true,
-      message: 'Expenditure voucher successfully recorded and authorized.',
-      data: newExpense,
+      message: 'Expenditure voucher successfully persisted to NWUCHAS database.',
+      data: {
+        id: created.id,
+        title: created.title,
+        status: created.status,
+        ...metadata,
+      },
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message }, { status: 500 });

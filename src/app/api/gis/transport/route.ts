@@ -2,7 +2,7 @@
 // Real-Time School Transport, Live Shuttle Telematics, Multi-Campus Pickups/Dropoffs, Road Network Routing & Traffic Engine
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generateLegacyLearners } from '@/server/services/legacySchoolData';
+import { prisma } from '@/server/db';
 
 export interface TrafficSegment {
   id: string;
@@ -780,24 +780,41 @@ export async function POST(request: NextRequest) {
 
     if (action === 'BOARD_STUDENT') {
       const { studentNumber, routeCode, stopName, method, destinationCampus } = body;
-      const all780 = generateLegacyLearners(780);
-      const student = all780.find((s) => s.studentNumber === studentNumber) || {
-        learnerName: body.studentName || 'Learner',
-        className: body.className || 'Form 2 Green',
-        guardian: { name: 'Eng. Chileshe Mulenga', phone: '+260 977 889900' },
-      };
+      const dbLearner = studentNumber
+        ? await prisma.learner.findFirst({
+            where: { studentNumber },
+            include: {
+              guardians: {
+                include: { guardian: true },
+                where: { isPrimary: true },
+                take: 1,
+              },
+              currentClass: true,
+              campus: true,
+            },
+          })
+        : null;
+
+      const learnerName = dbLearner
+        ? `${dbLearner.firstName} ${dbLearner.lastName}`
+        : body.studentName || 'Student';
+      const className = dbLearner?.currentClass?.name || body.className || 'Diploma in Registered Nursing';
+      const guardianObj = dbLearner?.guardians?.[0]?.guardian;
+      const guardianName = guardianObj ? `${guardianObj.firstName} ${guardianObj.lastName}` : (body.guardianName || 'Guardian / Sponsor');
+      const guardianPhone = guardianObj?.phone || body.guardianPhone || '+260 970 000000';
+      const campusDest = destinationCampus || dbLearner?.campus?.name || 'NWUCHAS Main Campus (Manyama)';
 
       const newLog: BoardingLogEntry = {
         id: `log-${Date.now()}`,
-        studentNumber: studentNumber || `LSS-2026-0042`,
-        studentName: student.learnerName,
-        className: student.className,
-        routeCode: routeCode || 'BUS-SOL-02',
-        stopName: stopName || 'Designated Pickup Stop',
-        destinationCampus: destinationCampus || 'Mushitala Campus (Near Kansanshi)',
+        studentNumber: studentNumber || `NWU-STU-0001`,
+        studentName: learnerName,
+        className,
+        routeCode: routeCode || 'BUS-NWU-01',
+        stopName: stopName || 'Designated Campus Stop',
+        destinationCampus: campusDest,
         tapTimestamp: new Date().toISOString(),
-        guardianName: student.guardian?.name || 'Guardian',
-        guardianPhone: student.guardian?.phone || '+260 970 000000',
+        guardianName,
+        guardianPhone,
         notificationStatus: 'SMS_SENT',
         boardingMethod: method || 'NFC_MIFARE_CARD',
       };
@@ -812,12 +829,12 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: `Learner ${student.learnerName} (${studentNumber}) logged as boarded on ${routeCode}. Guardian SMS alert dispatched.`,
+        message: `Student ${learnerName} (${studentNumber}) logged as boarded on ${routeCode}. Sponsor/Guardian SMS alert dispatched.`,
         data: {
           log: newLog,
           guardianNotification: {
-            recipientPhone: student.guardian?.phone,
-            smsPreview: `[EduSphere Transport Alert] ${student.learnerName} has safely boarded ${routeCode} at ${newLog.stopName} at ${new Date().toLocaleTimeString()} destined for ${newLog.destinationCampus}. ETA school: ~18 mins.`,
+            recipientPhone: guardianPhone,
+            smsPreview: `[NWUCHAS Transport Alert] ${learnerName} has boarded shuttle ${routeCode} at ${newLog.stopName} at ${new Date().toLocaleTimeString()} destined for ${newLog.destinationCampus}.`,
           },
         },
       });

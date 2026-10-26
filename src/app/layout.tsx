@@ -2,36 +2,23 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
-import { Navbar } from '@/components/Navbar';
-import { TopWelcomeBanner } from '@/components/TopWelcomeBanner';
-import { Sidebar } from '@/components/Sidebar';
-import { CampusProvider } from '@/components/CampusContext';
+import { NwuchasShell } from '@/components/NwuchasShell';
 import { ServiceWorkerRegistration } from '@/components/ServiceWorkerRegistration';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const viewport: Viewport = {
-  themeColor: '#1e3a8a',
+  themeColor: '#007B99',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
 };
 
 export const metadata: Metadata = {
-  title: 'Legacy School Solwezi — EduSphere SMIS Enterprise',
+  title: 'NWUCHAS-CMIS — North Western University College of Health and Applied Sciences',
   description:
-    'Zambia-first, enterprise-grade, offline-first School Management Information System for Legacy School Solwezi (Mushitala Day Campus & Kansanshi Boarding Campus).',
-  manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'default',
-    title: 'EduSphere',
-  },
-  icons: {
-    icon: '/icons/icon-192.svg',
-    shortcut: '/icons/icon-192.svg',
-    apple: '/icons/icon-192.svg',
-  },
+    'Dedicated Integrated College Management Information System for North Western University College of Health and Applied Sciences (NWUCHAS), Manyama, Lumwana, Zambia.',
+  manifest: '/manifest.webmanifest',
 };
 
 export default function RootLayout({
@@ -40,19 +27,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.className} bg-slate-50 text-slate-900 antialiased`} suppressHydrationWarning>
         <ServiceWorkerRegistration />
-        <CampusProvider>
-          <TopWelcomeBanner />
-          <Navbar />
-          <div className="flex">
-            <Sidebar />
-            <main className="flex-1 p-3 sm:p-6 lg:p-8 pb-20 md:pb-8 w-full max-w-none overflow-y-auto min-w-0">
-              {children}
-            </main>
-          </div>
-        </CampusProvider>
+        <NwuchasShell>
+          {children}
+        </NwuchasShell>
       </body>
     </html>
   );

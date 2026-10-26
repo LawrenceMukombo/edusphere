@@ -1,72 +1,86 @@
-// GET & POST /api/finance/payments
 import { NextResponse } from 'next/server';
-import { FinanceService } from '@/server/services/finance.service';
 import { prisma } from '@/server/db';
-import { extractAuthHeader, verifyToken } from '@/server/auth';
+import { FinanceService } from '@/server/services/finance.service';
+import { PaymentMethod } from '@prisma/client';
 
-export async function GET(req: Request) {
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
   try {
-    const { searchParams } = new URL(req.url);
-    const orgCode = searchParams.get('orgCode');
-    const token = extractAuthHeader(req.headers.get('authorization'));
-    const session = token ? verifyToken(token) : null;
-
-    let orgId = session?.organisationId;
-    if (!orgId && orgCode) {
-      const org = await prisma.organisation.findUnique({ where: { code: orgCode } });
-      orgId = org?.id || null;
-    }
-    if (!orgId) {
-      const defaultOrg = await prisma.organisation.findFirst({ orderBy: { createdAt: 'asc' } });
-      orgId = defaultOrg?.id || null;
-    }
-
+    const org = await prisma.organisation.findFirst({ where: { code: 'NWUCHAS' } });
     const payments = await prisma.payment.findMany({
-      where: { organisationId: orgId || undefined },
+      where: {
+        ...(org ? { organisationId: org.id } : {}),
+      },
       include: {
         learner: true,
         receipt: true,
-        allocations: { include: { invoice: true } },
+        allocations: {
+          include: {
+            invoice: true,
+          },
+        },
       },
-      orderBy: { receivedDate: 'desc' },
-    });
-
-    return NextResponse.json({ success: true, data: payments });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
-  }
-}
-
-export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-    const token = extractAuthHeader(req.headers.get('authorization'));
-    const session = token ? verifyToken(token) : null;
-
-    let orgId = session?.organisationId || body.organisationId;
-    if (!orgId) {
-      const defaultOrg = await prisma.organisation.findFirst({ orderBy: { createdAt: 'asc' } });
-      orgId = defaultOrg?.id;
-    }
-
-    const payment = await FinanceService.recordPayment({
-      organisationId: orgId,
-      learnerId: body.learnerId,
-      invoiceId: body.invoiceId,
-      paymentNumber: body.paymentNumber || `PAY-${Date.now().toString().slice(-6)}`,
-      receiptNumber: body.receiptNumber || `REC-${Date.now().toString().slice(-6)}`,
-      amount: Number(body.amount),
-      paymentMethod: body.paymentMethod,
-      referenceNumber: body.referenceNumber,
-      notes: body.notes,
+      orderBy: { createdAt: 'desc' },
+      take: 50,
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Payment recorded, receipt generated, and ledger updated.',
-      data: payment,
-    }, { status: 201 });
+      data: payments,
+    });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 400 });
+    console.error('Error fetching payments:', error);
+    return NextResponse.json(
+      { success: false, message: error.message || 'Failed to fetch payments' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { learnerId, invoiceId, amount, paymentMethod, reference } = body;
+
+    const org = (await prisma.organisation.findFirst({ where: { code: 'NWUCHAS' } })) ?? (await prisma.organisation.findFirst());
+    if (!org) {
+      return NextResponse.json(
+        { success: false, message: 'NWUCHAS Organisation not found' },
+        { status: 400 }
+      );
+    }
+
+    const payMethodEnum =
+      paymentMethod === 'AIRTEL_MONEY'
+        ? PaymentMethod.AIRTEL_MONEY
+        : paymentMethod === 'MTN_MOMO'
+        ? PaymentMethod.MTN_MONEY
+        : paymentMethod === 'BANK_TRANSFER' || paymentMethod === 'ZANACO_BILLMASTER'
+        ? PaymentMethod.BANK_TRANSFER
+        : PaymentMethod.CASH;
+
+    const payment = await FinanceService.recordPayment({
+      organisationId: org.id,
+      learnerId,
+      invoiceId,
+      paymentNumber: `PAY-2026-${Math.floor(10000 + Math.random() * 90000)}`,
+      receiptNumber: `REC-2026-${Math.floor(10000 + Math.random() * 90000)}`,
+      amount: Number(amount),
+      paymentMethod: payMethodEnum,
+      referenceNumber: reference || `LAMTON-${Date.now()}`,
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Payment recorded and allocated successfully. Receipt issued.',
+      data: payment,
+    });
+  } catch (error: any) {
+    console.error('Error recording payment:', error);
+    return NextResponse.json(
+      { success: false, message: error.message || 'Failed to record payment' },
+      { status: 500 }
+    );
   }
 }

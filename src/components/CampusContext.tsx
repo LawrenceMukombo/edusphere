@@ -177,7 +177,17 @@ export function CampusProvider({ children }: { children: ReactNode }) {
 export function useCampus() {
   const context = useContext(CampusContext);
   if (!context) {
-    throw new Error('useCampus must be used within a CampusProvider');
+    const campusInfo = LEGACY_CAMPUSES.ALL;
+    const allCampuses = [LEGACY_CAMPUSES.ALL, LEGACY_CAMPUSES.MUSHITALA, LEGACY_CAMPUSES.URBAN];
+    return {
+      selectedCampus: 'ALL' as CampusId,
+      setSelectedCampus: () => {},
+      campusInfo,
+      allCampuses,
+      allowedCampuses: allCampuses,
+      isCampusRestricted: false,
+      userCampusId: 'ALL' as CampusId,
+    };
   }
   return context;
 }

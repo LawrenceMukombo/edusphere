@@ -32,7 +32,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { useCampus, CampusId } from './CampusContext';
-import { LegacyLogo } from './LegacyLogo';
+import { NwuchasLogo } from './NwuchasLogo';
 import { OfflineIndicator } from './OfflineIndicator';
 import { MobileBottomNav } from './MobileBottomNav';
 import { loadAppSettings, checkModuleEntitlement, AppSettings, DEFAULT_APP_SETTINGS } from '@/lib/appSettings';
@@ -127,7 +127,7 @@ export function Navbar() {
             {/* Logo & School Identity from Official Emblem */}
             <div className="flex items-center gap-2 sm:gap-3">
               <Link href="/" className="flex items-center hover:opacity-95 transition">
-                <LegacyLogo variant="compact" size="md" />
+                <NwuchasLogo variant="compact" size="md" />
               </Link>
             </div>
 
@@ -151,7 +151,7 @@ export function Navbar() {
                       onClick={() => setSelectedCampus(camp.id)}
                       className={`flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-lg text-xs font-bold transition whitespace-nowrap ${
                         isSelected
-                          ? 'bg-blue-900 text-white shadow-xs'
+                          ? 'bg-[#007B99] text-white shadow-xs'
                           : 'text-slate-600 hover:text-slate-900'
                       }`}
                     >
@@ -194,7 +194,7 @@ export function Navbar() {
                 </Link>
 
                 <div
-                  className="w-8 h-8 rounded-full bg-blue-900 text-amber-300 font-bold text-xs flex items-center justify-center ring-2 ring-blue-100 shadow-2xs ml-1"
+                  className="w-8 h-8 rounded-full bg-[#007B99] text-white font-bold text-xs flex items-center justify-center ring-2 ring-sky-100 shadow-2xs ml-1"
                   title={`${currentUser.fullName} — ${currentUser.role.replace(/_/g, ' ')}`}
                 >
                   {currentUser.fullName

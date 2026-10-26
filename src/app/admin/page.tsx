@@ -632,53 +632,53 @@ export default function AdminPage() {
       </div>
 
       {/* ACTIVE MULTI-TENANT CONTEXT SWITCHER BAR */}
-      <div className="p-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 rounded-2xl text-white shadow-lg border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-4 bg-white rounded-2xl text-slate-800 shadow-xs border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div
-            className="w-12 h-12 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center font-black text-amber-400 text-lg shadow-inner shrink-0"
-            style={{ borderColor: activeTenant?.primaryColor || '#f59e0b' }}
+            className="w-12 h-12 rounded-xl bg-teal-50 border border-teal-200 flex items-center justify-center font-black text-teal-800 text-lg shadow-2xs shrink-0"
+            style={{ borderColor: activeTenant?.primaryColor || '#0f766e' }}
           >
-            {activeTenant?.name?.slice(0, 2).toUpperCase() || 'LS'}
+            {activeTenant?.name?.slice(0, 2).toUpperCase() || 'NW'}
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] uppercase font-black tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
                 Active Tenant Workspace
               </span>
-              <span className="font-mono text-xs text-slate-300 font-bold bg-white/10 px-2 py-0.5 rounded">
-                {activeTenant?.code || 'EDS-ZM-SOL-001'}
+              <span className="font-mono text-xs text-slate-700 font-bold bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                {activeTenant?.code || 'NWU-ZM-SOL-001'}
               </span>
             </div>
-            <h2 className="text-base font-black text-white mt-0.5">
-              {activeTenant?.name || 'Legacy School Solwezi'}
+            <h2 className="text-base font-black text-slate-900 mt-0.5">
+              {activeTenant?.name || 'North Western University College'}
             </h2>
-            <p className="text-xs text-slate-300 line-clamp-1 italic">
-              &quot;{activeTenant?.motto || 'We strive for your academic and moral excellence'}&quot; • {activeTenant?.city || 'Solwezi'}, Zambia
+            <p className="text-xs text-slate-500 line-clamp-1 italic">
+              &quot;{activeTenant?.motto || 'Excellence in Health & Applied Sciences'}&quot; • {activeTenant?.city || 'Kalumbila / Solwezi'}, Zambia
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-3 self-end md:self-center flex-wrap">
           <div className="text-right hidden lg:block">
-            <span className="text-[10px] font-bold text-emerald-400 block uppercase tracking-wider flex items-center justify-end gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="text-[10px] font-bold text-emerald-800 block uppercase tracking-wider flex items-center justify-end gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
               Zero-Leakage Isolation
             </span>
-            <span className="text-[11px] font-mono text-slate-300">
-              edusphere:tenant:{activeTenant?.id || 'org-solwezi-legacy-001'}:*
+            <span className="text-[11px] font-mono text-slate-500">
+              edusphere:tenant:{activeTenant?.id || 'org-nwuchas-solwezi-001'}:*
             </span>
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-300 font-semibold hidden sm:inline">Switch School:</label>
+            <label className="text-xs text-slate-600 font-semibold hidden sm:inline">Switch School:</label>
             <select
               value={activeTenantId}
               onChange={(e) => handleTenantSwitch(e.target.value)}
-              className="bg-white/10 border border-white/20 text-white font-bold text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-amber-400 focus:outline-none cursor-pointer"
+              className="bg-slate-50 border border-slate-300 text-slate-800 font-bold text-xs rounded-xl px-3 py-2 focus:ring-2 focus:ring-teal-700 focus:outline-none cursor-pointer"
             >
               {organisations.map((org) => (
-                <option key={org.id} value={org.id} className="bg-slate-900 text-white">
+                <option key={org.id} value={org.id} className="bg-white text-slate-800">
                   {org.name} ({org.code})
                 </option>
               ))}

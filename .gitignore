@@ -44,3 +44,5 @@ android/app/*.iml
 android/.idea/
 *.apk
 ~$*
+scratch/
+.vscode/

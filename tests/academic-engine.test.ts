@@ -11,16 +11,59 @@ describe('AC-03, AC-04 & AC-05: Academic Engine, ECE Competencies & Report Moder
   let pupilId: string;
 
   beforeAll(async () => {
-    const eceOrg = await prisma.organisation.findUnique({ where: { code: 'EDS-ZM-002' } });
-    eceOrgId = eceOrg!.id;
+    let org = await prisma.organisation.findFirst();
+    if (!org) {
+      org = await prisma.organisation.create({
+        data: {
+          code: 'NWUCHAS',
+          name: 'North Western University College of Health and Applied Sciences',
+          email: 'info@nwuchas.edu.zm',
+          phone: '+260977000001',
+        },
+      });
+    }
+    eceOrgId = org.id;
 
-    const term = await prisma.term.findFirst();
-    termId = term!.id;
+    let year = await prisma.academicYear.findFirst({ where: { organisationId: org.id } });
+    if (!year) {
+      year = await prisma.academicYear.create({
+        data: {
+          organisationId: org.id,
+          name: '2026 Academic Year',
+          startDate: new Date('2026-01-01'),
+          endDate: new Date('2026-12-31'),
+        },
+      });
+    }
 
-    const cls = await prisma.class.findFirst();
-    classId = cls!.id;
+    let term = await prisma.term.findFirst();
+    if (!term) {
+      term = await prisma.term.create({
+        data: {
+          academicYearId: year.id,
+          name: 'Term 1',
+          termNumber: 1,
+          startDate: new Date('2026-01-10'),
+          endDate: new Date('2026-04-30'),
+        },
+      });
+    }
+    termId = term.id;
 
-    const pupil = await prisma.learner.findFirst();
+    let cls = await prisma.class.findFirst();
+    if (!cls) {
+      const campus = await prisma.campus.findFirst({ where: { organisationId: org.id } });
+      cls = await prisma.class.create({
+        data: {
+          campusId: campus!.id,
+          academicYearId: year.id,
+          name: 'Diploma Nursing Cohort 1',
+        },
+      });
+    }
+    classId = cls.id;
+
+    let pupil = await prisma.learner.findFirst();
     pupilId = pupil!.id;
   });
 

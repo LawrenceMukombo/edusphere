@@ -19,6 +19,11 @@ export class AttendanceService {
     }>;
   }) {
     const registerDate = new Date(data.date);
+    const now = new Date();
+    const endOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    if (registerDate > endOfToday) {
+      throw new Error('Future dates are blocked. Attendance registers cannot be recorded for upcoming dates.');
+    }
 
     return prisma.$transaction(async (tx) => {
       // Find or create session

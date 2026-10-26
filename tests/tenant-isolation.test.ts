@@ -10,17 +10,64 @@ describe('AC-01: Multi-Tenant Data Isolation', () => {
   let pupilAId: string;
 
   beforeAll(async () => {
-    // Retrieve School A (Kabulonga Academy)
-    const orgA = await prisma.organisation.findUnique({ where: { code: 'EDS-ZM-001' } });
-    // Retrieve School B (Sunshine ECE Centre)
-    const orgB = await prisma.organisation.findUnique({ where: { code: 'EDS-ZM-002' } });
+    // Retrieve NWUCHAS primary organisation
+    let orgA = await prisma.organisation.findFirst({ where: { code: 'NWUCHAS' } });
+    if (!orgA) {
+      orgA = await prisma.organisation.create({
+        data: {
+          code: 'NWUCHAS',
+          name: 'North Western University College of Health and Applied Sciences',
+          email: 'info@nwuchas.edu.zm',
+          phone: '+260977000001',
+        },
+      });
+    }
 
-    orgAId = orgA!.id;
-    orgBId = orgB!.id;
+    // Retrieve or create an isolated comparison organisation for multi-tenant isolation testing
+    let orgB = await prisma.organisation.findUnique({ where: { code: 'TEST-ISOLATION-ORG' } });
+    if (!orgB) {
+      orgB = await prisma.organisation.create({
+        data: {
+          code: 'TEST-ISOLATION-ORG',
+          name: 'External Test Entity',
+          email: 'test@isolation.org',
+          phone: '+260977000002',
+        },
+      });
+    }
 
-    // Retrieve a learner from School A
-    const pupilA = await prisma.learner.findFirst({ where: { organisationId: orgAId } });
-    pupilAId = pupilA!.id;
+    orgAId = orgA.id;
+    orgBId = orgB.id;
+
+    // Ensure campus exists for orgA
+    let campus = await prisma.campus.findFirst({ where: { organisationId: orgAId } });
+    if (!campus) {
+      campus = await prisma.campus.create({
+        data: {
+          organisationId: orgAId,
+          code: 'MAIN',
+          name: 'Main Campus',
+        },
+      });
+    }
+
+    // Retrieve a learner from primary organisation
+    let pupilA = await prisma.learner.findFirst({ where: { organisationId: orgAId } });
+    if (!pupilA) {
+      pupilA = await prisma.learner.create({
+        data: {
+          organisationId: orgAId,
+          campusId: campus.id,
+          studentNumber: 'TEST-STU-001',
+          firstName: 'Isolation',
+          lastName: 'Tester',
+          gender: 'MALE',
+          dateOfBirth: new Date('2000-01-01'),
+          status: 'ENROLLED',
+        },
+      });
+    }
+    pupilAId = pupilA.id;
   });
 
   it('School B query must never return pupils belonging to School A', async () => {

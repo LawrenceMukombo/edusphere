@@ -870,7 +870,7 @@ export default function GisCampusesPage() {
               </button>
               <button
                 onClick={() => setShowAddStopModal(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-xs transition"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-800 hover:bg-teal-900 text-white font-bold text-xs shadow-xs transition"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Route Stop</span>
@@ -899,8 +899,8 @@ export default function GisCampusesPage() {
 
       {/* Toast Notification Popup */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700 animate-in slide-in-from-top-4">
-          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+        <div className="fixed top-20 right-6 z-50 bg-white text-slate-800 px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-200 animate-in slide-in-from-top-4">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
           <span className="text-xs font-semibold">{toastMessage}</span>
         </div>
       )}
@@ -1383,7 +1383,7 @@ export default function GisCampusesPage() {
                 <button
                   type="button"
                   onClick={() => setShowAddStopModal(true)}
-                  className="px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
+                  className="px-3.5 py-2 rounded-xl bg-teal-800 hover:bg-teal-900 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add Route Stop</span>

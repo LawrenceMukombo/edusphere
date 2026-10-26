@@ -420,9 +420,9 @@ export function OfficialDocumentGeneratorModal({
                   onChange={(e) => setSignatory(e.target.value as any)}
                   className="w-full px-2.5 py-1.5 border border-slate-300 rounded-xl bg-white font-semibold text-slate-900"
                 >
-                  <option value="PRINCIPAL">Mr. Emmanuel Mwansa — School Director & Principal</option>
-                  <option value="BURSAR">Mrs. Mary Chisenga — Senior Bursar & Finance Director</option>
-                  <option value="DEPUTY">Mr. C. Mulenga — Deputy Headteacher & Academic Dean</option>
+                  <option value="PRINCIPAL">Prof. Hastings Chileshe — College Principal</option>
+                  <option value="BURSAR">Mrs. Mary Chisenga — College Bursar &amp; Director of Finance</option>
+                  <option value="DEPUTY">Dr. George Silwamba — Academic Registrar &amp; Dean of Studies</option>
                 </select>
               </div>
             </div>

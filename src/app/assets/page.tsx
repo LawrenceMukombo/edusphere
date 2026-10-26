@@ -460,8 +460,8 @@ export default function AssetsPage() {
 
         {/* Toast Notification */}
         {toastMessage && (
-          <div className="fixed top-20 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-700 animate-in slide-in-from-top-4">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          <div className="fixed top-20 right-6 z-50 bg-white text-slate-800 px-4 py-3 rounded-2xl shadow-xl flex items-center gap-3 border border-slate-200 animate-in slide-in-from-top-4">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
             <span className="text-xs font-semibold">{toastMessage}</span>
           </div>
         )}
@@ -808,7 +808,7 @@ export default function AssetsPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedAsset(null)}
-                    className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-bold"
+                    className="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-colors"
                   >
                     Close Dossier
                   </button>

@@ -1,83 +1,85 @@
-// GET & POST /api/finance/invoices
 import { NextResponse } from 'next/server';
-import { FinanceService } from '@/server/services/finance.service';
 import { prisma } from '@/server/db';
-import { extractAuthHeader, verifyToken } from '@/server/auth';
+import { FinanceService } from '@/server/services/finance.service';
+import { FeeCategory } from '@prisma/client';
 
-export async function GET(req: Request) {
+export const dynamic = 'force-dynamic';
+
+export async function GET() {
   try {
-    const { searchParams } = new URL(req.url);
-    const orgCode = searchParams.get('orgCode');
-    const learnerId = searchParams.get('learnerId') || undefined;
-
-    const token = extractAuthHeader(req.headers.get('authorization'));
-    const session = token ? verifyToken(token) : null;
-
-    let orgId = session?.organisationId;
-    if (!orgId && orgCode) {
-      const org = await prisma.organisation.findUnique({ where: { code: orgCode } });
-      orgId = org?.id || null;
-    }
-    if (!orgId) {
-      const defaultOrg = await prisma.organisation.findFirst({ orderBy: { createdAt: 'asc' } });
-      orgId = defaultOrg?.id || null;
-    }
-
-    if (!orgId) {
-      return NextResponse.json({ success: false, message: 'Organisation context required.' }, { status: 400 });
-    }
-
-    const where: any = { organisationId: orgId };
-    if (learnerId) where.learnerId = learnerId;
-
+    const org = await prisma.organisation.findFirst({ where: { code: 'NWUCHAS' } });
     const invoices = await prisma.invoice.findMany({
-      where,
+      where: {
+        ...(org ? { organisationId: org.id } : {}),
+      },
       include: {
-        learner: true,
         lines: true,
+        allocations: true,
+        learner: true,
         term: true,
       },
       orderBy: { issuedDate: 'desc' },
-    });
-
-    return NextResponse.json({ success: true, data: invoices });
-  } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 500 });
-  }
-}
-
-export async function POST(req: Request) {
-  try {
-    const body = await req.json();
-    const token = extractAuthHeader(req.headers.get('authorization'));
-    const session = token ? verifyToken(token) : null;
-
-    let orgId = session?.organisationId || body.organisationId;
-    if (!orgId && body.orgCode) {
-      const org = await prisma.organisation.findUnique({ where: { code: body.orgCode } });
-      orgId = org?.id;
-    }
-    if (!orgId) {
-      const defaultOrg = await prisma.organisation.findFirst({ orderBy: { createdAt: 'asc' } });
-      orgId = defaultOrg?.id;
-    }
-
-    const invoice = await FinanceService.issueInvoice({
-      organisationId: orgId,
-      learnerId: body.learnerId,
-      termId: body.termId,
-      invoiceNumber: body.invoiceNumber,
-      dueDate: body.dueDate,
-      idempotencyKey: body.idempotencyKey,
-      lines: body.lines,
+      take: 50,
     });
 
     return NextResponse.json({
       success: true,
-      message: 'Invoice issued successfully and posted to ledger.',
-      data: invoice,
-    }, { status: 201 });
+      data: invoices,
+    });
   } catch (error: any) {
-    return NextResponse.json({ success: false, message: error.message }, { status: 400 });
+    console.error('Error fetching invoices:', error);
+    return NextResponse.json(
+      { success: false, message: error.message || 'Failed to fetch invoices' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { learnerId, termId, dueDate, lines, invoiceNumber } = body;
+
+    const org = (await prisma.organisation.findFirst({ where: { code: 'NWUCHAS' } })) ?? (await prisma.organisation.findFirst());
+    if (!org) {
+      return NextResponse.json(
+        { success: false, message: 'NWUCHAS Organisation not found' },
+        { status: 400 }
+      );
+    }
+
+    let targetTermId = termId;
+    if (!targetTermId) {
+      const term = await prisma.term.findFirst();
+      targetTermId = term?.id;
+    }
+
+    const generatedNumber = invoiceNumber || `INV-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+
+    const inv = await FinanceService.issueInvoice({
+      organisationId: org.id,
+      learnerId,
+      termId: targetTermId!,
+      invoiceNumber: generatedNumber,
+      dueDate: dueDate ? new Date(dueDate) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      lines: (lines || []).map((l: any) => ({
+        category: (l.category as FeeCategory) || FeeCategory.TUITION,
+        description: l.description || 'College Tuition & Operational Fees',
+        unitPrice: Number(l.amountZMW || l.unitPrice || 0),
+        quantity: 1,
+      })),
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: 'Student fee invoice successfully generated and posted to ledger.',
+      data: inv,
+    });
+  } catch (error: any) {
+    console.error('Error creating invoice:', error);
+    return NextResponse.json(
+      { success: false, message: error.message || 'Failed to generate invoice' },
+      { status: 500 }
+    );
   }
 }
