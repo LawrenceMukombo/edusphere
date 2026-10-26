@@ -9,7 +9,8 @@
     "start": "next start -p 3025",
     "check": "tsc --noEmit",
     "test": "vitest run",
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx prisma/seed.ts",
+    "seed:nwuchas": "tsx prisma/seed.nwuchas.ts"
   },
   "keywords": [],
   "author": "",

@@ -37,9 +37,9 @@ export const DEV_PASSWORD = 'NWUCHAS-DEV-ONLY-CHANGE-ME';
 
 function assertDedicatedLocalDatabase() {
   const url = process.env.DATABASE_URL ?? '';
-  const isDedicatedLocalTarget = /@(localhost|127\.0\.0\.1):5434\/nwuchas_cmis(?:\?|$)/.test(url);
-  if (!isDedicatedLocalTarget) {
-    throw new Error('Refusing to seed: DATABASE_URL must target local nwuchas_cmis on port 5434.');
+  const isDedicatedTarget = /@(localhost|127\.0\.0\.1):(5432|5434)\/(nwuchas_cmis|nwuchas_db|nwuchas)(?:\?|$)/i.test(url);
+  if (!isDedicatedTarget && process.env.ALLOW_SEED !== 'true') {
+    throw new Error('Refusing to seed: DATABASE_URL must target dedicated nwuchas database on localhost or set ALLOW_SEED=true.');
   }
 }
 
@@ -1013,7 +1013,7 @@ async function main() {
   });
 
   // Individual payroll lines & payslips
-  for (const [staffNum, staff] of staffMap.entries()) {
+  for (const [staffNum, staff] of Array.from(staffMap.entries())) {
     const contract = await prisma.staffContract.findUnique({ where: { staffId: staff.id } });
     if (!contract) continue;
 
