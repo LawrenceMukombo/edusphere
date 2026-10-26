@@ -366,6 +366,8 @@ export default async function ModuleWorkspace({
       ? await p.staff.findMany({
           include: {
             campus: true,
+            user: true,
+            contract: true,
           },
           orderBy: { staffNumber: 'asc' },
         })
