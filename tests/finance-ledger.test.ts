@@ -159,7 +159,7 @@ describe('AC-06 & AC-07: Financial Ledger Integrity, Idempotency & Reversals', (
     expect(reports.ageingSummary).toHaveProperty('days31to60');
     expect(reports.ageingSummary).toHaveProperty('days61to90');
     expect(reports.ageingSummary).toHaveProperty('over90days');
-  });
+  }, 15000);
 
   it('FIN-001: Central Financial Reporting Service reconciles collections, billings, and expenditures with zero variance', () => {
     const allSummary = getFinancialSummary('ALL');

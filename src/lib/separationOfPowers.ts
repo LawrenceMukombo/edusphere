@@ -112,18 +112,18 @@ export const OPERATIONAL_TASK_DEFINITIONS: Record<
 export const EXECUTIVE_DISPATCH_RECIPIENTS = [
   {
     role: 'SCHOOL_MANAGER' as const,
-    title: 'School Manager & Principal',
-    name: 'Dr. Kennedy Musonda',
-    email: 'principal@legacyschool.edu.zm',
-    phone: '+260 974 371271',
+    title: 'Principal & Chief Executive Officer',
+    name: 'Dr. Mwila Chileshe',
+    email: 'principal@nwuchas.edu.zm',
+    phone: '+260 977 100001',
     channel: 'SMS_AND_IN_APP_DISPATCH' as const,
   },
   {
     role: 'CEO' as const,
-    title: 'Chief Executive Officer & Board Chair',
-    name: 'Mr. Emmanuel Mwansa',
-    email: 'ceo@legacyschool.edu.zm',
-    phone: '+260 977 112233',
+    title: 'Academic Registrar & Board Secretary',
+    name: 'Mr. Kabwe Mumba',
+    email: 'registrar@nwuchas.edu.zm',
+    phone: '+260 977 100002',
     channel: 'SMS_AND_IN_APP_DISPATCH' as const,
   },
 ];

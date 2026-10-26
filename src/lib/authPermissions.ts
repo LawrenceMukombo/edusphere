@@ -12,7 +12,12 @@ export type UserRole =
   | 'HR_OFFICER'
   | 'BOARDING_MASTER'
   | 'ESTATE_MANAGER'
-  | 'PARENT';
+  | 'PARENT'
+  | 'REGISTRAR'
+  | 'LECTURER'
+  | 'CLINICAL_SUPERVISOR'
+  | 'EXAMINATIONS_OFFICER'
+  | 'IT_ADMIN';
 
 export type ModulePermissionKey =
   | 'attendance'
@@ -58,6 +63,8 @@ export interface UserSecurityProfile {
   campusId: 'ALL' | 'MUSHITALA' | 'URBAN';
   tczNumber?: string;
   staffId: string;
+  department?: string;
+  jobTitle?: string;
   is2FAEnabled: boolean;
   is2FAVerified: boolean;
   passwordLastChanged: string; // ISO date string
@@ -165,8 +172,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
 
   PRINCIPAL: {
     role: 'PRINCIPAL',
-    roleName: 'School Director & Principal',
-    description: 'Full institutional authority over school operations, academic moderation approvals, expenditures, and DEBS audits.',
+    roleName: 'Principal & Head of College (CEO)',
+    description: 'Full institutional authority over college operations, academic Senate moderation, financial authorizations, NMCZ/HPCZ statutory compliance, and HEA charter.',
     isFinanceRole: true,
     requires2FA: true,
     color: 'bg-blue-100 text-blue-900 border-blue-300',
@@ -296,8 +303,8 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
 
   PARENT: {
     role: 'PARENT',
-    roleName: 'Verified Parent / Guardian',
-    description: 'Direct access to ward academic gradebooks, real-time fee balance settlement, absence excuse submissions, and teacher notices.',
+    roleName: 'Verified Parent / Guardian / Sponsor',
+    description: 'Direct access to student academic gradebooks, real-time fee balance settlement, semester invoices, and college circulars.',
     isFinanceRole: false,
     requires2FA: false,
     color: 'bg-slate-100 text-slate-800 border-slate-300',
@@ -306,88 +313,214 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<UserRole, RolePermissions> = {
       calendar: { view: true, create: false, edit: false, delete: false, approve: false, audit: false, export: false },
     }),
   },
+
+  REGISTRAR: {
+    role: 'REGISTRAR',
+    roleName: 'Academic Registrar & Board Secretary',
+    description: 'Admissions indexing with NMCZ, HPCZ, TEVETA, student dossiers, examination board verifications, and graduation diplomas.',
+    isFinanceRole: false,
+    requires2FA: true,
+    color: 'bg-emerald-100 text-emerald-900 border-emerald-300',
+    permissions: createPermissionsRecord({
+      admissions: { view: true, create: true, edit: true, delete: false, approve: true, audit: true, export: true },
+      academics: { view: true, create: true, edit: true, delete: false, approve: true, audit: true, export: true },
+      attendance: { view: true, create: true, edit: true, delete: false, approve: true, audit: true, export: true },
+      calendar: { view: true, create: true, edit: true, delete: false, approve: true, audit: false, export: true },
+      settings: { view: true, create: false, edit: true, delete: false, approve: false, audit: true, export: true },
+      admin: { view: true, create: false, edit: false, delete: false, approve: false, audit: true, export: true },
+    }),
+  },
+
+  LECTURER: {
+    role: 'LECTURER',
+    roleName: 'Faculty Lecturer & Assessor',
+    description: 'Continuous assessment score entry, OSCE clinical stations scoring, lecture attendance registers, and course syllabi.',
+    isFinanceRole: false,
+    requires2FA: false,
+    color: 'bg-indigo-100 text-indigo-900 border-indigo-300',
+    permissions: createPermissionsRecord({
+      academics: { view: true, create: true, edit: true, delete: false, approve: false, audit: false, export: true },
+      attendance: { view: true, create: true, edit: true, delete: false, approve: false, audit: false, export: true },
+      teacher: { view: true, create: true, edit: true, delete: false, approve: false, audit: false, export: true },
+      calendar: { view: true, create: false, edit: false, delete: false, approve: false, audit: false, export: false },
+    }),
+  },
+
+  CLINICAL_SUPERVISOR: {
+    role: 'CLINICAL_SUPERVISOR',
+    roleName: 'Clinical Preceptor & Hospital Supervisor',
+    description: 'Hospital ward rotation oversight, clinical skills lab evaluations, logbook sign-offs, and hospital clinical shift muster.',
+    isFinanceRole: false,
+    requires2FA: false,
+    color: 'bg-teal-100 text-teal-900 border-teal-300',
+    permissions: createPermissionsRecord({
+      academics: { view: true, create: false, edit: true, delete: false, approve: true, audit: true, export: true },
+      attendance: { view: true, create: true, edit: true, delete: false, approve: true, audit: true, export: true },
+      boarding: { view: true, create: false, edit: false, delete: false, approve: false, audit: false, export: false },
+      calendar: { view: true, create: false, edit: false, delete: false, approve: false, audit: false, export: false },
+    }),
+  },
+
+  EXAMINATIONS_OFFICER: {
+    role: 'EXAMINATIONS_OFFICER',
+    roleName: 'Examinations Officer & Verification Lead',
+    description: 'Council indexing numbers verification, examination question paper banking, continuous assessment validation, and transcript printing.',
+    isFinanceRole: false,
+    requires2FA: true,
+    color: 'bg-purple-100 text-purple-900 border-purple-300',
+    permissions: createPermissionsRecord({
+      academics: { view: true, create: true, edit: true, delete: false, approve: true, audit: true, export: true },
+      admissions: { view: true, create: false, edit: false, delete: false, approve: false, audit: true, export: true },
+      calendar: { view: true, create: true, edit: true, delete: false, approve: false, audit: false, export: true },
+    }),
+  },
+
+  IT_ADMIN: {
+    role: 'IT_ADMIN',
+    roleName: 'IT Systems & Cybersecurity Administrator',
+    description: 'Enterprise role-based access control, biometric terminal clock-in sync, cryptographic audit trails, and automated recovery.',
+    isFinanceRole: true,
+    requires2FA: true,
+    color: 'bg-cyan-100 text-cyan-900 border-cyan-300',
+    permissions: createPermissionsRecord({
+      admin: { view: true, create: true, edit: true, delete: true, approve: true, audit: true, export: true },
+      settings: { view: true, create: true, edit: true, delete: false, approve: true, audit: true, export: true },
+      hr: { view: true, create: true, edit: true, delete: false, approve: true, audit: true, export: true },
+      attendance: { view: true, create: false, edit: false, delete: false, approve: false, audit: true, export: true },
+      fees: { view: true, create: false, edit: false, delete: false, approve: false, audit: true, export: true },
+      gis: { view: true, create: true, edit: true, delete: false, approve: false, audit: true, export: true },
+    }),
+  },
 };
 
-// Initial Seed Users with Security Metadata
+// Authentic NWUCHAS Higher Education Seed Users with Security Metadata
 export const INITIAL_SECURITY_USERS: UserSecurityProfile[] = [
   {
-    id: 'usr-001',
-    username: 'director.mwansa',
-    fullName: 'Mr. Emmanuel Mwansa',
-    email: 'e.mwansa@legacyschool.edu.zm',
-    phone: '+260 974 371271',
+    id: 'usr-nwu-001',
+    username: 'principal.chileshe',
+    fullName: 'Dr. Mwila Chileshe',
+    email: 'principal@nwuchas.edu.zm',
+    phone: '+260 977 100001',
     role: 'PRINCIPAL',
     campusId: 'ALL',
-    staffId: 'LSS-DIR-001',
-    tczNumber: 'TCZ-DIR-2026-991',
+    staffId: 'NWU-STF-001',
+    department: 'Executive Directorate',
+    jobTitle: 'Principal & Head of College (CEO)',
+    tczNumber: 'HPCZ/REG/2012/0488',
     is2FAEnabled: true,
     is2FAVerified: true,
-    passwordLastChanged: new Date(Date.now() - 14 * 86400000).toISOString(), // 14 days ago (Healthy)
+    passwordLastChanged: new Date(Date.now() - 14 * 86400000).toISOString(),
     mustChangePassword: false,
     failedLoginAttempts: 0,
     accountLocked: false,
   },
   {
-    id: 'usr-002',
-    username: 'bursar.phiri',
-    fullName: 'Mrs. Chileshe Phiri',
-    email: 'c.phiri@legacyschool.edu.zm',
-    phone: '+260 977 445566',
+    id: 'usr-nwu-002',
+    username: 'registrar.mumba',
+    fullName: 'Mr. Kabwe Mumba',
+    email: 'registrar@nwuchas.edu.zm',
+    phone: '+260 977 100002',
+    role: 'REGISTRAR',
+    campusId: 'ALL',
+    staffId: 'NWU-STF-002',
+    department: 'Academic Affairs & Registry',
+    jobTitle: 'Academic Registrar & Board Secretary',
+    tczNumber: 'HEA/REG/2015/0912',
+    is2FAEnabled: true,
+    is2FAVerified: true,
+    passwordLastChanged: new Date(Date.now() - 18 * 86400000).toISOString(),
+    mustChangePassword: false,
+    failedLoginAttempts: 0,
+    accountLocked: false,
+  },
+  {
+    id: 'usr-nwu-003',
+    username: 'bursar.banda',
+    fullName: 'Mr. Patrick Banda',
+    email: 'bursar@nwuchas.edu.zm',
+    phone: '+260 977 100005',
     role: 'BURSAR',
     campusId: 'ALL',
-    staffId: 'LSS-FIN-002',
+    staffId: 'NWU-STF-003',
+    department: 'Finance & Accounts',
+    jobTitle: 'College Bursar & Chief Financial Officer',
     is2FAEnabled: true,
-    is2FAVerified: false, // Must verify 2FA to access finance
-    passwordLastChanged: new Date(Date.now() - 28 * 86400000).toISOString(), // 28 days ago (due soon)
+    is2FAVerified: true,
+    passwordLastChanged: new Date(Date.now() - 25 * 86400000).toISOString(),
     mustChangePassword: false,
     failedLoginAttempts: 0,
     accountLocked: false,
   },
   {
-    id: 'usr-003',
-    username: 'academics.tembo',
-    fullName: 'Dr. Frank Tembo',
-    email: 'f.tembo@legacyschool.edu.zm',
-    phone: '+260 979 112233',
-    role: 'ACADEMIC_HEAD',
+    id: 'usr-nwu-004',
+    username: 'nursing.mwape',
+    fullName: 'Mrs. Gertrude Mwape',
+    email: 'nursing.lead@nwuchas.edu.zm',
+    phone: '+260 977 100010',
+    role: 'LECTURER',
     campusId: 'MUSHITALA',
-    staffId: 'LSS-ACA-003',
-    tczNumber: 'TCZ-PR-2018-449',
+    staffId: 'NWU-STF-004',
+    department: 'School of Nursing & Midwifery',
+    jobTitle: 'Head of Nursing / Senior Lecturer',
+    tczNumber: 'NMCZ/RN/2016/1842',
     is2FAEnabled: false,
     is2FAVerified: false,
-    passwordLastChanged: new Date(Date.now() - 32 * 86400000).toISOString(), // 32 days ago (Expired!)
-    mustChangePassword: true, // Needs mandatory monthly reset
+    passwordLastChanged: new Date(Date.now() - 8 * 86400000).toISOString(),
+    mustChangePassword: false,
     failedLoginAttempts: 0,
     accountLocked: false,
   },
   {
-    id: 'usr-004',
-    username: 'estate.banda',
-    fullName: 'Eng. Patrick Banda',
-    email: 'p.banda@legacyschool.edu.zm',
-    phone: '+260 971 889900',
-    role: 'ESTATE_MANAGER',
+    id: 'usr-nwu-005',
+    username: 'clinical.mulenga',
+    fullName: 'Mr. Chileshe Mulenga',
+    email: 'clinical.coord@nwuchas.edu.zm',
+    phone: '+260 977 100011',
+    role: 'CLINICAL_SUPERVISOR',
+    campusId: 'URBAN',
+    staffId: 'NWU-STF-005',
+    department: 'Clinical Practice Directorate',
+    jobTitle: 'Clinical Training Coordinator',
+    tczNumber: 'HPCZ/CO/2017/0931',
+    is2FAEnabled: true,
+    is2FAVerified: false,
+    passwordLastChanged: new Date(Date.now() - 12 * 86400000).toISOString(),
+    mustChangePassword: false,
+    failedLoginAttempts: 0,
+    accountLocked: false,
+  },
+  {
+    id: 'usr-nwu-006',
+    username: 'exams.kangwa',
+    fullName: 'Dr. Joseph Kangwa',
+    email: 'exams@nwuchas.edu.zm',
+    phone: '+260 977 100012',
+    role: 'EXAMINATIONS_OFFICER',
     campusId: 'ALL',
-    staffId: 'LSS-OPS-004',
+    staffId: 'NWU-STF-006',
+    department: 'Academic Registry',
+    jobTitle: 'Examinations Officer & Verification Lead',
+    tczNumber: 'HEA/EXAM/2019/0421',
     is2FAEnabled: true,
     is2FAVerified: false,
-    passwordLastChanged: new Date(Date.now() - 10 * 86400000).toISOString(),
+    passwordLastChanged: new Date(Date.now() - 15 * 86400000).toISOString(),
     mustChangePassword: false,
     failedLoginAttempts: 0,
     accountLocked: false,
   },
   {
-    id: 'usr-005',
-    username: 'teacher.kalenga',
-    fullName: 'Ms. Joyce Kalenga',
-    email: 'j.kalenga@legacyschool.edu.zm',
-    phone: '+260 975 667788',
-    role: 'TEACHER',
-    campusId: 'MUSHITALA',
-    staffId: 'LSS-TCH-005',
-    tczNumber: 'TCZ-SEC-2021-312',
-    is2FAEnabled: false,
-    is2FAVerified: false,
+    id: 'usr-nwu-007',
+    username: 'it.mukombo',
+    fullName: 'Mr. Lawrence Mukombo',
+    email: 'it.admin@nwuchas.edu.zm',
+    phone: '+260 977 100014',
+    role: 'IT_ADMIN',
+    campusId: 'ALL',
+    staffId: 'NWU-STF-007',
+    department: 'ICT & Systems Infrastructure',
+    jobTitle: 'Systems Administrator & Security Lead',
+    is2FAEnabled: true,
+    is2FAVerified: true,
     passwordLastChanged: new Date(Date.now() - 5 * 86400000).toISOString(),
     mustChangePassword: false,
     failedLoginAttempts: 0,
@@ -571,6 +704,17 @@ export function loadActiveUser(): UserSecurityProfile {
     const raw = localStorage.getItem(STORAGE_ACTIVE_USER);
     if (!raw) return INITIAL_SECURITY_USERS[0];
     const parsed = JSON.parse(raw);
+    // Sanitize any legacy school profiles (e.g. LSS, Emmanuel Mwansa, legacyschool.edu.zm)
+    if (
+      !parsed ||
+      parsed.email?.includes('legacyschool.edu.zm') ||
+      parsed.staffId?.startsWith('LSS') ||
+      parsed.fullName?.includes('Emmanuel Mwansa') ||
+      parsed.username?.includes('mwansa')
+    ) {
+      saveActiveUser(INITIAL_SECURITY_USERS[0]);
+      return INITIAL_SECURITY_USERS[0];
+    }
     return { ...INITIAL_SECURITY_USERS[0], ...parsed };
   } catch {
     return INITIAL_SECURITY_USERS[0];

@@ -154,15 +154,15 @@ describe('Institutional Separation of Powers & Executive Governance Guardrails',
       (d) => d.role === 'SCHOOL_MANAGER'
     );
     expect(schoolManagerDispatch).toBeDefined();
-    expect(schoolManagerDispatch?.name).toBe('Dr. Kennedy Musonda');
-    expect(schoolManagerDispatch?.title).toBe('School Manager & Principal');
+    expect(schoolManagerDispatch?.name).toBe('Dr. Mwila Chileshe');
+    expect(schoolManagerDispatch?.title).toBe('Principal & Chief Executive Officer');
 
     const ceoDispatch = incident.recipients.find(
       (d) => d.role === 'CEO'
     );
     expect(ceoDispatch).toBeDefined();
-    expect(ceoDispatch?.name).toBe('Mr. Emmanuel Mwansa');
-    expect(ceoDispatch?.title).toBe('Chief Executive Officer & Board Chair');
+    expect(ceoDispatch?.name).toBe('Mr. Kabwe Mumba');
+    expect(ceoDispatch?.title).toBe('Academic Registrar & Board Secretary');
 
     // Verify session token is now active
     expect(hasActiveOverrideSession('RECORD_PAYMENT')).toBe(true);
@@ -175,10 +175,10 @@ describe('Institutional Separation of Powers & Executive Governance Guardrails',
 
   it('contains correct metadata and executive recipients in definitions', () => {
     expect(EXECUTIVE_DISPATCH_RECIPIENTS).toHaveLength(2);
-    expect(EXECUTIVE_DISPATCH_RECIPIENTS[0].name).toBe('Dr. Kennedy Musonda');
-    expect(EXECUTIVE_DISPATCH_RECIPIENTS[0].title).toBe('School Manager & Principal');
-    expect(EXECUTIVE_DISPATCH_RECIPIENTS[1].name).toBe('Mr. Emmanuel Mwansa');
-    expect(EXECUTIVE_DISPATCH_RECIPIENTS[1].title).toBe('Chief Executive Officer & Board Chair');
+    expect(EXECUTIVE_DISPATCH_RECIPIENTS[0].name).toBe('Dr. Mwila Chileshe');
+    expect(EXECUTIVE_DISPATCH_RECIPIENTS[0].title).toBe('Principal & Chief Executive Officer');
+    expect(EXECUTIVE_DISPATCH_RECIPIENTS[1].name).toBe('Mr. Kabwe Mumba');
+    expect(EXECUTIVE_DISPATCH_RECIPIENTS[1].title).toBe('Academic Registrar & Board Secretary');
 
     expect(OPERATIONAL_TASK_DEFINITIONS.RECORD_PAYMENT.intendedRole).toContain('Bursar');
     expect(OPERATIONAL_TASK_DEFINITIONS.GRANT_LEARNER_ACCESS.intendedRole).toContain('Registrar');

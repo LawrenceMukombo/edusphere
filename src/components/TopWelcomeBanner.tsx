@@ -168,49 +168,100 @@ export function TopWelcomeBanner() {
                 <button
                   type="button"
                   onClick={() => setShowRoleSwitcher(!showRoleSwitcher)}
-                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/15 text-white/90 text-[10px] font-semibold transition"
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 text-white text-[10px] font-semibold transition active:scale-95"
                   title="Switch simulated staff account for RBAC validation"
                 >
                   <span>Switch Role</span>
-                  <ChevronDown className="w-3 h-3 text-white/70" />
+                  <ChevronDown className={`w-3 h-3 text-white/80 transition-transform ${showRoleSwitcher ? 'rotate-180' : ''}`} />
                 </button>
 
                 {/* Role Switcher Dropdown */}
                 {showRoleSwitcher && (
-                  <div className="absolute left-0 top-full mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-2xl p-2 z-50 text-xs text-slate-800 animate-in fade-in slide-in-from-top-2">
-                    <div className="p-2 border-b border-slate-100 flex items-center justify-between">
-                      <span className="font-bold text-slate-900">Switch Staff Account (RBAC)</span>
-                      <button
-                        type="button"
-                        onClick={() => setShowRoleSwitcher(false)}
-                        className="text-slate-400 hover:text-slate-600"
-                      >
-                        <X size={14} />
-                      </button>
-                    </div>
-                    <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 py-1">
-                      {INITIAL_SECURITY_USERS.map((u) => (
+                  <>
+                    {/* Click-outside backdrop */}
+                    <div
+                      className="fixed inset-0 z-40 cursor-default"
+                      onClick={() => setShowRoleSwitcher(false)}
+                    />
+
+                    <div className="absolute left-0 top-full mt-2 w-80 sm:w-[380px] bg-slate-900/98 backdrop-blur-xl border border-sky-900/80 rounded-2xl shadow-2xl p-2.5 z-50 text-xs text-white animate-in fade-in slide-in-from-top-2 ring-1 ring-white/10">
+                      <div className="p-2 border-b border-slate-800 flex items-center justify-between">
+                        <div>
+                          <span className="font-extrabold text-white text-xs tracking-wide">Switch Staff Account (RBAC)</span>
+                          <p className="text-[10px] text-slate-400">NWUCHAS College Leadership & Staff</p>
+                        </div>
                         <button
-                          key={u.id}
                           type="button"
-                          onClick={() => handleSelectUser(u)}
-                          className={`w-full text-left p-2 rounded-lg transition flex items-center justify-between hover:bg-slate-50 ${
-                            currentUser.id === u.id ? 'bg-sky-50 border border-[#007B99]/30 text-sky-950' : ''
-                          }`}
+                          onClick={() => setShowRoleSwitcher(false)}
+                          className="h-6 w-6 rounded-md hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition"
                         >
-                          <div>
-                            <p className="font-bold text-slate-900 text-xs">{u.fullName}</p>
-                            <p className="text-[10px] text-slate-500">
-                              {formatCleanEnum(u.role)} • {u.staffId}
-                            </p>
-                          </div>
-                          {currentUser.id === u.id && (
-                            <CheckCircle2 size={14} className="text-[#007B99] shrink-0" />
-                          )}
+                          <X size={14} />
                         </button>
-                      ))}
+                      </div>
+
+                      <div className="max-h-72 overflow-y-auto divide-y divide-slate-800/60 py-1.5 space-y-1">
+                        {INITIAL_SECURITY_USERS.map((u) => {
+                          const userInitials = u.fullName
+                            .split(' ')
+                            .filter(Boolean)
+                            .slice(0, 2)
+                            .map((p) => p[0].toUpperCase())
+                            .join('');
+                          const isSelected = currentUser.id === u.id;
+
+                          return (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={() => handleSelectUser(u)}
+                              className={`w-full text-left p-2 rounded-xl transition flex items-center justify-between gap-2.5 ${
+                                isSelected
+                                  ? 'bg-gradient-to-r from-[#007B99]/30 to-[#8DC63F]/20 border border-[#007B99]/60 text-white shadow-sm'
+                                  : 'hover:bg-white/5 border border-transparent text-slate-200'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[#007B99] to-[#8DC63F] p-0.5 shrink-0 shadow-xs">
+                                  <div className="h-full w-full rounded-full bg-slate-900 flex items-center justify-center text-white font-extrabold text-[10px]">
+                                    {userInitials}
+                                  </div>
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <p className="font-bold text-white text-xs truncate">{u.fullName}</p>
+                                    <span className="font-mono text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-800 text-sky-300 border border-slate-700">
+                                      {u.staffId}
+                                    </span>
+                                  </div>
+                                  <p className="text-[10px] text-slate-300 truncate">
+                                    {u.jobTitle || formatCleanEnum(u.role)}
+                                  </p>
+                                  {u.department && (
+                                    <p className="text-[9px] text-[#8DC63F] truncate">
+                                      {u.department}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                              {isSelected ? (
+                                <CheckCircle2 size={16} className="text-[#8DC63F] shrink-0" />
+                              ) : (
+                                <div className="h-4 w-4 rounded-full border border-slate-700 shrink-0" />
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <div className="p-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
+                        <span className="flex items-center gap-1 text-slate-300">
+                          <ShieldCheck size={12} className="text-[#8DC63F]" />
+                          <span>Active: <strong className="text-white">{cleanRole}</strong></span>
+                        </span>
+                        <span className="text-[9px] text-slate-400">NWUCHAS CMIS</span>
+                      </div>
                     </div>
-                  </div>
+                  </>
                 )}
               </div>
             </div>
