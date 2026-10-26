@@ -816,12 +816,17 @@ export default function PublicCollegeLandingPage() {
               <div className="grid h-12 w-12 place-items-center rounded-xl bg-pink-50 text-[#EC008C] mx-auto mb-4">
                 <Phone className="h-6 w-6" />
               </div>
-              <h3 className="font-bold text-slate-900 text-base">Contact Hotlines</h3>
-              <p className="text-xs text-slate-700 mt-2 leading-relaxed font-medium">
-                Hotline: <strong className="text-slate-900">0964240051</strong> / 0955550051<br />
-                0979000051 / 0974896096 / 0974240051<br />
-                <span className="text-[11px] text-[#5c8426] font-semibold">WhatsApp: +260 775747848</span>
-              </p>
+              <h3 className="font-bold text-slate-900 text-base">Contact Hotlines & WhatsApp</h3>
+              <div className="text-xs text-slate-700 mt-2 leading-relaxed space-y-1.5 text-center">
+                <p className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider">For More Details Contact Us On:</p>
+                <p className="font-bold text-slate-900 font-mono text-[11px] sm:text-xs">
+                  0964240051 / 0955550051 / 0979000051 / 0974896096 / 0974240051
+                </p>
+                <p className="text-[11px] text-emerald-600 font-semibold uppercase tracking-wider pt-1">WhatsApp:</p>
+                <p className="font-bold text-emerald-800 font-mono text-[11px] sm:text-xs">
+                  0955550051 / 0964240051 / 0979000051 / 0974896096 / 0974240051
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -941,13 +946,23 @@ export default function PublicCollegeLandingPage() {
         </div>
       </footer>
 
-      {/* Authentic Signature Lime Green Footer Bar Matching nwuc.edu.zm */}
-      <div className="bg-[#8DC63F] text-slate-950 py-3 px-4 text-xs font-bold">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>© 2026 North Western University College of Health and Applied Sciences. All rights reserved.</span>
-          <span>Plot 511/518 Shilenda Road, Manyama, Lumwana, Zambia • Tel: 0964240051</span>
+      {/* Authentic Signature Lime Green Footer Bar Matching nwuc.edu.zm - Static/Sticky Bottom Bar */}
+      <footer className="sticky bottom-0 z-40 bg-[#8DC63F] text-slate-950 py-2.5 px-4 text-xs font-bold border-t border-[#7ab332] shadow-[0_-4px_16px_rgba(0,0,0,0.12)]">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
+          <span className="text-center md:text-left">
+            © 2026 North Western University College of Health and Applied Sciences. All rights reserved.
+          </span>
+          <div className="flex flex-wrap items-center justify-center md:justify-end gap-x-2.5 gap-y-1 text-[11px] font-semibold text-slate-900">
+            <span>Plot 511/518 Shilenda Road, Manyama, Lumwana, Zambia</span>
+            <span className="hidden sm:inline">•</span>
+            <span>Hotlines: <strong>0964240051 / 0955550051 / 0979000051 / 0974896096 / 0974240051</strong></span>
+            <span className="hidden sm:inline">•</span>
+            <span>WhatsApp: <strong>0955550051 / 0964240051 / 0979000051 / 0974896096 / 0974240051</strong></span>
+            <span className="hidden sm:inline">•</span>
+            <a href="mailto:info@nwuc.edu.zm" className="underline hover:text-slate-950">info@nwuc.edu.zm</a>
+          </div>
         </div>
-      </div>
+      </footer>
     </div>
   );
 }

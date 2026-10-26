@@ -525,7 +525,7 @@ export default function CandidateApplicationPortalPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between">
       {/* Top Banner / Letterhead */}
       <div className="border-b border-slate-200 bg-white px-4 py-8 sm:px-8 shadow-xs">
         <div className="mx-auto max-w-6xl">
@@ -626,7 +626,7 @@ export default function CandidateApplicationPortalPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-6xl px-4 pt-8 sm:px-8">
+      <div className="mx-auto max-w-6xl px-4 pt-8 pb-12 sm:px-8 flex-1 w-full">
         {/* ========================================================================= */}
         {/* TAB 1: APPLY ONLINE                                                       */}
         {/* ========================================================================= */}
@@ -2313,6 +2313,24 @@ export default function CandidateApplicationPortalPage() {
           </div>
         )}
       </div>
+
+      {/* Authentic Signature Lime Green Footer Bar Matching nwuc.edu.zm - Static/Sticky Bottom Bar */}
+      <footer className="sticky bottom-0 z-40 bg-[#8DC63F] text-slate-950 py-2.5 px-4 text-xs font-bold border-t border-[#7ab332] shadow-[0_-4px_16px_rgba(0,0,0,0.12)]">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
+          <span className="text-center md:text-left">
+            © 2026 North Western University College of Health and Applied Sciences. All rights reserved.
+          </span>
+          <div className="flex flex-wrap items-center justify-center md:justify-end gap-x-2.5 gap-y-1 text-[11px] font-semibold text-slate-900">
+            <span>Plot 511/518 Shilenda Road, Manyama, Lumwana, Zambia</span>
+            <span className="hidden sm:inline">•</span>
+            <span>Hotlines: <strong>0964240051 / 0955550051 / 0979000051 / 0974896096 / 0974240051</strong></span>
+            <span className="hidden sm:inline">•</span>
+            <span>WhatsApp: <strong>0955550051 / 0964240051 / 0979000051 / 0974896096 / 0974240051</strong></span>
+            <span className="hidden sm:inline">•</span>
+            <a href="mailto:info@nwuc.edu.zm" className="underline hover:text-slate-950">info@nwuc.edu.zm</a>
+          </div>
+        </div>
+      </footer>
 
       {/* RENDER OFFER LETTER MODAL */}
       {showOfferModal && trackedApplication && (

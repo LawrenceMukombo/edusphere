@@ -527,7 +527,7 @@ export function NwuchasShell({ children }: { children: React.ReactNode }) {
           </div>
         )}
 
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 flex flex-col min-h-[calc(100vh-4rem)]">
           {/* Mobile Horizontal Quick-Scroll Tabs */}
           <nav className="flex gap-2 overflow-x-auto border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
             <Link
@@ -556,9 +556,27 @@ export function NwuchasShell({ children }: { children: React.ReactNode }) {
                 </Link>
               ))}
           </nav>
-          <main className="p-3 sm:p-6 lg:p-8 pb-20 md:pb-8 w-full max-w-none overflow-y-auto min-w-0">
+          <main className="flex-1 p-3 sm:p-6 lg:p-8 pb-16 md:pb-8 w-full max-w-none overflow-y-auto min-w-0">
             {children}
           </main>
+
+          {/* Authentic Signature Lime Green Footer Bar - Static/Sticky Bottom Bar */}
+          <footer className="sticky bottom-0 z-20 bg-[#8DC63F] text-slate-950 py-2 px-4 text-xs font-bold border-t border-[#7ab332] shadow-[0_-2px_10px_rgba(0,0,0,0.08)]">
+            <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-1.5 text-[11px] sm:text-xs">
+              <span className="truncate">
+                © 2026 North Western University College of Health and Applied Sciences. All rights reserved.
+              </span>
+              <div className="flex flex-wrap items-center justify-end gap-x-2 text-slate-900 font-semibold text-[11px] shrink-0">
+                <span>Plot 511/518 Shilenda Road, Manyama, Lumwana, Zambia</span>
+                <span className="hidden sm:inline">•</span>
+                <span>Hotlines: <strong>0964240051 / 0955550051 / 0979000051 / 0974896096 / 0974240051</strong></span>
+                <span className="hidden sm:inline">•</span>
+                <span>WhatsApp: <strong>0955550051 / 0964240051 / 0979000051 / 0974896096 / 0974240051</strong></span>
+                <span className="hidden sm:inline">•</span>
+                <a href="mailto:info@nwuc.edu.zm" className="underline hover:text-slate-950">info@nwuc.edu.zm</a>
+              </div>
+            </div>
+          </footer>
         </div>
       </div>
 

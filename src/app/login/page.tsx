@@ -185,14 +185,34 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/30 to-lime-50/20 px-4 py-12 flex items-center justify-center">
-      <Suspense fallback={
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-xs text-slate-500 shadow-sm">
-          Loading NWUCHAS Authentication Portal…
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-sky-50/30 to-lime-50/20 flex flex-col justify-between">
+      <main className="flex-1 px-4 py-12 flex items-center justify-center">
+        <Suspense fallback={
+          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-xs text-slate-500 shadow-sm">
+            Loading NWUCHAS Authentication Portal…
+          </div>
+        }>
+          <LoginForm />
+        </Suspense>
+      </main>
+
+      {/* Authentic Signature Lime Green Footer Bar Matching nwuc.edu.zm - Static/Sticky Bottom Bar */}
+      <footer className="sticky bottom-0 z-30 bg-[#8DC63F] text-slate-950 py-2.5 px-4 text-xs font-bold border-t border-[#7ab332] shadow-[0_-4px_16px_rgba(0,0,0,0.12)]">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-1.5 text-[11px] sm:text-xs">
+          <span className="text-center sm:text-left">
+            © 2026 North Western University College of Health and Applied Sciences. All rights reserved.
+          </span>
+          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-2.5 gap-y-1 font-semibold text-slate-900">
+            <span>Plot 511/518 Shilenda Road, Manyama, Lumwana, Zambia</span>
+            <span className="hidden sm:inline">•</span>
+            <span>Hotlines: <strong>0964240051 / 0955550051 / 0979000051 / 0974896096 / 0974240051</strong></span>
+            <span className="hidden sm:inline">•</span>
+            <span>WhatsApp: <strong>0955550051 / 0964240051 / 0979000051 / 0974896096 / 0974240051</strong></span>
+            <span className="hidden sm:inline">•</span>
+            <a href="mailto:info@nwuc.edu.zm" className="underline hover:text-slate-950">info@nwuc.edu.zm</a>
+          </div>
         </div>
-      }>
-        <LoginForm />
-      </Suspense>
-    </main>
+      </footer>
+    </div>
   );
 }
