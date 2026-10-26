@@ -131,6 +131,7 @@ interface WeekDayInfo {
   monthNum: number;
   isHoliday: boolean;
   holidayName?: string;
+  isSchoolRecess?: boolean;
 }
 
 /**
@@ -154,6 +155,7 @@ function getWeekDays(offset: number, holidays: ZambianHoliday[]): { label: strin
     const label = `${dayName} (${d.getDate()} ${monthShort})`;
 
     const hol = holidays.find((h) => h.date === iso || h.observedDate === iso);
+    const isClosure = Boolean(hol?.isSchoolClosure || hol?.category === 'SCHOOL_RECESS' || hol?.category === 'SHORT_HOLIDAY' || hol?.category === 'TERM_BREAK');
 
     days.push({
       iso,
@@ -163,6 +165,7 @@ function getWeekDays(offset: number, holidays: ZambianHoliday[]): { label: strin
       monthNum: d.getMonth() + 1,
       isHoliday: !!hol,
       holidayName: hol?.name,
+      isSchoolRecess: isClosure,
     });
   }
 
@@ -360,9 +363,9 @@ export function AttendanceConsole({
   // Dynamic Multi-Week Daily Session Map
   // Key: `${studentId}_${isoDate}` -> Status
   const [dailyAttendanceMap, setDailyAttendanceMap] = useState<
-    Record<string, 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED' | 'HOLIDAY'>
+    Record<string, 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED' | 'HOLIDAY' | 'RECESS'>
   >(() => {
-    const initialMap: Record<string, 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED' | 'HOLIDAY'> = {};
+    const initialMap: Record<string, 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED' | 'HOLIDAY' | 'RECESS'> = {};
     // Seed default records for Week 0 (Oct 26-30 2026)
     const baseLearners = initialLearnerList;
     baseLearners.forEach((s, sIdx) => {
@@ -569,15 +572,15 @@ export function AttendanceConsole({
       const weekStatuses = weekDays.map((d) => {
         const key = `${s.id}_${d.iso}`;
         if (dailyAttendanceMap[key]) return dailyAttendanceMap[key];
-        if (d.isHoliday) return 'HOLIDAY';
+        if (d.isHoliday) return d.isSchoolRecess ? 'RECESS' : 'HOLIDAY';
         return 'PRESENT';
       });
 
-      // Instructional days exclude gazetted public holidays
+      // Instructional days exclude gazetted public holidays and defined school recess / short holidays
       const instructionalDays = weekDays.filter((d) => !d.isHoliday);
       const attendedInWeek = weekDays.filter((d, idx) => {
         const st = weekStatuses[idx];
-        return st === 'PRESENT' || st === 'LATE' || st === 'HOLIDAY';
+        return st === 'PRESENT' || st === 'LATE' || st === 'HOLIDAY' || st === 'RECESS';
       }).length;
 
       const weeklyRate = instructionalDays.length > 0
@@ -705,8 +708,8 @@ export function AttendanceConsole({
     const key = `${studentId}_${dayIso}`;
     const current = dailyAttendanceMap[key] || (isHoliday ? 'HOLIDAY' : 'PRESENT');
 
-    let next: 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED' | 'HOLIDAY';
-    if (current === 'HOLIDAY') {
+    let next: 'PRESENT' | 'LATE' | 'ABSENT' | 'EXCUSED' | 'HOLIDAY' | 'RECESS';
+    if (current === 'HOLIDAY' || current === 'RECESS') {
       next = 'PRESENT'; // Allow essential holiday clinical shift
     } else if (current === 'PRESENT') {
       next = 'LATE';
@@ -808,21 +811,25 @@ export function AttendanceConsole({
 
   function handleMarkHolidayExemption() {
     if (!canEditAttendance) return;
+    const isRecess = Boolean(holidayCheck.holiday?.isSchoolClosure || holidayCheck.holiday?.category === 'SCHOOL_RECESS' || holidayCheck.holiday?.category === 'SHORT_HOLIDAY' || holidayCheck.holiday?.category === 'TERM_BREAK');
+    const statusVal = isRecess ? 'RECESS' : 'HOLIDAY';
+    const reasonText = isRecess ? 'School Closing Date: Short Holiday / Recess' : 'Gazetted Zambian Public Holiday Exemption';
+
     setStudents((prev) =>
       prev.map((s) => ({
         ...s,
         todayStatus: 'EXCUSED',
-        lastCheckIn: 'Gazetted Public Holiday Exemption',
+        lastCheckIn: reasonText,
       }))
     );
     setDailyAttendanceMap((prev) => {
       const next = { ...prev };
       students.forEach((s) => {
-        next[`${s.id}_${sessionDate}`] = 'HOLIDAY';
+        next[`${s.id}_${sessionDate}`] = statusVal;
       });
       return next;
     });
-    setNotice('Applied Gazetted Zambian Public Holiday Exemption. Zero deficit penalty applied.');
+    setNotice(isRecess ? 'Applied School Closing / Recess Exemption. Students attendance indicated as Recess with zero deficit penalty.' : 'Applied Gazetted Zambian Public Holiday Exemption. Zero deficit penalty applied.');
     setTimeout(() => setNotice(''), 5000);
   }
 
@@ -1098,36 +1105,52 @@ export function AttendanceConsole({
         </div>
       )}
 
-      {/* GAZETTED ZAMBIAN PUBLIC HOLIDAY BANNER */}
+      {/* GAZETTED ZAMBIAN PUBLIC HOLIDAY & SCHOOL RECESS BANNER */}
       {holidayCheck.isHoliday && (
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-purple-300 bg-purple-50/80 p-4 text-sm text-purple-950 shadow-sm animate-in fade-in duration-200">
+        <div className={`flex flex-wrap items-center justify-between gap-4 rounded-xl border p-4 text-sm shadow-sm animate-in fade-in duration-200 ${
+          holidayCheck.holiday?.isSchoolClosure || holidayCheck.holiday?.category === 'SCHOOL_RECESS' || holidayCheck.holiday?.category === 'SHORT_HOLIDAY' || holidayCheck.holiday?.category === 'TERM_BREAK'
+            ? 'border-amber-300 bg-amber-50/90 text-amber-950'
+            : 'border-purple-300 bg-purple-50/80 text-purple-950'
+        }`}>
           <div className="flex items-start gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-xl bg-purple-200 text-purple-900 shrink-0 shadow-xs">
+            <div className={`grid h-10 w-10 place-items-center rounded-xl shrink-0 shadow-xs ${
+              holidayCheck.holiday?.isSchoolClosure || holidayCheck.holiday?.category === 'SCHOOL_RECESS' || holidayCheck.holiday?.category === 'SHORT_HOLIDAY'
+                ? 'bg-amber-200 text-amber-900'
+                : 'bg-purple-200 text-purple-900'
+            }`}>
               <Flag className="h-5 w-5" />
             </div>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="font-black text-purple-950 text-sm">
-                  🇿🇲 Gazetted Zambian Statutory Public Holiday: {holidayCheck.holiday?.name}
+                <span className="font-black text-sm">
+                  {holidayCheck.holiday?.isSchoolClosure || holidayCheck.holiday?.category === 'SCHOOL_RECESS' || holidayCheck.holiday?.category === 'SHORT_HOLIDAY'
+                    ? `🏫 School Closing Date: ${holidayCheck.holiday?.name}`
+                    : `🇿🇲 Gazetted Zambian Statutory Public Holiday: ${holidayCheck.holiday?.name}`}
                   {holidayCheck.isObservedDate ? ' (Observed Public Holiday)' : ''}
                 </span>
-                <span className="rounded-full bg-purple-200 px-2.5 py-0.5 text-[10px] font-black text-purple-900 uppercase tracking-wide">
-                  College Closed / Non-Instructional Day
+                <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wide ${
+                  holidayCheck.holiday?.isSchoolClosure || holidayCheck.holiday?.category === 'SCHOOL_RECESS' || holidayCheck.holiday?.category === 'SHORT_HOLIDAY'
+                    ? 'bg-amber-200 text-amber-900'
+                    : 'bg-purple-200 text-purple-900'
+                }`}>
+                  {holidayCheck.holiday?.isSchoolClosure || holidayCheck.holiday?.category === 'SCHOOL_RECESS' || holidayCheck.holiday?.category === 'SHORT_HOLIDAY'
+                    ? 'Official College Recess / Closed'
+                    : 'College Closed / Non-Instructional Day'}
                 </span>
               </div>
-              <p className="text-xs text-purple-800 mt-1 max-w-2xl leading-relaxed">
-                {holidayCheck.holiday?.significance} Under statutory regulations, learners are exempt from mandatory classroom attendance on gazetted national holidays with zero deficit penalty.
+              <p className="text-xs mt-1 max-w-2xl leading-relaxed opacity-90">
+                {holidayCheck.holiday?.significance} When official closing dates or short holidays are defined, didactic lectures and clinical hours are excused and student attendance registers indicate institutional recess.
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <label className="flex items-center gap-2 text-xs font-bold text-purple-950 bg-white px-3 py-1.5 rounded-lg border border-purple-200 shadow-2xs cursor-pointer hover:bg-purple-100/50">
+            <label className="flex items-center gap-2 text-xs font-bold bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs cursor-pointer hover:bg-slate-50">
               <input
                 type="checkbox"
                 checked={isClinicalHolidayRoster}
                 onChange={(e) => setIsClinicalHolidayRoster(e.target.checked)}
-                className="rounded text-purple-700 focus:ring-purple-600 h-4 w-4"
+                className="rounded text-[#007B99] focus:ring-[#007B99] h-4 w-4"
               />
               <span>Essential Hospital Ward Duty Roster</span>
             </label>
@@ -1136,9 +1159,13 @@ export function AttendanceConsole({
               <button
                 type="button"
                 onClick={handleMarkHolidayExemption}
-                className="rounded-lg bg-purple-700 px-3 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-purple-800 transition"
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold text-white shadow-sm transition ${
+                  holidayCheck.holiday?.isSchoolClosure || holidayCheck.holiday?.category === 'SCHOOL_RECESS' || holidayCheck.holiday?.category === 'SHORT_HOLIDAY'
+                    ? 'bg-amber-600 hover:bg-amber-700 text-slate-950 font-black'
+                    : 'bg-purple-700 hover:bg-purple-800'
+                }`}
               >
-                Mark All as Holiday Exemption (No Penalty)
+                Mark Recess / Holiday (Excused)
               </button>
             )}
           </div>
@@ -1848,13 +1875,23 @@ export function AttendanceConsole({
                     <th
                       key={day.iso}
                       className={`py-3 px-3 text-center ${
-                        day.isHoliday ? 'bg-purple-50 text-purple-900' : ''
+                        day.isSchoolRecess
+                          ? 'bg-amber-50 text-amber-950 border-b-2 border-amber-400'
+                          : day.isHoliday
+                          ? 'bg-purple-50 text-purple-900 border-b-2 border-purple-400'
+                          : ''
                       }`}
                     >
                       <span className="block font-bold">{day.label}</span>
                       {day.isHoliday && (
-                        <span className="text-[10px] font-black uppercase text-purple-700 block">
-                          🇿🇲 {day.holidayName ? day.holidayName.split(' ')[0] : 'HOLIDAY'}
+                        <span
+                          className={`text-[10px] font-black uppercase block ${
+                            day.isSchoolRecess ? 'text-amber-800' : 'text-purple-700'
+                          }`}
+                        >
+                          {day.isSchoolRecess
+                            ? '🏖️ RECESS'
+                            : `🇿🇲 ${day.holidayName ? day.holidayName.split(' ')[0] : 'HOLIDAY'}`}
                         </span>
                       )}
                     </th>
@@ -1974,10 +2011,14 @@ export function AttendanceConsole({
                     <td
                       key={day.iso}
                       className={`py-3 px-3 text-center text-xs font-mono ${
-                        day.isHoliday ? 'text-purple-700 bg-purple-50/50 font-bold' : 'text-emerald-700'
+                        day.isSchoolRecess
+                          ? 'text-amber-800 bg-amber-50/70 font-bold'
+                          : day.isHoliday
+                          ? 'text-purple-700 bg-purple-50/50 font-bold'
+                          : 'text-emerald-700'
                       }`}
                     >
-                      {day.isHoliday ? '🇿🇲 Holiday' : '92%'}
+                      {day.isSchoolRecess ? '🏖️ Recess' : day.isHoliday ? '🇿🇲 Holiday' : '92%'}
                     </td>
                   ))}
                   <td className="py-3 px-3 text-center text-xs font-mono text-emerald-700">94%</td>

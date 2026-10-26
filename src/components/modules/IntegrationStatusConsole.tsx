@@ -15,6 +15,7 @@ import {
   IntegrationNodeCrudModal,
   IntegrationNode,
 } from '../integrations/IntegrationNodeCrudModal';
+import { formatCleanEnum } from '@/lib/formatters';
 
 interface IntegrationStatusConsoleProps {
   initialRecords?: any[];
@@ -374,7 +375,7 @@ export function IntegrationStatusConsole({ initialRecords = [] }: IntegrationSta
                     </td>
                     <td className="px-5 py-3.5 whitespace-nowrap">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> {node.status}
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> {formatCleanEnum(node.status)}
                       </span>
                     </td>
                     <td className="px-5 py-3.5 text-right whitespace-nowrap">

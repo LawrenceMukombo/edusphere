@@ -10,8 +10,9 @@ export interface ZambianHoliday {
   date: string; // YYYY-MM-DD
   dayOfWeek: string;
   observedDate?: string; // YYYY-MM-DD if observed on another day
-  category: 'NATIONAL_HERITAGE' | 'RELIGIOUS' | 'WORKERS_AND_YOUTH' | 'FOUNDATIONAL';
+  category: 'NATIONAL_HERITAGE' | 'RELIGIOUS' | 'WORKERS_AND_YOUTH' | 'FOUNDATIONAL' | 'SCHOOL_RECESS' | 'SHORT_HOLIDAY' | 'TERM_BREAK';
   significance: string;
+  isSchoolClosure?: boolean;
 }
 
 export const ZAMBIAN_PUBLIC_HOLIDAYS_2026: ZambianHoliday[] = [

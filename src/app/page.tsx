@@ -307,29 +307,34 @@ export default function PublicCollegeLandingPage() {
             </div>
 
             {/* Core Values Card */}
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-8 shadow-xs hover:shadow-md transition md:col-span-2 lg:col-span-1">
-              <div className="grid h-12 w-12 place-items-center rounded-xl bg-pink-50 text-[#EC008C] border border-[#EC008C]/30 mb-6">
-                <Award className="h-6 w-6" />
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-8 shadow-xs hover:shadow-md transition md:col-span-2 lg:col-span-1 flex flex-col justify-between">
+              <div>
+                <div className="grid h-12 w-12 place-items-center rounded-xl bg-pink-50 text-[#EC008C] border border-[#EC008C]/30 mb-6">
+                  <Award className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-bold text-[#0b2545]">Institutional Core Values</h3>
+                <p className="mt-3 text-sm text-slate-600 leading-relaxed">
+                  Grounded in unyielding professional ethics, patient dignity, clinical precision, and community-centred service:
+                </p>
               </div>
-              <h3 className="text-xl font-bold text-[#0b2545]">Core Values</h3>
-              <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                <li className="flex items-center gap-2">
+              <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-slate-800 font-semibold shadow-2xs">
                   <CheckCircle2 className="h-4 w-4 text-[#8DC63F] shrink-0" />
-                  <strong>Clinical Excellence:</strong> High mastery of skills & diagnosis.
-                </li>
-                <li className="flex items-center gap-2">
+                  <span>Clinical Excellence</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-slate-800 font-semibold shadow-2xs">
                   <CheckCircle2 className="h-4 w-4 text-[#8DC63F] shrink-0" />
-                  <strong>Compassion:</strong> Patient-first, dignified care.
-                </li>
-                <li className="flex items-center gap-2">
+                  <span>Compassion</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-slate-800 font-semibold shadow-2xs">
                   <CheckCircle2 className="h-4 w-4 text-[#8DC63F] shrink-0" />
-                  <strong>Integrity:</strong> Honest and accountable professional conduct.
-                </li>
-                <li className="flex items-center gap-2">
+                  <span>Integrity</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-slate-800 font-semibold shadow-2xs">
                   <CheckCircle2 className="h-4 w-4 text-[#8DC63F] shrink-0" />
-                  <strong>Community Impact:</strong> Serving rural and industrial health needs.
-                </li>
-              </ul>
+                  <span>Community Care</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -916,7 +921,7 @@ export default function PublicCollegeLandingPage() {
 
           <div className="pt-8 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-slate-500">
             <div>
-              © 2026 North Western University College of Health and Applied Sciences. All rights reserved.
+              North Western University College of Health and Applied Sciences • CMIS
             </div>
             <div className="flex items-center gap-6">
               <Link href="/login" className="hover:text-slate-400 transition">

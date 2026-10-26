@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { LogIn, ShieldCheck, ArrowLeft, KeyRound, AlertCircle, CheckCircle2, HeartPulse, Sparkles } from 'lucide-react';
+import { LogIn, ShieldCheck, ArrowLeft, KeyRound, AlertCircle, CheckCircle2, HeartPulse } from 'lucide-react';
 import { NwuchasLogo, NwuchasEmblemSvg, NWUCHAS_IDENTITY } from '@/components/NwuchasLogo';
 
 function LoginForm() {
@@ -16,19 +16,7 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  // Quick dev/demo credentials for authorized testing
-  const quickAccounts = [
-    { role: 'IT Admin', email: 'it.admin@nwuchas.edu.zm', name: 'L. Mukombo', badgeColor: 'bg-[#007B99] text-white' },
-    { role: 'Principal', email: 'principal@nwuchas.edu.zm', name: 'Dr. Chileshe', badgeColor: 'bg-[#8DC63F] text-slate-900' },
-    { role: 'Registrar', email: 'registrar@nwuchas.edu.zm', name: 'K. Mumba', badgeColor: 'bg-[#007B99]/15 text-[#007B99] border border-[#007B99]/30' },
-    { role: 'Bursar', email: 'bursar@nwuchas.edu.zm', name: 'P. Banda', badgeColor: 'bg-[#EC008C]/15 text-[#c70076] border border-[#EC008C]/30' },
-  ];
 
-  function fillCredentials(accountEmail: string) {
-    setEmail(accountEmail);
-    setPassword('NWUCHAS-DEV-ONLY-CHANGE-ME');
-    setError('');
-  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -178,39 +166,7 @@ function LoginForm() {
           </button>
         </form>
 
-        {/* Quick Credentials Helper Card */}
-        <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50/80 p-3.5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
-              <Sparkles size={12} className="text-[#8DC63F]" />
-              Quick Fill Credentials (Dev/Demo)
-            </span>
-            <span className="text-[10px] text-slate-400 font-medium">1-Click Auto Fill</span>
-          </div>
 
-          <div className="grid grid-cols-2 gap-2">
-            {quickAccounts.map((acc) => (
-              <button
-                key={acc.email}
-                type="button"
-                onClick={() => fillCredentials(acc.email)}
-                className="flex items-center justify-between gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-left text-[11px] hover:border-[#007B99] hover:bg-sky-50/50 transition cursor-pointer shadow-2xs"
-              >
-                <div className="truncate">
-                  <div className="font-bold text-slate-800 truncate">{acc.name}</div>
-                  <div className="text-[10px] text-slate-500 truncate">{acc.email.split('@')[0]}</div>
-                </div>
-                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold ${acc.badgeColor}`}>
-                  {acc.role}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <p className="mt-2 text-center text-[10px] text-slate-500">
-            Password: <code className="rounded bg-slate-200 px-1 py-0.5 font-mono text-[10px] text-slate-700">NWUCHAS-DEV-ONLY-CHANGE-ME</code>
-          </p>
-        </div>
 
         {/* Institutional Trust Footer */}
         <div className="mt-6 border-t border-slate-100 pt-4 flex flex-col items-center gap-2 text-center">

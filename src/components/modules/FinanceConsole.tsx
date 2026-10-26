@@ -31,6 +31,7 @@ import { CreateInvoiceModal } from '../finance/CreateInvoiceModal';
 import { RecordPaymentModal } from '../finance/RecordPaymentModal';
 import { CreateJournalModal } from '../finance/CreateJournalModal';
 import { PaymentsConsole } from './PaymentsConsole';
+import { formatCleanEnum } from '@/lib/formatters';
 
 export interface FinanceConsoleProps {
   initialInvoices?: any[];
@@ -892,7 +893,7 @@ export function FinanceConsole({
                               : 'bg-amber-100 text-amber-800'
                           }`}
                         >
-                          {item.status}
+                          {formatCleanEnum(item.status)}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right">

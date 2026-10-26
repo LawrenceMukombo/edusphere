@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { AllocateBedModal } from '@/components/operations/AllocateBedModal';
 import { DigitalBusPassModal } from '@/components/operations/DigitalBusPassModal';
+import { formatCleanEnum } from '@/lib/formatters';
 
 interface OperationsConsoleProps {
   initialHostels?: any[];
@@ -838,7 +839,7 @@ export function OperationsConsole({
                             : 'bg-rose-100 text-rose-800 border border-rose-300'
                         }`}
                       >
-                        {ent.status}
+                        {formatCleanEnum(ent.status)}
                       </span>
                     </div>
                     <p className="text-xs text-slate-600">

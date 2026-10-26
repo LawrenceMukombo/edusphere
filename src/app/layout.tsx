@@ -19,6 +19,14 @@ export const metadata: Metadata = {
   description:
     'Dedicated Integrated College Management Information System for North Western University College of Health and Applied Sciences (NWUCHAS), Manyama, Lumwana, Zambia.',
   manifest: '/manifest.webmanifest',
+  icons: {
+    icon: [
+      { url: '/nwuchas-emblem.svg', type: 'image/svg+xml' },
+      { url: '/icons/icon-192.svg', sizes: '192x192', type: 'image/svg+xml' },
+    ],
+    shortcut: '/nwuchas-emblem.svg',
+    apple: '/icons/icon-192.svg',
+  },
 };
 
 export default function RootLayout({

@@ -33,6 +33,7 @@ import { EditSalaryScaleModal, SalaryScale } from '@/components/payroll/EditSala
 import { EditStaffModal } from '@/components/payroll/EditStaffModal';
 import { EditPayrollLineModal } from '@/components/payroll/EditPayrollLineModal';
 import { formatStandardDate } from '@/lib/dateUtils';
+import { formatCleanEnum } from '@/lib/formatters';
 
 export const DEFAULT_SALARY_SCALES: SalaryScale[] = [
   {
@@ -699,7 +700,7 @@ export function PayrollConsole({ initialRuns = [], initialStaff = [] }: PayrollC
                         : 'bg-slate-100 text-slate-700 border border-slate-300'
                     }`}
                   >
-                    {r.status === 'APPROVED_LOCKED' ? 'Approved & Locked' : r.status}
+                    {formatCleanEnum(r.status)}
                   </span>
                 </div>
                 <div className="mt-3 space-y-1 text-xs text-slate-600">

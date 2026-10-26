@@ -6,6 +6,8 @@ import { usePathname } from 'next/navigation';
 import { Activity, BadgeDollarSign, Bell, BookOpenCheck, Building2, CalendarDays, ClipboardCheck, FileText, Globe, GraduationCap, HeartPulse, LayoutDashboard, MessageSquareText, Search, Settings2, ShieldCheck, Sparkles, UsersRound, WalletCards, Wrench } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { UniversalSearchModal } from '@/components/search/UniversalSearchModal';
+import { TopWelcomeBanner } from '@/components/TopWelcomeBanner';
+import { NwuchasEmblemSvg } from '@/components/NwuchasLogo';
 
 type NavigationItem = { href: string; label: string; icon: LucideIcon };
 type NavigationGroup = { label: string; items: NavigationItem[] };
@@ -66,17 +68,16 @@ export function NwuchasShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
+      <TopWelcomeBanner />
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 shadow-sm shadow-slate-200/50 backdrop-blur">
         <div className="flex min-h-16 items-center gap-3 px-4 sm:px-6">
-          <Link href="/portal/executive" className="flex min-w-0 items-center gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-cyan-600 text-white shadow-sm shadow-cyan-600/30">
-              <GraduationCap size={21} />
-            </span>
+          <Link href="/portal/executive" className="flex min-w-0 items-center gap-3 group">
+            <NwuchasEmblemSvg size={38} className="group-hover:scale-105 transition-transform" />
             <span className="min-w-0">
-              <span className="block truncate text-sm font-bold tracking-wide text-slate-900">
+              <span className="block truncate text-sm font-bold tracking-wide text-[#0b2545]">
                 NWUCHAS-CMIS
               </span>
-              <span className="block truncate text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-700">
+              <span className="block truncate text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#007B99]">
                 College command centre
               </span>
             </span>

@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 130" width="100%" height="100%">
+  <defs>
+    <!-- Teal-blue Gradient -->
+    <linearGradient id="embBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0090b3" />
+      <stop offset="100%" stop-color="#007B99" />
+    </linearGradient>
+    <!-- Lime-green Gradient -->
+    <linearGradient id="embLime" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#9ad446" />
+      <stop offset="100%" stop-color="#8DC63F" />
+    </linearGradient>
+    <!-- Pink Gradient -->
+    <linearGradient id="embPink" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff1493" />
+      <stop offset="100%" stop-color="#EC008C" />
+    </linearGradient>
+    <filter id="embShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-opacity="0.14" />
+    </filter>
+  </defs>
+
+  <g transform="translate(5, 5)" filter="url(#embShadow)">
+    <!-- Outer Ring: Top-Right (Teal-blue #007B99) -->
+    <path
+      d="M 60,10 A 50,50 0 0,1 110,60 A 50,50 0 0,1 96,94 L 83,81 A 33,33 0 0,0 94,60 A 33,33 0 0,0 60,27 Z"
+      fill="#007B99"
+    />
+    <!-- Outer Ring: Left-Bottom (Lime-green #8DC63F) -->
+    <path
+      d="M 60,10 A 50,50 0 0,0 10,60 A 50,50 0 0,0 60,110 A 50,50 0 0,0 96,94 L 83,81 A 33,33 0 0,1 60,93 A 33,33 0 0,1 27,60 A 33,33 0 0,1 60,27 Z"
+      fill="#8DC63F"
+    />
+
+    <!-- Three Figure Heads -->
+    <circle cx="96" cy="24" r="11" fill="#007B99" />
+    <circle cx="24" cy="24" r="11" fill="#007B99" />
+    <circle cx="60" cy="116" r="11" fill="#8DC63F" />
+
+    <!-- Joint Separators / Spacing -->
+    <circle cx="104" cy="60" r="4.5" fill="#ffffff" />
+    <circle cx="16" cy="60" r="4.5" fill="#ffffff" />
+
+    <!-- Center Medical Pink Heart (#EC008C) -->
+    <g transform="translate(60, 60)">
+      <path
+        d="M 0,-17
+           C 6,-27 23,-25 23,-9
+           C 23,6 8,17 0,25
+           C -8,17 -23,6 -23,-9
+           C -23,-25 -6,-27 0,-17 Z"
+        fill="url(#embPink)"
+      />
+
+      <!-- White ECG Heartbeat Pulse Line -->
+      <path
+        d="M -18,2 L -8,2 L -4,-7 L 0,8 L 4,-11 L 8,5 L 11,2 L 18,2"
+        fill="none"
+        stroke="#ffffff"
+        stroke-width="2.6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </g>
+  </g>
+</svg>

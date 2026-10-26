@@ -40,6 +40,7 @@ import type {
   UniversalFeatureResult,
   UniversalClinicalResult,
 } from '@/server/search/universalSearchEngine';
+import { formatCleanEnum } from '@/lib/formatters';
 
 interface UniversalSearchModalProps {
   isOpen: boolean;
@@ -661,7 +662,7 @@ export function UniversalSearchModal({ isOpen, onClose, initialQuery = '' }: Uni
                           <td className="py-2 px-3 text-center font-bold text-blue-700">{m.grade}</td>
                           <td className="py-2 px-3 text-center">
                             <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                              {m.status}
+                              {formatCleanEnum(m.status)}
                             </span>
                           </td>
                         </tr>
@@ -688,7 +689,7 @@ export function UniversalSearchModal({ isOpen, onClose, initialQuery = '' }: Uni
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           p.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
                         }`}>
-                          {p.status}
+                          {formatCleanEnum(p.status)}
                         </span>
                       </div>
                     ))}

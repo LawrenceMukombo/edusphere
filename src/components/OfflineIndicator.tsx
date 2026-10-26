@@ -18,6 +18,7 @@ import {
   flushPendingMutations,
   OfflineCommand,
 } from '@/lib/offlineSync';
+import { formatCleanEnum } from '@/lib/formatters';
 
 export function OfflineIndicator() {
   const [isOnline, setIsOnline] = useState<boolean>(true);
@@ -293,7 +294,7 @@ export function OfflineIndicator() {
                               : 'bg-slate-200 text-slate-800'
                           }`}
                         >
-                          {cmd.status}
+                          {formatCleanEnum(cmd.status)}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-[10px] text-slate-500 font-mono">

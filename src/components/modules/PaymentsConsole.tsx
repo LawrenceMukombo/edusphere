@@ -34,6 +34,7 @@ import {
 } from 'lucide-react';
 import { PaymentReceiptModal } from '../payments/PaymentReceiptModal';
 import { EditGatewayRailModal, GatewayRail } from '../payments/EditGatewayRailModal';
+import { formatCleanEnum } from '@/lib/formatters';
 
 export interface PaymentsConsoleProps {
   initialIntents?: any[];
@@ -1124,7 +1125,7 @@ export function PaymentsConsole({
                               : 'bg-rose-50 text-rose-800 border border-rose-200'
                           }`}
                         >
-                          {w.status}
+                          {formatCleanEnum(w.status)}
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-[11px] text-slate-500">
@@ -1194,7 +1195,7 @@ export function PaymentsConsole({
                             : 'bg-rose-100 text-rose-800'
                         }`}
                       >
-                        {rail.status}
+                        {formatCleanEnum(rail.status)}
                       </span>
                       <button
                         type="button"
