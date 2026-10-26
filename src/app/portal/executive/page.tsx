@@ -31,7 +31,8 @@ import {
 import { prisma } from '@/server/db';
 import { formatStandardDate } from '@/lib/dateUtils';
 import { formatCleanEnum, formatMoney } from '@/lib/formatters';
-import { NwuchasEmblemSvg, NWUCHAS_IDENTITY } from '@/components/NwuchasLogo';
+import { NwuchasEmblemSvg } from '@/components/NwuchasLogo';
+import { NWUCHAS_IDENTITY } from '@/lib/identity';
 
 export const dynamic = 'force-dynamic';
 
