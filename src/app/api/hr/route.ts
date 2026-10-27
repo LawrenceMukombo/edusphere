@@ -58,6 +58,16 @@ export async function GET(req: Request) {
       include: {
         campus: { select: { id: true, name: true, code: true } },
         contract: true,
+        user: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            status: true,
+            isActive: true,
+            lastLoginAt: true,
+          },
+        },
       },
       orderBy: { staffNumber: 'asc' },
     });
@@ -91,6 +101,10 @@ export async function GET(req: Request) {
         tczCertificateExpiry: s.tczCertificateExpiry?.toISOString().split('T')[0] || null,
         employmentStatus: s.employmentStatus,
         dateJoined: s.dateJoined.toISOString().split('T')[0],
+        userId: s.userId,
+        user: s.user,
+        hasUserAccount: Boolean(s.userId && s.user),
+        systemRole: s.user?.role || 'LECTURER',
       };
     });
 

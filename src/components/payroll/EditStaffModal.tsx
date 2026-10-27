@@ -32,6 +32,7 @@ export function EditStaffModal({
   const [jobTitle, setJobTitle] = useState(staff.jobTitle || 'Lecturer');
   const [qualification, setQualification] = useState(staff.qualification || 'MSc, BScN');
   const [employmentStatus, setEmploymentStatus] = useState(staff.employmentStatus || 'FULL TIME');
+  const [systemRole, setSystemRole] = useState(staff.user?.role || staff.systemRole || 'LECTURER');
 
   // Salary Scale Selection
   const [selectedScaleCode, setSelectedScaleCode] = useState(
@@ -115,6 +116,8 @@ export function EditStaffModal({
       jobTitle,
       qualification,
       employmentStatus,
+      systemRole,
+      role: systemRole,
       contract: {
         ...(staff.contract || {}),
         salaryScaleCode: selectedScaleCode,
@@ -257,6 +260,61 @@ export function EditStaffModal({
                 <option value="ADJUNCT">Adjunct / Hospital Clinical Preceptor</option>
                 <option value="PART TIME">Visiting Faculty (Part Time)</option>
               </select>
+            </div>
+          </div>
+
+          {/* SYSTEM USER & RBAC ACCESS */}
+          <div className="rounded-xl border border-indigo-200 bg-indigo-50/50 p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="font-extrabold text-indigo-950 uppercase tracking-wider flex items-center gap-1.5">
+                <ShieldCheck className="h-4 w-4 text-indigo-700" />
+                System User Account & RBAC Privileges
+              </span>
+              {staff.user ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 border border-emerald-300">
+                  <Check className="h-3 w-3" /> Account Active ({staff.user.email || email})
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-bold text-amber-800 border border-amber-300">
+                  <AlertCircle className="h-3 w-3" /> Auto-Provision on Save
+                </span>
+              )}
+            </div>
+
+            <p className="text-[11px] text-slate-600">
+              Every staff member is guaranteed a system user login with single sign-on security, RBAC role restrictions, and statutory institutional scoping.
+            </p>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 pt-1">
+              <div>
+                <label className="font-bold text-slate-700">System Role & Access Scope:</label>
+                <select
+                  value={systemRole}
+                  onChange={(e) => setSystemRole(e.target.value)}
+                  className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 font-bold text-indigo-900 focus:border-indigo-600 focus:outline-none"
+                >
+                  <option value="LECTURER">Lecturer / Academic Faculty</option>
+                  <option value="MODULE_COORDINATOR">Module & Clinical Coordinator</option>
+                  <option value="CLINICAL_SUPERVISOR">Clinical Supervisor / Hospital Preceptor</option>
+                  <option value="EXAMINATIONS_OFFICER">Examinations & Assessment Officer</option>
+                  <option value="REGISTRAR">College Academic Registrar</option>
+                  <option value="BURSAR">Bursar & Finance Director</option>
+                  <option value="CASHIER">Senior Finance Cashier</option>
+                  <option value="PAYROLL_PREPARER">Human Resources & Payroll Officer</option>
+                  <option value="ADMISSIONS_OFFICER">Admissions & Enrollment Officer</option>
+                  <option value="INSTITUTION_ADMIN">Principal & Head of College (Admin)</option>
+                  <option value="AUDITOR_READONLY">External Regulatory Auditor (Read-Only)</option>
+                </select>
+              </div>
+              <div className="rounded-lg border border-indigo-100 bg-white p-3 text-[11px] space-y-1">
+                <span className="font-bold text-slate-700 block">Access Credentials Policy:</span>
+                <p className="text-slate-600">
+                  Login Email: <span className="font-mono font-bold text-indigo-800">{email || 'staff@nwuchas.edu.zm'}</span>
+                </p>
+                <p className="text-slate-500">
+                  Default Password: <span className="font-mono text-slate-700 font-semibold">NWUCHAS-STAFF-2026!</span> (Forced password reset required on initial sign-in).
+                </p>
+              </div>
             </div>
           </div>
 

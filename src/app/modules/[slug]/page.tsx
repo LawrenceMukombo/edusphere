@@ -119,6 +119,16 @@ export default async function ModuleWorkspace({
       ? await p.staff.findMany({
           include: {
             contract: true,
+            user: {
+              select: {
+                id: true,
+                email: true,
+                role: true,
+                status: true,
+                isActive: true,
+                lastLoginAt: true,
+              },
+            },
           },
           orderBy: { staffNumber: 'asc' },
         })

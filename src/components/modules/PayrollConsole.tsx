@@ -9,6 +9,7 @@ import {
   Download,
   CheckCircle,
   AlertTriangle,
+  AlertCircle,
   Users,
   Calculator,
   ShieldCheck,
@@ -458,7 +459,7 @@ export function PayrollConsole({ initialRuns = [], initialStaff = [] }: PayrollC
         }),
       });
       const result = await res.json();
-      const saved = result.success && result.data ? { ...updatedStaff, id: result.data.id } : updatedStaff;
+      const saved = result.success && result.data ? { ...updatedStaff, ...result.data } : updatedStaff;
 
       // Update staffList state
       const existingIdx = staffList.findIndex((s) => s.id === saved.id || s.staffNumber === saved.staffNumber);
@@ -535,11 +536,39 @@ export function PayrollConsole({ initialRuns = [], initialStaff = [] }: PayrollC
         }
       }
 
-      setNotice(`Staff profile & salary scale for ${saved.firstName} ${saved.lastName} (${saved.staffNumber}) saved successfully.`);
+      setNotice(`Staff profile & linked system user account for ${saved.firstName} ${saved.lastName} (${saved.staffNumber}) saved successfully.`);
       setSelectedStaffForEdit(null);
     } catch (err: any) {
       setNotice(`Notice: Saved locally (${err.message}).`);
       setSelectedStaffForEdit(null);
+    } finally {
+      setIsProcessing(false);
+    }
+  }
+
+  async function handleSyncAllStaffUsers() {
+    try {
+      setIsProcessing(true);
+      setNotice('Synchronizing and verifying system user accounts for all staff...');
+      const res = await fetch('/api/payroll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sync_all_staff_users' }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.message || 'Failed to synchronize system users');
+      }
+
+      if (Array.isArray(result.data)) {
+        setStaffList(result.data);
+        try {
+          localStorage.setItem('nwuchas_staff_registry', JSON.stringify(result.data));
+        } catch (e) {}
+      }
+      setNotice(result.message || 'All staff members are verified and linked to active system user accounts.');
+    } catch (err: any) {
+      setNotice(`Error: ${err.message}`);
     } finally {
       setIsProcessing(false);
     }
@@ -1147,6 +1176,16 @@ export function PayrollConsole({ initialRuns = [], initialStaff = [] }: PayrollC
                 Total Enrolled: <span className="font-bold text-slate-900">{staffList.length}</span>
               </div>
               <button
+                type="button"
+                onClick={handleSyncAllStaffUsers}
+                disabled={isProcessing}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-300 bg-indigo-50 px-3.5 py-2 text-xs font-bold text-indigo-800 shadow-sm hover:bg-indigo-100 transition disabled:opacity-50"
+                title="Guarantee every staff member has an active linked system user login"
+              >
+                <ShieldCheck className="h-3.5 w-3.5 text-indigo-600" /> Sync System Users
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   const newStaff = {
                     id: `new-${Date.now()}`,
@@ -1154,9 +1193,9 @@ export function PayrollConsole({ initialRuns = [], initialStaff = [] }: PayrollC
                     firstName: '',
                     lastName: '',
                     email: '',
-                    phone: '+260 977 000000',
+                    phone: '+260 977 ' + Math.floor(100000 + Math.random() * 900000),
                     jobTitle: 'Faculty Lecturer',
-                    qualification: 'BSc, MSc',
+                    qualification: 'BSc, MSc in Health Sciences',
                     employmentStatus: 'FULL_TIME',
                     contract: {
                       salaryScaleCode: salaryScales[3]?.code || 'NWU-ACAD-SL1',
@@ -1180,74 +1219,97 @@ export function PayrollConsole({ initialRuns = [], initialStaff = [] }: PayrollC
             </div>
           </div>
 
-          <div className="overflow-x-auto rounded-xl border border-slate-200">
-            <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
-                <tr>
-                  <th className="px-4 py-3">Staff ID & Name</th>
-                  <th className="px-3 py-3">Role & Department</th>
-                  <th className="px-3 py-3">Contract Status</th>
-                  <th className="px-3 py-3">Salary Scale & Grade</th>
-                  <th className="px-3 py-3">Remuneration (Gross)</th>
-                  <th className="px-3 py-3">Statutory IDs</th>
-                  <th className="px-3 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {staffList.map((stf) => {
-                  const contract = stf.contract || {};
-                  const scaleCode = contract.salaryScaleCode || 'Custom';
-                  const allowancesTotal =
-                    Number(contract.housingAllowance || 0) +
-                    Number(contract.transportAllowance || 0) +
-                    Number(contract.clinicalAllowance || 0);
-                  const gross = Number(contract.basicSalaryZMW || 0) + allowancesTotal;
+            <div className="overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-left text-xs text-slate-700">
+                <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+                  <tr>
+                    <th className="px-4 py-3">Staff ID & Name</th>
+                    <th className="px-3 py-3">Role & Department</th>
+                    <th className="px-3 py-3">System Access & RBAC</th>
+                    <th className="px-3 py-3">Contract Status</th>
+                    <th className="px-3 py-3">Salary Scale & Grade</th>
+                    <th className="px-3 py-3">Remuneration (Gross)</th>
+                    <th className="px-3 py-3">Statutory IDs</th>
+                    <th className="px-3 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {staffList.map((stf) => {
+                    const contract = stf.contract || {};
+                    const scaleCode = contract.salaryScaleCode || 'Custom';
+                    const allowancesTotal =
+                      Number(contract.housingAllowance || 0) +
+                      Number(contract.transportAllowance || 0) +
+                      Number(contract.clinicalAllowance || 0);
+                    const gross = Number(contract.basicSalaryZMW || 0) + allowancesTotal;
 
-                  return (
-                    <tr key={stf.id} className="hover:bg-slate-50/80 transition">
-                      <td className="px-4 py-3">
-                        <p className="font-bold text-slate-900">{stf.firstName} {stf.lastName}</p>
-                        <p className="text-[11px] font-mono text-cyan-800">{stf.staffNumber}</p>
-                        <p className="text-[11px] text-slate-500">{stf.email}</p>
-                      </td>
-                      <td className="px-3 py-3">
-                        <p className="font-medium text-slate-900">{stf.jobTitle || 'Faculty'}</p>
-                        <p className="text-[11px] text-slate-500">{stf.qualification || 'Standard'}</p>
-                      </td>
-                      <td className="px-3 py-3">
-                        <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
-                          {stf.employmentStatus || 'FULL TIME'}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3">
-                        <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-800 border border-slate-200">
-                          <Layers className="h-3 w-3 text-cyan-700" /> {scaleCode}
-                        </span>
-                      </td>
-                      <td className="px-3 py-3 font-mono">
-                        <p className="font-bold text-slate-900">
-                          K{gross.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </p>
-                        <p className="text-[10px] text-slate-500">
-                          Basic: K{Number(contract.basicSalaryZMW || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </p>
-                        <p className="text-[10px] text-cyan-700">
-                          Allowances: K{allowancesTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </p>
-                      </td>
-                      <td className="px-3 py-3 text-[11px] space-y-0.5">
-                        <p><span className="text-slate-500">TPIN:</span> <span className="font-mono font-medium text-slate-900">{contract.tpin || '1004928192'}</span></p>
-                        <p><span className="text-slate-500">NAPSA:</span> <span className="font-mono font-medium text-slate-900">{contract.napsaNumber || 'NP-8839210-9'}</span></p>
-                        <p><span className="text-slate-500">NHIMA:</span> <span className="font-mono font-medium text-slate-900">{contract.nhimaNumber || 'NH-72819-26'}</span></p>
-                      </td>
-                      <td className="px-3 py-3 text-right">
-                        <button
-                          onClick={() => setSelectedStaffForEdit(stf)}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-300 bg-cyan-50 px-3 py-1.5 text-xs font-bold text-cyan-800 hover:bg-cyan-100 transition shadow-xs"
-                        >
-                          <Edit className="h-3.5 w-3.5" /> Edit Profile & Scale
-                        </button>
-                      </td>
+                    return (
+                      <tr key={stf.id} className="hover:bg-slate-50/80 transition">
+                        <td className="px-4 py-3">
+                          <p className="font-bold text-slate-900">{stf.firstName} {stf.lastName}</p>
+                          <p className="text-[11px] font-mono text-cyan-800">{stf.staffNumber}</p>
+                          <p className="text-[11px] text-slate-500">{stf.email}</p>
+                        </td>
+                        <td className="px-3 py-3">
+                          <p className="font-medium text-slate-900">{stf.jobTitle || 'Faculty'}</p>
+                          <p className="text-[11px] text-slate-500">{stf.qualification || 'Standard'}</p>
+                        </td>
+                        <td className="px-3 py-3">
+                          {stf.user || stf.userId ? (
+                            <div className="space-y-1">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 font-mono text-[10px] font-bold text-indigo-700 border border-indigo-200">
+                                <ShieldCheck className="h-3 w-3 text-indigo-600" /> {stf.user?.role || stf.systemRole || 'LECTURER'}
+                              </span>
+                              <span className="block text-[10px] text-slate-500 font-mono truncate max-w-[130px]" title={stf.user?.email || stf.email}>
+                                {stf.user?.email || stf.email}
+                              </span>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Active System Login
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-200">
+                                <AlertCircle className="h-3 w-3 text-amber-600" /> Account Pending
+                              </span>
+                              <span className="block text-[10px] text-slate-400">Click Sync to provision</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-3">
+                          <span className="inline-flex rounded-full bg-emerald-50 px-2.5 py-0.5 text-[10px] font-bold text-emerald-800 border border-emerald-200">
+                            {stf.employmentStatus || 'FULL TIME'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-2 py-0.5 font-mono text-[11px] font-bold text-slate-800 border border-slate-200">
+                            <Layers className="h-3 w-3 text-cyan-700" /> {scaleCode}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 font-mono">
+                          <p className="font-bold text-slate-900">
+                            K{gross.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </p>
+                          <p className="text-[10px] text-slate-500">
+                            Basic: K{Number(contract.basicSalaryZMW || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </p>
+                          <p className="text-[10px] text-cyan-700">
+                            Allowances: K{allowancesTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </p>
+                        </td>
+                        <td className="px-3 py-3 text-[11px] space-y-0.5">
+                          <p><span className="text-slate-500">TPIN:</span> <span className="font-mono font-medium text-slate-900">{contract.tpin || '1004928192'}</span></p>
+                          <p><span className="text-slate-500">NAPSA:</span> <span className="font-mono font-medium text-slate-900">{contract.napsaNumber || 'NP-8839210-9'}</span></p>
+                          <p><span className="text-slate-500">NHIMA:</span> <span className="font-mono font-medium text-slate-900">{contract.nhimaNumber || 'NH-72819-26'}</span></p>
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          <button
+                            onClick={() => setSelectedStaffForEdit(stf)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-300 bg-cyan-50 px-3 py-1.5 text-xs font-bold text-cyan-800 hover:bg-cyan-100 transition shadow-xs"
+                          >
+                            <Edit className="h-3.5 w-3.5" /> Edit Profile & Scale
+                          </button>
+                        </td>
                     </tr>
                   );
                 })}

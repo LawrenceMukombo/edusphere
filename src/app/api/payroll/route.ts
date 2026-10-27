@@ -1,7 +1,107 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { extractSessionToken, verifyToken } from '@/server/auth';
+import { extractSessionToken, verifyToken, hashPassword } from '@/server/auth';
 import { PayrollService } from '@/server/payroll/payroll.service';
 import { prisma } from '@/server/db';
+import { SystemRole } from '@prisma/client';
+
+export function mapJobTitleToRole(jobTitle?: string | null): SystemRole {
+  const t = (jobTitle || '').toLowerCase();
+  if (t.includes('principal') || t.includes('chief executive')) return SystemRole.INSTITUTION_ADMIN;
+  if (t.includes('owner') || t.includes('proprietor')) return SystemRole.PLATFORM_SUPER_ADMIN;
+  if (t.includes('registrar')) return SystemRole.REGISTRAR;
+  if (t.includes('bursar') || t.includes('finance manager')) return SystemRole.BURSAR;
+  if (t.includes('cashier')) return SystemRole.CASHIER;
+  if (t.includes('payroll') || t.includes('human resource') || t.includes('hr')) return SystemRole.PAYROLL_PREPARER;
+  if (t.includes('exam') || t.includes('assessment')) return SystemRole.EXAMINATIONS_OFFICER;
+  if (t.includes('clinical') || t.includes('preceptor') || t.includes('hospital')) return SystemRole.CLINICAL_SUPERVISOR;
+  if (t.includes('coordinator')) return SystemRole.MODULE_COORDINATOR;
+  if (t.includes('admission')) return SystemRole.ADMISSIONS_OFFICER;
+  if (t.includes('lecturer') || t.includes('faculty') || t.includes('tutor') || t.includes('instructor') || t.includes('teacher')) return SystemRole.LECTURER;
+  return SystemRole.LECTURER;
+}
+
+export async function ensureStaffSystemUser(staffId: string, organisationId: string, preferredRole?: string | null) {
+  const staff = await prisma.staff.findUnique({
+    where: { id: staffId },
+    include: { user: true },
+  });
+  if (!staff) return null;
+
+  const validRoles = Object.values(SystemRole);
+  const roleToSet: SystemRole = (preferredRole && validRoles.includes(preferredRole as SystemRole))
+    ? (preferredRole as SystemRole)
+    : staff.user?.role || mapJobTitleToRole(staff.jobTitle);
+
+  // 1. If staff already has linked user, sync details
+  if (staff.userId && staff.user) {
+    const updatedUser = await prisma.user.update({
+      where: { id: staff.userId },
+      data: {
+        firstName: staff.firstName,
+        lastName: staff.lastName,
+        email: staff.email,
+        phone: staff.phone,
+        role: roleToSet,
+        status: 'ACTIVE',
+        isActive: true,
+      },
+    });
+    return updatedUser;
+  }
+
+  // 2. Check if a User already exists with the staff email
+  const existingUserByEmail = await prisma.user.findUnique({
+    where: { email: staff.email },
+  });
+
+  if (existingUserByEmail) {
+    const updatedUser = await prisma.user.update({
+      where: { id: existingUserByEmail.id },
+      data: {
+        organisationId,
+        firstName: staff.firstName,
+        lastName: staff.lastName,
+        phone: staff.phone,
+        role: roleToSet,
+        status: 'ACTIVE',
+        isActive: true,
+      },
+    });
+
+    await prisma.staff.update({
+      where: { id: staff.id },
+      data: { userId: updatedUser.id },
+    });
+
+    return updatedUser;
+  }
+
+  // 3. Provision new user account with default password & forced first-time change
+  const defaultPassword = 'NWUCHAS-STAFF-2026!';
+  const passwordHash = await hashPassword(defaultPassword);
+
+  const newUser = await prisma.user.create({
+    data: {
+      organisationId,
+      email: staff.email,
+      passwordHash,
+      firstName: staff.firstName,
+      lastName: staff.lastName,
+      phone: staff.phone,
+      role: roleToSet,
+      isActive: true,
+      status: 'ACTIVE',
+      mustChangePassword: true,
+    },
+  });
+
+  await prisma.staff.update({
+    where: { id: staff.id },
+    data: { userId: newUser.id },
+  });
+
+  return newUser;
+}
 
 export async function GET(req: NextRequest) {
   const token = extractSessionToken(req.headers);
@@ -194,9 +294,24 @@ export async function POST(req: NextRequest) {
           });
         }
 
+        // Ensure Every Staff Member is also a System User
+        await ensureStaffSystemUser(targetStaff.id, organisationId, staff.systemRole || staff.role);
+
         const fullStaff = await prisma.staff.findUnique({
           where: { id: targetStaff.id },
-          include: { contract: true },
+          include: {
+            contract: true,
+            user: {
+              select: {
+                id: true,
+                email: true,
+                role: true,
+                status: true,
+                isActive: true,
+                lastLoginAt: true,
+              },
+            },
+          },
         });
 
         return NextResponse.json({ success: true, data: fullStaff });
@@ -230,11 +345,76 @@ export async function POST(req: NextRequest) {
               },
             },
           },
-          include: { contract: true },
         });
 
-        return NextResponse.json({ success: true, data: newStaff });
+        // Ensure newly enrolled staff member receives an active System User login
+        await ensureStaffSystemUser(newStaff.id, organisationId, staff.systemRole || staff.role);
+
+        const fullStaff = await prisma.staff.findUnique({
+          where: { id: newStaff.id },
+          include: {
+            contract: true,
+            user: {
+              select: {
+                id: true,
+                email: true,
+                role: true,
+                status: true,
+                isActive: true,
+                lastLoginAt: true,
+              },
+            },
+          },
+        });
+
+        return NextResponse.json({ success: true, data: fullStaff });
       }
+    }
+
+    if (action === 'sync_all_staff_users') {
+      const allStaff = await prisma.staff.findMany({
+        where: { organisationId },
+        include: { user: true },
+      });
+
+      let provisionedCount = 0;
+      let syncedCount = 0;
+
+      for (const stf of allStaff) {
+        const wasUnlinked = !stf.userId || !stf.user;
+        await ensureStaffSystemUser(stf.id, organisationId);
+        if (wasUnlinked) provisionedCount++;
+        else syncedCount++;
+      }
+
+      const refreshedStaff = await prisma.staff.findMany({
+        where: { organisationId },
+        include: {
+          contract: true,
+          user: {
+            select: {
+              id: true,
+              email: true,
+              role: true,
+              status: true,
+              isActive: true,
+              lastLoginAt: true,
+            },
+          },
+        },
+        orderBy: { staffNumber: 'asc' },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Successfully synchronized system users for all ${allStaff.length} staff members (${provisionedCount} provisioned, ${syncedCount} profile synced).`,
+        data: refreshedStaff,
+        summary: {
+          totalStaff: allStaff.length,
+          provisionedCount,
+          syncedCount,
+        },
+      });
     }
 
     return NextResponse.json({ success: false, message: 'Unknown action.' }, { status: 400 });

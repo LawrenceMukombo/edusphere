@@ -720,16 +720,21 @@ async function main() {
   // 15. FEE INVOICING, LAMTONPAY MOBILE MONEY & DOUBLE-ENTRY FINANCIAL LEDGER
   const invChilufya = await prisma.invoice.upsert({
     where: { organisationId_invoiceNumber: { organisationId: organisation.id, invoiceNumber: 'INV-2026-0001' } },
-    update: {},
+    update: {
+      totalAmount: 9500.00,
+      paidAmount: 3500.00,
+      balance: 6000.00,
+      status: InvoiceStatus.PARTIALLY_PAID,
+    },
     create: {
       organisationId: organisation.id,
       learnerId: student1.id,
       termId: sem1.id,
       invoiceNumber: 'INV-2026-0001',
       totalAmount: 9500.00, // Tuition K6,500 + Clinical K1,800 + Bus K1,200
-      paidAmount: 9500.00,
-      balance: 0.00,
-      status: InvoiceStatus.PAID,
+      paidAmount: 3500.00,
+      balance: 6000.00,
+      status: InvoiceStatus.PARTIALLY_PAID,
       dueDate: new Date('2026-02-28T00:00:00.000Z'),
       lines: {
         create: [
@@ -743,20 +748,22 @@ async function main() {
 
   const payChilufya = await prisma.payment.upsert({
     where: { organisationId_paymentNumber: { organisationId: organisation.id, paymentNumber: 'PAY-2026-0001' } },
-    update: {},
+    update: {
+      amount: 3500.00,
+    },
     create: {
       organisationId: organisation.id,
       learnerId: student1.id,
       paymentNumber: 'PAY-2026-0001',
-      amount: 9500.00,
+      amount: 3500.00,
       paymentMethod: PaymentMethod.MTN_MONEY,
       referenceNumber: 'MTN-ZM-TXN-89410294',
       recordedById: userMap.get(SystemRole.CASHIER).id,
-      notes: 'Paid via LamtonPay Connect MTN MoMo collection.',
+      notes: 'Initial deposit via LamtonPay Connect MTN MoMo collection.',
       allocations: {
         create: {
           invoiceId: invChilufya.id,
-          allocatedAmount: 9500.00,
+          allocatedAmount: 3500.00,
         },
       },
     },
@@ -764,12 +771,14 @@ async function main() {
 
   await prisma.receipt.upsert({
     where: { paymentId: payChilufya.id },
-    update: {},
+    update: {
+      amount: 3500.00,
+    },
     create: {
       organisationId: organisation.id,
       paymentId: payChilufya.id,
       receiptNumber: 'REC-2026-0001',
-      amount: 9500.00,
+      amount: 3500.00,
       issuedAt: new Date('2026-01-15T11:30:00.000Z'),
     },
   });
@@ -793,8 +802,8 @@ async function main() {
         learnerId: student1.id,
         paymentId: payChilufya.id,
         entryType: LedgerEntryType.CREDIT_PAYMENT,
-        amount: 9500.00,
-        balanceAfter: 0.00,
+        amount: 3500.00,
+        balanceAfter: 6000.00,
         description: 'Verified LamtonPay MTN MoMo Payment Received (Ref: MTN-ZM-TXN-89410294)',
         postedById: userMap.get(SystemRole.CASHIER).id,
         postedAt: new Date('2026-01-15T11:30:00.000Z'),
@@ -802,17 +811,155 @@ async function main() {
     ],
   });
 
+  // Additional Active Student Invoices to establish realistic aged debtors & payment recording workflows
+  const student2 = studentMap.get('NWU-2026-0002');
+  if (student2) {
+    const inv2 = await prisma.invoice.upsert({
+      where: { organisationId_invoiceNumber: { organisationId: organisation.id, invoiceNumber: 'INV-2026-0002' } },
+      update: { totalAmount: 10800.00, paidAmount: 4000.00, balance: 6800.00, status: InvoiceStatus.PARTIALLY_PAID },
+      create: {
+        organisationId: organisation.id,
+        learnerId: student2.id,
+        termId: sem1.id,
+        invoiceNumber: 'INV-2026-0002',
+        totalAmount: 10800.00,
+        paidAmount: 4000.00,
+        balance: 6800.00,
+        status: InvoiceStatus.PARTIALLY_PAID,
+        dueDate: new Date('2026-02-28T00:00:00.000Z'),
+        lines: {
+          create: [
+            { category: FeeCategory.TUITION, description: 'Clinical Medicine Tuition (Sem 1)', unitPrice: 6800.00, quantity: 1, lineTotal: 6800.00 },
+            { category: FeeCategory.OTHER, description: 'Solwezi General Hospital Clinical Rotation', unitPrice: 2000.00, quantity: 1, lineTotal: 2000.00 },
+            { category: FeeCategory.BOARDING, description: 'Campus Residence Hall Accommodation', unitPrice: 2000.00, quantity: 1, lineTotal: 2000.00 },
+          ],
+        },
+      },
+    });
+
+    const pay2 = await prisma.payment.upsert({
+      where: { organisationId_paymentNumber: { organisationId: organisation.id, paymentNumber: 'PAY-2026-0002' } },
+      update: { amount: 4000.00 },
+      create: {
+        organisationId: organisation.id,
+        learnerId: student2.id,
+        paymentNumber: 'PAY-2026-0002',
+        amount: 4000.00,
+        paymentMethod: PaymentMethod.AIRTEL_MONEY,
+        referenceNumber: 'AIRTEL-ZM-TXN-77192834',
+        recordedById: userMap.get(SystemRole.CASHIER).id,
+        notes: 'Airtel Money mobile collection via LamtonPay.',
+        allocations: {
+          create: {
+            invoiceId: inv2.id,
+            allocatedAmount: 4000.00,
+          },
+        },
+      },
+    });
+
+    await prisma.receipt.upsert({
+      where: { paymentId: pay2.id },
+      update: { amount: 4000.00 },
+      create: {
+        organisationId: organisation.id,
+        paymentId: pay2.id,
+        receiptNumber: 'REC-2026-0002',
+        amount: 4000.00,
+        issuedAt: new Date('2026-01-20T10:00:00.000Z'),
+      },
+    });
+  }
+
+  const student3 = studentMap.get('NWU-2026-0003');
+  if (student3) {
+    await prisma.invoice.upsert({
+      where: { organisationId_invoiceNumber: { organisationId: organisation.id, invoiceNumber: 'INV-2026-0003' } },
+      update: { totalAmount: 9500.00, paidAmount: 0.00, balance: 9500.00, status: InvoiceStatus.ISSUED },
+      create: {
+        organisationId: organisation.id,
+        learnerId: student3.id,
+        termId: sem1.id,
+        invoiceNumber: 'INV-2026-0003',
+        totalAmount: 9500.00,
+        paidAmount: 0.00,
+        balance: 9500.00,
+        status: InvoiceStatus.ISSUED,
+        dueDate: new Date('2026-02-28T00:00:00.000Z'),
+        lines: {
+          create: [
+            { category: FeeCategory.TUITION, description: 'Diploma in Registered Nursing Tuition (Sem 1)', unitPrice: 6500.00, quantity: 1, lineTotal: 6500.00 },
+            { category: FeeCategory.OTHER, description: 'Clinical Ward & Hospital Preceptorship Fee', unitPrice: 1800.00, quantity: 1, lineTotal: 1800.00 },
+            { category: FeeCategory.OTHER, description: 'NMCZ Council Indexing & Exam Registration', unitPrice: 1200.00, quantity: 1, lineTotal: 1200.00 },
+          ],
+        },
+      },
+    });
+  }
+
+  const student4 = studentMap.get('NWU-2026-0004');
+  if (student4) {
+    await prisma.invoice.upsert({
+      where: { organisationId_invoiceNumber: { organisationId: organisation.id, invoiceNumber: 'INV-2026-0004' } },
+      update: { totalAmount: 8300.00, paidAmount: 3500.00, balance: 4800.00, status: InvoiceStatus.PARTIALLY_PAID },
+      create: {
+        organisationId: organisation.id,
+        learnerId: student4.id,
+        termId: sem1.id,
+        invoiceNumber: 'INV-2026-0004',
+        totalAmount: 8300.00,
+        paidAmount: 3500.00,
+        balance: 4800.00,
+        status: InvoiceStatus.PARTIALLY_PAID,
+        dueDate: new Date('2026-02-28T00:00:00.000Z'),
+        lines: {
+          create: [
+            { category: FeeCategory.TUITION, description: 'Clinical Medicine Tuition (Sem 1)', unitPrice: 6500.00, quantity: 1, lineTotal: 6500.00 },
+            { category: FeeCategory.OTHER, description: 'Clinical Skills Lab & Rotation Quota', unitPrice: 1800.00, quantity: 1, lineTotal: 1800.00 },
+          ],
+        },
+      },
+    });
+  }
+
+  const student5 = studentMap.get('NWU-2026-0005');
+  if (student5) {
+    await prisma.invoice.upsert({
+      where: { organisationId_invoiceNumber: { organisationId: organisation.id, invoiceNumber: 'INV-2026-0005' } },
+      update: { totalAmount: 8300.00, paidAmount: 0.00, balance: 8300.00, status: InvoiceStatus.ISSUED },
+      create: {
+        organisationId: organisation.id,
+        learnerId: student5.id,
+        termId: sem1.id,
+        invoiceNumber: 'INV-2026-0005',
+        totalAmount: 8300.00,
+        paidAmount: 0.00,
+        balance: 8300.00,
+        status: InvoiceStatus.ISSUED,
+        dueDate: new Date('2026-02-28T00:00:00.000Z'),
+        lines: {
+          create: [
+            { category: FeeCategory.TUITION, description: 'Diploma in Registered Nursing Tuition (Sem 1)', unitPrice: 6500.00, quantity: 1, lineTotal: 6500.00 },
+            { category: FeeCategory.OTHER, description: 'Clinical Rotation & Skills Quota', unitPrice: 1800.00, quantity: 1, lineTotal: 1800.00 },
+          ],
+        },
+      },
+    });
+  }
+
   // LamtonPay Payment Intent & Provider Transaction Record
   const intent1 = await prisma.paymentIntent.upsert({
     where: { idempotencyKey: 'lp-idem-nwu-001' },
-    update: {},
+    update: {
+      amountZMW: 3500.00,
+    },
     create: {
       organisationId: organisation.id,
       learnerId: student1.id,
       invoiceId: invChilufya.id,
       channel: PaymentChannel.MTN_MOMO,
       status: PaymentIntentStatus.CONFIRMED,
-      amountZMW: 9500.00,
+      amountZMW: 3500.00,
       payerPhone: '0966412890',
       payerName: 'Chilufya Banda',
       businessReference: 'LP-NWU-2026-0001',
@@ -833,7 +980,7 @@ async function main() {
       status: 'SUCCESS',
       isVerified: true,
       verifiedAt: new Date('2026-01-15T11:30:00.000Z'),
-      responsePayload: JSON.stringify({ status: 'SUCCESSFUL', currency: 'ZMW', amount: '9500.00', externalId: 'LP-NWU-2026-0001' }),
+      responsePayload: JSON.stringify({ status: 'SUCCESSFUL', currency: 'ZMW', amount: '3500.00', externalId: 'LP-NWU-2026-0001' }),
     },
   });
 
