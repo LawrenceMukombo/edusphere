@@ -1,4 +1,4 @@
-export type UserStatus = 'ACTIVE' | 'SUSPENDED' | 'LOCKED' | 'PASSWORD_RESET_REQUIRED';
+export type UserStatus = 'ACTIVE' | 'SUSPENDED' | 'LOCKED' | 'DELETED' | 'PASSWORD_RESET_REQUIRED';
 export type MfaStatus = 'ENFORCED' | 'PENDING' | 'EXEMPT';
 
 export interface ModulePermissionSet {

@@ -37,6 +37,10 @@ import {
   Edit3,
   ExternalLink,
   RotateCcw,
+  Unlock,
+  UserX,
+  UserCheck,
+  Archive,
 } from 'lucide-react';
 import {
   AdminUserCrudModal,
@@ -44,6 +48,10 @@ import {
   ROLE_PRESETS,
   UserModulePermissions,
 } from '../administration/AdminUserCrudModal';
+import { UserAuditHistoryModal } from '../administration/UserAuditHistoryModal';
+import { ResetPasswordModal } from '../administration/ResetPasswordModal';
+import { ChangeUserStatusModal } from '../administration/ChangeUserStatusModal';
+import { UserLifecycleStatus } from '@/server/services/userManagement.service';
 import { resolveStaffRole } from '@/lib/administrationRbac';
 import { ContentCardItem } from '@/lib/contentCards';
 import { EditCardModal } from '../content/EditCardModal';
@@ -214,19 +222,53 @@ export function AdministrationConsole({
   const [modalMode, setModalMode] = useState<'CREATE' | 'EDIT'>('EDIT');
   const [selectedUser, setSelectedUser] = useState<AdminUserRecord | null>(null);
 
-  // Client-side fallback fetch from database if page loaded without SSR props
+  // User Lifecycle, Password Reset & Audit Modals
+  const [auditModalUser, setAuditModalUser] = useState<AdminUserRecord | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<AdminUserRecord | null>(null);
+  const [changeStatusUser, setChangeStatusUser] = useState<AdminUserRecord | null>(null);
+
+  const fetchUsers = () => {
+    fetch('/api/admin/users?includeDeleted=true')
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && json.data && json.data.length > 0) {
+          const mapped: AdminUserRecord[] = json.data.map((u: any, idx: number) => {
+            const { roleKey, roleTitle, dept } = resolveStaffRole({
+              role: u.role,
+              jobTitle: u.jobTitle,
+              email: u.email,
+            });
+            const preset = ROLE_PRESETS[roleKey] || ROLE_PRESETS.REGISTRAR;
+            return {
+              id: u.id,
+              staffNumber: u.staffNumber || `NWU-STF-00${idx + 1}`,
+              name: u.fullName || `${u.firstName} ${u.lastName}`,
+              firstName: u.firstName,
+              lastName: u.lastName,
+              email: u.email,
+              phone: u.phone || '+260977000000',
+              role: u.role,
+              roleTitle: u.jobTitle || roleTitle,
+              jobTitle: u.jobTitle || roleTitle,
+              department: u.departmentName || dept,
+              campus: u.campusName || 'Manyama Main Campus',
+              mfaStatus: u.mfaEnabled ? 'ENFORCED' : 'PENDING',
+              mfaMethod: 'TOTP_AUTHENTICATOR',
+              lastLogin: u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleString() : 'Never logged in',
+              lastLoginIp: '192.168.10.22',
+              status: u.status || (u.isActive ? 'ACTIVE' : 'SUSPENDED'),
+              permissions: JSON.parse(JSON.stringify(preset.perms)),
+            };
+          });
+          setUsers(mapped);
+        }
+      })
+      .catch((err) => console.error('[AdministrationConsole] User fetch error:', err));
+  };
+
   useEffect(() => {
-    if (users.length === 0) {
-      fetch('/api/hr')
-        .then((res) => res.json())
-        .then((json) => {
-          if (json.data?.staff && json.data.staff.length > 0) {
-            setUsers(mapDatabaseStaff(json.data.staff));
-          }
-        })
-        .catch((err) => console.error('[AdministrationConsole] HR fetch notice:', err));
-    }
-  }, [users.length]);
+    fetchUsers();
+  }, []);
 
   const fetchContentCards = () => {
     setLoadingCards(true);
@@ -713,37 +755,117 @@ export function AdministrationConsole({
                           <td className="px-5 py-4">
                             <button
                               type="button"
-                              onClick={(e) => handleToggleStatus(u, e)}
-                              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold transition hover:opacity-80 ${
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setChangeStatusUser(u);
+                              }}
+                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-bold transition hover:opacity-85 cursor-pointer shadow-2xs ${
                                 u.status === 'ACTIVE'
                                   ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
-                                  : 'border border-rose-200 bg-rose-50 text-rose-800'
+                                  : u.status === 'SUSPENDED'
+                                  ? 'border border-amber-200 bg-amber-50 text-amber-800'
+                                  : u.status === 'LOCKED'
+                                  ? 'border border-rose-200 bg-rose-50 text-rose-800'
+                                  : 'border border-slate-300 bg-slate-100 text-slate-700'
                               }`}
-                              title="Click to toggle Active / Suspended status"
+                              title="Click to manage account lifecycle (Suspend, Lock, Reactivate, Soft-Delete)"
                             >
                               {u.status === 'ACTIVE' ? (
                                 <>
-                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> ACTIVE
+                                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                  <span>ACTIVE</span>
+                                </>
+                              ) : u.status === 'SUSPENDED' ? (
+                                <>
+                                  <UserX className="h-3 w-3 text-amber-600" />
+                                  <span>SUSPENDED</span>
+                                </>
+                              ) : u.status === 'LOCKED' ? (
+                                <>
+                                  <Lock className="h-3 w-3 text-rose-600" />
+                                  <span>LOCKED</span>
                                 </>
                               ) : (
                                 <>
-                                  <span className="h-1.5 w-1.5 rounded-full bg-rose-500" /> SUSPENDED
+                                  <Archive className="h-3 w-3 text-slate-500" />
+                                  <span>DELETED</span>
                                 </>
                               )}
                             </button>
                           </td>
                           <td className="px-5 py-4 text-right">
                             <div className="flex items-center justify-end gap-1.5">
+                              {/* Audit Log / History Button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setAuditModalUser(u);
+                                }}
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-700 hover:border-cyan-400 hover:bg-cyan-50/50 hover:text-cyan-800 transition shadow-2xs cursor-pointer"
+                                title="View immutable security audit log & history"
+                              >
+                                <History className="h-3.5 w-3.5 text-cyan-700" />
+                                <span className="hidden sm:inline">Audit Log</span>
+                              </button>
+
+                              {/* Reset Password Button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setResetPasswordUser(u);
+                                }}
+                                className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50/60 px-2 py-1.5 text-[11px] font-bold text-indigo-800 hover:bg-indigo-100 transition shadow-2xs cursor-pointer"
+                                title="Reset credentials (Auto-generate OTP or manual)"
+                              >
+                                <KeyRound className="h-3.5 w-3.5 text-indigo-600" />
+                                <span className="hidden sm:inline">Reset Pwd</span>
+                              </button>
+
+                              {/* Suspend / Lock / Status Button */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setChangeStatusUser(u);
+                                }}
+                                className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition shadow-2xs cursor-pointer ${
+                                  u.status === 'ACTIVE'
+                                    ? 'border-amber-200 bg-amber-50/70 text-amber-800 hover:bg-amber-100'
+                                    : u.status === 'LOCKED'
+                                    ? 'border-rose-200 bg-rose-50 text-rose-800 hover:bg-rose-100'
+                                    : u.status === 'DELETED'
+                                    ? 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                    : 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                                }`}
+                                title="Suspend, Lock, Reactivate, or Soft-Delete account"
+                              >
+                                {u.status === 'ACTIVE' ? (
+                                  <>
+                                    <UserX className="h-3.5 w-3.5 text-amber-600" />
+                                    <span className="hidden md:inline">Suspend/Lock</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Unlock className="h-3.5 w-3.5 text-emerald-600" />
+                                    <span className="hidden md:inline">Manage Status</span>
+                                  </>
+                                )}
+                              </button>
+
+                              {/* Manage Permissions Button */}
                               <button
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleOpenEdit(u);
                                 }}
-                                className="inline-flex items-center gap-1 rounded-lg border border-cyan-200 bg-cyan-50/70 px-2.5 py-1.5 text-[11px] font-bold text-cyan-800 hover:bg-cyan-100 transition shadow-2xs"
+                                className="inline-flex items-center gap-1 rounded-lg border border-cyan-200 bg-cyan-50/70 px-2.5 py-1.5 text-[11px] font-bold text-cyan-800 hover:bg-cyan-100 transition shadow-2xs cursor-pointer"
                                 title="Edit Role, Campus Scope & Permissions"
                               >
-                                <SlidersHorizontal className="h-3 w-3 text-cyan-700" /> Manage Permissions
+                                <SlidersHorizontal className="h-3.5 w-3.5 text-cyan-700" />
+                                <span className="hidden lg:inline">Permissions</span>
                               </button>
                             </div>
                           </td>
@@ -1089,6 +1211,54 @@ export function AdministrationConsole({
         onSave={handleSaveUser}
         mode={modalMode}
       />
+
+      {/* User Audit History Modal */}
+      {auditModalUser && (
+        <UserAuditHistoryModal
+          userId={auditModalUser.id}
+          userName={auditModalUser.name}
+          userEmail={auditModalUser.email}
+          userRole={auditModalUser.roleTitle || auditModalUser.role}
+          isOpen={!!auditModalUser}
+          onClose={() => setAuditModalUser(null)}
+        />
+      )}
+
+      {/* Password Reset Modal */}
+      {resetPasswordUser && (
+        <ResetPasswordModal
+          userId={resetPasswordUser.id}
+          userName={resetPasswordUser.name}
+          userEmail={resetPasswordUser.email}
+          userRole={resetPasswordUser.roleTitle || resetPasswordUser.role}
+          isOpen={!!resetPasswordUser}
+          onClose={() => setResetPasswordUser(null)}
+          onSuccess={(msg) => {
+            setNotice(msg);
+            setTimeout(() => setNotice(''), 5000);
+          }}
+        />
+      )}
+
+      {/* Change User Lifecycle Status Modal */}
+      {changeStatusUser && (
+        <ChangeUserStatusModal
+          userId={changeStatusUser.id}
+          userName={changeStatusUser.name}
+          userEmail={changeStatusUser.email}
+          userRole={changeStatusUser.roleTitle || changeStatusUser.role}
+          currentStatus={changeStatusUser.status as any}
+          isOpen={!!changeStatusUser}
+          onClose={() => setChangeStatusUser(null)}
+          onSuccess={(newStatus, msg) => {
+            setUsers((prev) =>
+              prev.map((u) => (u.id === changeStatusUser.id ? { ...u, status: newStatus as any } : u))
+            );
+            setNotice(msg);
+            setTimeout(() => setNotice(''), 5000);
+          }}
+        />
+      )}
     </div>
   );
 }

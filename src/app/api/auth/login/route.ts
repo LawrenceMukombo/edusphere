@@ -23,12 +23,58 @@ export async function POST(req: Request) {
       },
     });
 
-    if (!user || !user.isActive) {
+    if (!user) {
       return NextResponse.json({ success: false, message: 'Invalid credentials or inactive account.' }, { status: 401 });
+    }
+
+    const userStatus = (user as any).status || (user.isActive ? 'ACTIVE' : 'SUSPENDED');
+
+    if ((user as any).isDeleted || userStatus === 'DELETED') {
+      return NextResponse.json(
+        { success: false, message: 'This account has been archived. Please contact the Registrar or IT Administrator.' },
+        { status: 403 }
+      );
+    }
+
+    if (userStatus === 'LOCKED') {
+      const lockReason = (user as any).lockedReason || 'Account locked due to security policy or excessive failed login attempts.';
+      return NextResponse.json(
+        { success: false, message: `Access Blocked: ${lockReason} Please contact an administrator to unlock your credentials.` },
+        { status: 403 }
+      );
+    }
+
+    if (userStatus === 'SUSPENDED' || !user.isActive) {
+      const suspendReason = (user as any).statusReason || 'Administrative suspension or leave.';
+      return NextResponse.json(
+        { success: false, message: `Access Suspended: ${suspendReason} Please consult the Executive Principal or Registrar.` },
+        { status: 403 }
+      );
     }
 
     const isValid = await verifyPassword(password, user.passwordHash);
     if (!isValid) {
+      const newFailedAttempts = ((user as any).failedLoginAttempts || 0) + 1;
+      const shouldLock = newFailedAttempts >= 5;
+
+      // Update failed attempts and auto-lock if exceeded
+      try {
+        await (prisma as any).user.update({
+          where: { id: user.id },
+          data: {
+            failedLoginAttempts: newFailedAttempts,
+            ...(shouldLock
+              ? {
+                  status: 'LOCKED',
+                  isActive: false,
+                  lockedAt: new Date(),
+                  lockedReason: 'Account auto-locked after 5 consecutive failed login attempts.',
+                }
+              : {}),
+          },
+        });
+      } catch {}
+
       // Record failed login audit event
       if (user.organisationId) {
         try {
@@ -36,21 +82,36 @@ export async function POST(req: Request) {
             data: {
               organisationId: user.organisationId,
               userId: user.id,
-              action: 'SECURITY_LOGIN_FAILED',
+              action: shouldLock ? 'SECURITY_ACCOUNT_AUTOLOCKED' : 'SECURITY_LOGIN_FAILED',
               entityType: 'UserSession',
               entityId: user.id,
-              detailsJson: JSON.stringify({ email: cleanEmail, reason: 'Invalid password' }),
+              detailsJson: JSON.stringify({
+                email: cleanEmail,
+                reason: shouldLock ? '5 failed attempts exceeded' : 'Invalid password',
+                failedAttempts: newFailedAttempts,
+              }),
             },
           });
         } catch {}
       }
-      return NextResponse.json({ success: false, message: 'Invalid credentials or inactive account.' }, { status: 401 });
+
+      if (shouldLock) {
+        return NextResponse.json(
+          { success: false, message: 'Too many failed login attempts. Your account has been locked for security. Please contact IT Administrator.' },
+          { status: 403 }
+        );
+      }
+
+      return NextResponse.json({ success: false, message: 'Invalid email or password.' }, { status: 401 });
     }
 
-    // Update lastLoginAt
-    await prisma.user.update({
+    // Reset failed login attempts and update lastLoginAt
+    await (prisma as any).user.update({
       where: { id: user.id },
-      data: { lastLoginAt: new Date() },
+      data: {
+        lastLoginAt: new Date(),
+        failedLoginAttempts: 0,
+      },
     });
 
     // Record successful login audit event
