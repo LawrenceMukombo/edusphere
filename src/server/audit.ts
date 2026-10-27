@@ -1,5 +1,5 @@
 // src/server/audit.ts
-import { prisma } from '@/server/db';
+import { prisma } from './db';
 
 export interface AuditLogParams {
   organisationId?: string;
@@ -37,10 +37,19 @@ export async function logAuditEvent(params: AuditLogParams) {
       ua = ua || headers.get('user-agent') || 'NWUCHAS-Internal-Client';
     }
 
+    let validUserId: string | null = null;
+    if (params.userId) {
+      const userExists = await prisma.user.findUnique({
+        where: { id: params.userId },
+        select: { id: true },
+      });
+      if (userExists) validUserId = userExists.id;
+    }
+
     const event = await prisma.auditEvent.create({
       data: {
         organisationId: orgId,
-        userId: params.userId || null,
+        userId: validUserId,
         action: params.action,
         entityType: params.entityType,
         entityId: params.entityId,

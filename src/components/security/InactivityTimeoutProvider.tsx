@@ -551,3 +551,21 @@ export function InactivityAutoLockWidget() {
     </div>
   );
 }
+
+/**
+ * 1-Click Top Navbar Quick PIN Setup / Change Button
+ */
+export function QuickPinTopBarButton() {
+  const { openPinSetupModal, hasPin } = useInactivityTimeout();
+  return (
+    <button
+      type="button"
+      onClick={openPinSetupModal}
+      className="inline-flex items-center gap-1.5 rounded-full border border-teal-300 bg-teal-50 px-2.5 py-1 text-[11px] font-bold text-teal-800 hover:bg-teal-100 transition shadow-2xs cursor-pointer"
+      title="Setup or Change your 4-6 Digit Quick Login PIN"
+    >
+      <KeyRound size={12} className="text-teal-700" />
+      <span className="hidden sm:inline">{hasPin ? 'PIN Active' : 'Setup PIN'}</span>
+    </button>
+  );
+}

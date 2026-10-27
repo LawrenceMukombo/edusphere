@@ -42,7 +42,7 @@ import { NwuchasEmblemSvg } from '@/components/NwuchasLogo';
 import { TwoFactorChallengeModal } from '@/components/auth/TwoFactorChallengeModal';
 import { isSensitiveModule, getSensitiveModulePolicy } from '@/lib/sensitiveModules';
 import { NotificationCenter } from '@/components/notifications/NotificationCenter';
-import { InactivityAutoLockWidget } from '@/components/security/InactivityTimeoutProvider';
+import { InactivityAutoLockWidget, QuickPinTopBarButton } from '@/components/security/InactivityTimeoutProvider';
 import { SYSTEM_VERSION } from '@/config/version';
 
 type NavigationItem = { href: string; label: string; icon: LucideIcon; isSensitive?: boolean };
@@ -331,6 +331,7 @@ export function NwuchasShell({ children }: { children: React.ReactNode }) {
             >
               Documents
             </Link>
+            <QuickPinTopBarButton />
             <InactivityAutoLockWidget />
             <NotificationCenter />
           </div>

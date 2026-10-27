@@ -16,6 +16,7 @@ import {
   Building2,
 } from 'lucide-react';
 import { CommunicationCrudModal, CircularRecord } from '../communications/CommunicationCrudModal';
+import { WhatsAppChatModule } from '@/components/chat/WhatsAppChatModule';
 
 interface CommunicationsConsoleProps {
   initialNotices?: any[];
@@ -124,7 +125,7 @@ export function CommunicationsConsole({
       ];
 
   const [circulars, setCirculars] = useState<CircularRecord[]>(hydratedCirculars);
-  const [activeTab, setActiveTab] = useState<'CIRCULARS' | 'COMPOSE' | 'CHANNELS'>('CIRCULARS');
+  const [activeTab, setActiveTab] = useState<'CHAT' | 'CIRCULARS' | 'COMPOSE' | 'CHANNELS'>('CHAT');
   const [selectedChannel, setSelectedChannel] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [notice, setNotice] = useState<string>('');
@@ -311,6 +312,19 @@ export function CommunicationsConsole({
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-2">
         <div className="flex flex-wrap gap-2">
           <button
+            onClick={() => setActiveTab('CHAT')}
+            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition ${
+              activeTab === 'CHAT'
+                ? 'bg-[#00a884] text-white shadow-sm'
+                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+            }`}
+          >
+            <MessageSquare className="h-4 w-4" />
+            WhatsApp Live Campus Chat
+            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('CIRCULARS')}
             className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-semibold transition ${
               activeTab === 'CIRCULARS'
@@ -356,6 +370,13 @@ export function CommunicationsConsole({
           </button>
         )}
       </div>
+
+      {/* TAB 0: WHATSAPP REAL-TIME LIVE CAMPUS CHAT */}
+      {activeTab === 'CHAT' && (
+        <div className="space-y-4">
+          <WhatsAppChatModule />
+        </div>
+      )}
 
       {/* TAB 1: Institutional OFFICIAL NOTICES DATA TABLE */}
       {activeTab === 'CIRCULARS' && (
