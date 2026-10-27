@@ -2044,29 +2044,7 @@ export default function CandidateApplicationPortalPage() {
                   </p>
                 </div>
 
-                {/* Instant Demo Quick-Sign In Buttons */}
-                <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 space-y-2">
-                  <span className="text-xs font-bold text-emerald-950 block">
-                    Quick Sign-In (Click any candidate to test your workflow immediately):
-                  </span>
-                  <div className="flex flex-wrap gap-2 pt-1">
-                    {[
-                      { name: 'Kabaso Mulenga Mwewa', app: 'NWU-APP-2026-058545', id: 'kabaso.mwewa@gmail.com', prog: 'Diploma Nursing (Doc Check)' },
-                      { name: 'Chisomo Sakala', app: 'NWU-APP-2026-00118', id: 'chisomo.sakala@gmail.com', prog: 'BSc Nursing (Submitted)' },
-                      { name: 'Mapalo Zimba', app: 'NWU-APP-2026-00117', id: 'mapalo.zimba@gmail.com', prog: 'Diploma Nursing (Waitlist)' },
-                    ].map((demo) => (
-                      <button
-                        key={demo.app}
-                        type="button"
-                        onClick={() => handleCandidateSignIn(demo.id)}
-                        className="rounded-lg bg-white border border-emerald-300 px-3 py-1.5 text-xs font-bold text-emerald-900 hover:bg-emerald-100 transition shadow-2xs text-left"
-                      >
-                        <span className="block font-semibold">{demo.name}</span>
-                        <span className="text-[10px] text-emerald-700 font-mono block">{demo.app} • {demo.prog}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+
 
                 <form
                   onSubmit={(e) => {
@@ -2395,29 +2373,7 @@ export default function CandidateApplicationPortalPage() {
               Sign in to view your candidate profile, verify your submitted applications, and track your admission workflow.
             </p>
 
-            {/* Instant Demo Sign-In Buttons */}
-            <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-950 block">
-                Instant Demo Applicant Access:
-              </span>
-              <div className="grid gap-2 sm:grid-cols-3">
-                {[
-                  { name: 'Kabaso Mwewa', email: 'kabaso.mwewa@gmail.com', prog: 'Doc Check' },
-                  { name: 'Chisomo Sakala', email: 'chisomo.sakala@gmail.com', prog: 'Submitted' },
-                  { name: 'Mapalo Zimba', email: 'mapalo.zimba@gmail.com', prog: 'Waitlist' },
-                ].map((demo) => (
-                  <button
-                    key={demo.email}
-                    type="button"
-                    onClick={() => handleCandidateSignIn(demo.email)}
-                    className="rounded-lg border border-emerald-300 bg-white p-2 text-left hover:bg-emerald-100 transition shadow-2xs"
-                  >
-                    <p className="font-bold text-slate-900 text-[11px] truncate">{demo.name}</p>
-                    <p className="text-[10px] text-emerald-700 font-semibold">{demo.prog}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
+
 
             <form
               onSubmit={(e) => {

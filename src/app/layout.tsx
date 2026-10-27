@@ -29,6 +29,8 @@ export const metadata: Metadata = {
   },
 };
 
+import { InactivityTimeoutProvider } from '@/components/security/InactivityTimeoutProvider';
+
 export default function RootLayout({
   children,
 }: {
@@ -38,9 +40,11 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${inter.className} bg-slate-50 text-slate-900 antialiased`} suppressHydrationWarning>
         <ServiceWorkerRegistration />
-        <NwuchasShell>
-          {children}
-        </NwuchasShell>
+        <InactivityTimeoutProvider>
+          <NwuchasShell>
+            {children}
+          </NwuchasShell>
+        </InactivityTimeoutProvider>
       </body>
     </html>
   );

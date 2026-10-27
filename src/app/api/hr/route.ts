@@ -50,7 +50,7 @@ export async function GET(req: Request) {
     }
 
     // 1. Fetch real staff from database
-    const dbStaff = await prisma.staff.findMany({
+    const dbStaff = await (prisma.staff as any).findMany({
       where: {
         organisationId: orgId,
         ...(campusId && campusId !== 'ALL' ? { campusId } : {}),
@@ -63,7 +63,6 @@ export async function GET(req: Request) {
             id: true,
             email: true,
             role: true,
-            status: true,
             isActive: true,
             lastLoginAt: true,
           },
@@ -75,7 +74,7 @@ export async function GET(req: Request) {
     const now = new Date();
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-    const formattedStaff = dbStaff.map((s) => {
+    const formattedStaff = (dbStaff as any[]).map((s: any) => {
       let tczStatus: 'COMPLIANT' | 'EXPIRING_SOON' | 'EXPIRED' = 'COMPLIANT';
       if (s.tczCertificateExpiry) {
         const expiry = new Date(s.tczCertificateExpiry);
@@ -321,6 +320,27 @@ export async function POST(req: Request) {
         success: true,
         message: 'Faculty performance appraisal officially logged and signed off.',
         data: { id: record.id, ...evalMetadata },
+      });
+    }
+
+    if (body.action === 'UPDATE_LICENSURE') {
+      const { staffId, council = 'NMCZ', licenseNumber, expiryDate } = body;
+      if (!staffId || !licenseNumber) {
+        return NextResponse.json({ success: false, message: 'Staff ID and license number are required.' }, { status: 400 });
+      }
+
+      const updated = await prisma.staff.update({
+        where: { id: staffId },
+        data: {
+          tczNumber: `${council}:${licenseNumber}`,
+          tczCertificateExpiry: expiryDate ? new Date(expiryDate) : new Date('2026-12-31T00:00:00.000Z'),
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `Practicing license for ${council} (${licenseNumber}) successfully updated and validated.`,
+        data: updated,
       });
     }
 

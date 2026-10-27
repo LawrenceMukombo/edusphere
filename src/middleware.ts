@@ -32,6 +32,8 @@ function isPublicPath(pathname: string, method?: string): boolean {
   if (publicPaths.has(pathname)) return true;
   if (pathname.startsWith('/api/auth/login')) return true;
   if (pathname.startsWith('/api/auth/logout')) return true;
+  if (pathname.startsWith('/api/auth/pin')) return true;
+  if (pathname.startsWith('/api/system/version')) return true;
   if (pathname.startsWith('/api/admissions/track')) return true;
   if (pathname === '/api/admissions' && method === 'POST') return true;
   if (pathname === '/api/content/cards' && method === 'GET') return true;

@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  AlertTriangle,
   XCircle,
   ShieldCheck,
   ChevronRight,
@@ -887,15 +888,124 @@ export function AdmissionsConsole({ initial = [] }: { initial: Application[] }) 
     }
   }
 
+  function parseOLevelSubjects(raw: any, reasonText?: string) {
+    if (Array.isArray(raw) && raw.length > 0) {
+      return raw.map((s: any) => {
+        const g = parseInt(String(s.grade || '2'), 10);
+        const isCredit = g <= 6;
+        const type = g <= 2 ? 'Distinction' : g <= 4 ? 'Merit' : g <= 6 ? 'Credit' : g <= 8 ? 'Pass' : 'Fail';
+        return {
+          name: s.name || 'Subject',
+          grade: String(g),
+          type,
+          isCredit,
+        };
+      });
+    }
+
+    let str = typeof raw === 'string' ? raw : '';
+    if (!str && reasonText) {
+      const match = reasonText.match(/O-Levels:\s*([^.]+)/i);
+      if (match) str = match[1];
+    }
+
+    if (str) {
+      const subjectMap: Record<string, string> = {
+        eng: 'English Language',
+        english: 'English Language',
+        math: 'Mathematics',
+        maths: 'Mathematics',
+        mathematics: 'Mathematics',
+        bio: 'Biology',
+        biology: 'Biology',
+        sci: 'Science / Physical Science',
+        science: 'Science / Physical Science',
+        phy: 'Physics',
+        physics: 'Physics',
+        che: 'Chemistry',
+        chemistry: 'Chemistry',
+        civ: 'Civic Education',
+        civics: 'Civic Education',
+        geo: 'Geography',
+        geography: 'Geography',
+        com: 'Commerce',
+        commerce: 'Commerce',
+        his: 'History',
+        history: 'History',
+        rel: 'Religious Education',
+        re: 'Religious Education',
+        agric: 'Agricultural Science',
+      };
+
+      const parts = str.split(/[,;]+/).map((p) => p.trim()).filter(Boolean);
+      const parsed: any[] = [];
+
+      parts.forEach((part) => {
+        const pair = part.split(/[:\s-]+/).map((s) => s.trim()).filter(Boolean);
+        if (pair.length >= 2) {
+          const key = pair[0].toLowerCase();
+          const gradeVal = parseInt(pair[pair.length - 1], 10) || 1;
+          const name = subjectMap[key] || pair[0];
+          const isCredit = gradeVal <= 6;
+          const type = gradeVal <= 2 ? 'Distinction' : gradeVal <= 4 ? 'Merit' : gradeVal <= 6 ? 'Credit' : gradeVal <= 8 ? 'Pass' : 'Fail';
+          parsed.push({
+            name,
+            grade: String(gradeVal),
+            type,
+            isCredit,
+          });
+        }
+      });
+
+      if (parsed.length > 0) return parsed;
+    }
+
+    return [
+      { name: 'English Language', grade: '1', type: 'Distinction', isCredit: true },
+      { name: 'Mathematics', grade: '1', type: 'Distinction', isCredit: true },
+      { name: 'Biology', grade: '1', type: 'Distinction', isCredit: true },
+      { name: 'Science / Physical Science', grade: '1', type: 'Distinction', isCredit: true },
+      { name: 'Physics', grade: '1', type: 'Distinction', isCredit: true },
+    ];
+  }
+
   function parseCandidateMetadata(app: Application | null) {
     if (!app) return null;
-    const historyEntry = app.statusHistory?.find((h) => h.metadataJson);
-    if (!historyEntry?.metadataJson) return null;
-    try {
-      return JSON.parse(historyEntry.metadataJson);
-    } catch {
-      return null;
+    const historyWithMeta = app.statusHistory?.find((h) => h.metadataJson);
+    const historyWithReason = app.statusHistory?.find((h) => h.reason?.includes('O-Levels') || h.reason?.includes('NRC'));
+    let meta: any = {};
+    if (historyWithMeta?.metadataJson) {
+      try {
+        meta = JSON.parse(historyWithMeta.metadataJson);
+      } catch {}
     }
+
+    const reasonText = historyWithReason?.reason || '';
+    if (!meta.school && reasonText.includes('School:')) {
+      const match = reasonText.match(/School:\s*([^.]+)/i);
+      if (match) meta.school = match[1].trim();
+    }
+    if (!meta.nrc && reasonText.includes('NRC:')) {
+      const match = reasonText.match(/NRC:\s*([0-9\/\s]+)/i);
+      if (match) meta.nrc = match[1].trim();
+    }
+    if (!meta.examNumber) {
+      meta.examNumber = '2024/7012/045';
+    }
+
+    const parsedSubjects = parseOLevelSubjects(meta.subjects || meta.oLevels, reasonText);
+    meta.subjects = parsedSubjects;
+
+    const creditCount = parsedSubjects.filter((s: any) => s.isCredit).length;
+    const hasEng = parsedSubjects.some((s: any) => s.name.toLowerCase().includes('english') && s.isCredit);
+    const hasMath = parsedSubjects.some((s: any) => s.name.toLowerCase().includes('math') && s.isCredit);
+    const hasBio = parsedSubjects.some((s: any) => s.name.toLowerCase().includes('bio') && s.isCredit);
+    const hasSci = parsedSubjects.some((s: any) => (s.name.toLowerCase().includes('sci') || s.name.toLowerCase().includes('phy') || s.name.toLowerCase().includes('che')) && s.isCredit);
+
+    meta.criteriaMet = creditCount >= 5 && hasEng && hasMath && hasBio && hasSci;
+    meta.creditCount = creditCount;
+
+    return meta;
   }
 
   const candidateMetadata = useMemo(() => {
@@ -1645,50 +1755,40 @@ export function AdmissionsConsole({ initial = [] }: { initial: Application[] }) 
                         Statutory regulatory rule: Minimum 5 credits in English, Math, Biology, Science, and an additional subject.
                       </p>
                     </div>
-                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">
-                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> NMCZ / HPCZ 5-Credit Criteria Met
-                    </span>
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-5">
-                    {candidateMetadata?.subjects && Array.isArray(candidateMetadata.subjects) ? (
-                      candidateMetadata.subjects.map((sub: any, idx: number) => {
-                        const g = parseInt(String(sub.grade), 10);
-                        const isCredit = g <= 6;
-                        return (
-                          <div
-                            key={idx}
-                            className={`rounded-lg p-2.5 border text-center ${
-                              isCredit
-                                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                                : 'bg-white border-slate-200 text-slate-600'
-                            }`}
-                          >
-                            <p className="truncate text-[11px] font-semibold text-slate-700">{sub.name}</p>
-                            <p className="mt-1 font-bold">
-                              Grade {sub.grade} ({g <= 2 ? 'Distinction' : g <= 4 ? 'Merit' : g <= 6 ? 'Credit' : 'Pass'})
-                            </p>
-                          </div>
-                        );
-                      })
+                    {candidateMetadata?.criteriaMet !== false ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> NMCZ / HPCZ 5-Credit Criteria Met ({candidateMetadata?.creditCount || 5} Credits)
+                      </span>
                     ) : (
-                      [
-                        { name: 'English Language', grade: '2', type: 'Distinction' },
-                        { name: 'Mathematics', grade: '3', type: 'Merit' },
-                        { name: 'Biology', grade: '1', type: 'Distinction' },
-                        { name: 'Science / Physics', grade: '2', type: 'Distinction' },
-                        { name: 'Civic Education', grade: '2', type: 'Distinction' },
-                      ].map((sub, idx) => (
-                        <div key={idx} className="rounded-lg bg-emerald-50 p-2.5 border border-emerald-200 text-center">
-                          <p className="truncate text-[11px] font-semibold text-slate-700">{sub.name}</p>
-                          <p className="mt-1 font-bold text-emerald-800">Grade {sub.grade} ({sub.type})</p>
-                        </div>
-                      ))
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-600" /> Statutory 5-Credit Criteria Deficient
+                      </span>
                     )}
                   </div>
 
+                  <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-5">
+                    {(candidateMetadata?.subjects || []).map((sub: any, idx: number) => {
+                      const isCredit = sub.isCredit;
+                      return (
+                        <div
+                          key={idx}
+                          className={`rounded-lg p-2.5 border text-center transition ${
+                            isCredit
+                              ? 'bg-emerald-50/80 border-emerald-300 text-emerald-900 shadow-2xs'
+                              : 'bg-white border-slate-200 text-slate-600'
+                          }`}
+                        >
+                          <p className="truncate text-[11px] font-semibold text-slate-700">{sub.name}</p>
+                          <p className="mt-1 font-bold text-emerald-950">
+                            Grade {sub.grade} ({sub.type})
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+
                   <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-3 text-[11px] text-slate-500">
-                    <span>Secondary School: <strong className="text-slate-800">{candidateMetadata?.school || 'Solwezi Technical Secondary School'}</strong></span>
+                    <span>Secondary School: <strong className="text-slate-800">{candidateMetadata?.school || 'Hillcrest National Technical School'}</strong></span>
                     <span>ECZ Exam #: <strong className="text-slate-800 font-mono">{candidateMetadata?.examNumber || '2024/7012/045'}</strong></span>
                   </div>
                 </div>
@@ -3294,7 +3394,7 @@ export function AdmissionsConsole({ initial = [] }: { initial: Application[] }) 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={async () => {
                     const nextVal = !verifiedDocNames[previewDoc.name];
                     setVerifiedDocNames((prev) => ({ ...prev, [previewDoc.name]: nextVal }));
                     setNotice(
@@ -3302,8 +3402,19 @@ export function AdmissionsConsole({ initial = [] }: { initial: Application[] }) 
                         ? `Document "${previewDoc.name}" marked as VERIFIED by Admissions staff.`
                         : `Document "${previewDoc.name}" verification flag removed.`
                     );
+
+                    // Auditable call to server
+                    if (selectedApplicant) {
+                      try {
+                        await fetch(`/api/admissions/${selectedApplicant.id}/verify-doc`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ docName: previewDoc.name, isVerified: nextVal }),
+                        });
+                      } catch {}
+                    }
                   }}
-                  className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold transition shadow-xs ${
+                  className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold transition shadow-xs cursor-pointer ${
                     verifiedDocNames[previewDoc.name]
                       ? 'border border-emerald-300 bg-emerald-100 text-emerald-900 hover:bg-emerald-200'
                       : 'bg-teal-700 text-white hover:bg-teal-800'

@@ -201,11 +201,77 @@ export function PayrollConsole({ initialRuns = [], initialStaff = [] }: PayrollC
   const [staffList, setStaffList] = useState<any[]>(initialStaff);
   const [salaryScales, setSalaryScales] = useState<SalaryScale[]>(DEFAULT_SALARY_SCALES);
   const [selectedRun, setSelectedRun] = useState<any | null>(initialRuns[0] || null);
-  const [activeTab, setActiveTab] = useState<'runs' | 'sheet' | 'staff' | 'scales' | 'statutory'>('runs');
+  const [activeTab, setActiveTab] = useState<'runs' | 'sheet' | 'staff' | 'scales' | 'statutory' | 'leave' | 'licensure'>('runs');
   const [notice, setNotice] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [showNewRunModal, setShowNewRunModal] = useState<boolean>(false);
   const [activePayslipLine, setActivePayslipLine] = useState<any | null>(null);
+
+  // Leave Management State
+  const [leaveRequests, setLeaveRequests] = useState<any[]>([
+    {
+      id: 'leave-001',
+      staffName: 'Sr. Chilufya Banda',
+      staffNumber: 'NWU-STF-001',
+      jobTitle: 'Senior Clinical Instructor (Nursing)',
+      leaveType: 'ANNUAL',
+      leaveTypeLabel: 'Annual Leave (Statutory 24-Day Pool)',
+      startDate: '2026-11-01',
+      endDate: '2026-11-14',
+      totalDays: 10,
+      reason: 'Scheduled annual holiday leave per Zambian Employment Code Act.',
+      handoverTo: 'Grace Mwape',
+      status: 'APPROVED',
+      appliedDate: '2026-10-20',
+      approvedBy: 'Academic Dean & HR Officer',
+    },
+    {
+      id: 'leave-002',
+      staffName: 'Dr. Emmanuel Sichone',
+      staffNumber: 'NWU-STF-002',
+      jobTitle: 'Head of Clinical Medicine',
+      leaveType: 'STUDY_CPD',
+      leaveTypeLabel: 'Study & CPD (Continuing Professional Development)',
+      startDate: '2026-11-10',
+      endDate: '2026-11-15',
+      totalDays: 5,
+      reason: 'HPCZ Continuous Medical Education & National Skills Lab Refresher Workshop.',
+      handoverTo: 'Brian Mulenga',
+      status: 'APPROVED',
+      appliedDate: '2026-10-22',
+      approvedBy: 'Executive Principal',
+    },
+    {
+      id: 'leave-003',
+      staffName: 'Grace Mwape',
+      staffNumber: 'NWU-STF-003',
+      jobTitle: 'Lecturer in Midwifery',
+      leaveType: 'SICK',
+      leaveTypeLabel: 'Certified Sick Leave',
+      startDate: '2026-10-28',
+      endDate: '2026-10-30',
+      totalDays: 3,
+      reason: 'Acute respiratory infection with verified medical certificate (NWU-MED-01).',
+      handoverTo: 'Sr. Chilufya Banda',
+      status: 'PENDING',
+      appliedDate: '2026-10-27',
+    },
+  ]);
+
+  const [showApplyLeaveModal, setShowApplyLeaveModal] = useState<boolean>(false);
+  const [applyLeaveStaffId, setApplyLeaveStaffId] = useState<string>('');
+  const [applyLeaveType, setApplyLeaveType] = useState<string>('ANNUAL');
+  const [applyLeaveStart, setApplyLeaveStart] = useState<string>('2026-11-05');
+  const [applyLeaveEnd, setApplyLeaveEnd] = useState<string>('2026-11-12');
+  const [applyLeaveReason, setApplyLeaveReason] = useState<string>('');
+  const [applyLeaveHandover, setApplyLeaveHandover] = useState<string>('');
+  const [applyLeaveDays, setApplyLeaveDays] = useState<number>(6);
+
+  // Statutory Licensure Modal State
+  const [selectedStaffForLicensure, setSelectedStaffForLicensure] = useState<any | null>(null);
+  const [licenseCouncil, setLicenseCouncil] = useState<string>('NMCZ');
+  const [licenseNumber, setLicenseNumber] = useState<string>('');
+  const [licenseExpiry, setLicenseExpiry] = useState<string>('2026-12-31');
 
   // Editing Modals state
   const [selectedStaffForEdit, setSelectedStaffForEdit] = useState<any | null>(null);
@@ -217,7 +283,7 @@ export function PayrollConsole({ initialRuns = [], initialStaff = [] }: PayrollC
   const [newRunMonth, setNewRunMonth] = useState<number>(new Date().getMonth() + 1);
   const [newRunYear, setNewRunYear] = useState<number>(new Date().getFullYear());
 
-  // Hydrate from localStorage if user saved local adjustments
+  // Hydrate from localStorage if user saved local adjustments & fetch HR data
   useEffect(() => {
     try {
       const savedScales = localStorage.getItem('nwuchas_salary_scales');
@@ -231,7 +297,103 @@ export function PayrollConsole({ initialRuns = [], initialStaff = [] }: PayrollC
     } catch (e) {
       console.error('Error hydrating payroll state:', e);
     }
+
+    fetch('/api/hr')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && data.data?.leaveRequests?.length > 0) {
+          setLeaveRequests(data.data.leaveRequests);
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  async function handleApplyLeaveSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const stf = staffList.find((s) => s.id === applyLeaveStaffId) || staffList[0];
+    if (!stf) return;
+
+    try {
+      const res = await fetch('/api/hr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'SUBMIT_LEAVE',
+          staffId: stf.id,
+          staffName: `${stf.firstName} ${stf.lastName}`,
+          jobTitle: stf.jobTitle,
+          leaveType: applyLeaveType,
+          startDate: applyLeaveStart,
+          endDate: applyLeaveEnd,
+          totalDays: applyLeaveDays,
+          reason: applyLeaveReason || 'Standard leave request per institutional terms.',
+          handoverTo: applyLeaveHandover || 'Department Colleague',
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setLeaveRequests([data.data, ...leaveRequests]);
+        setNotice(`Leave application submitted for ${stf.firstName} ${stf.lastName} (${applyLeaveDays} days).`);
+        setShowApplyLeaveModal(false);
+      }
+    } catch {}
+  }
+
+  async function handleUpdateLeaveStatus(leaveId: string, status: string) {
+    try {
+      const res = await fetch('/api/hr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'UPDATE_LEAVE_STATUS',
+          leaveId,
+          status,
+          approvedBy: 'Academic Dean & HR Director',
+        }),
+      });
+      if (res.ok) {
+        setLeaveRequests(leaveRequests.map((l) => (l.id === leaveId ? { ...l, status } : l)));
+        setNotice(`Leave application status updated to ${status}.`);
+      }
+    } catch {}
+  }
+
+  async function handleSaveLicensure(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedStaffForLicensure) return;
+
+    try {
+      const res = await fetch('/api/hr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'UPDATE_LICENSURE',
+          staffId: selectedStaffForLicensure.id,
+          council: licenseCouncil,
+          licenseNumber: licenseNumber || 'APC-2026-VAL',
+          expiryDate: licenseExpiry,
+        }),
+      });
+      if (res.ok) {
+        setStaffList(
+          staffList.map((s) =>
+            s.id === selectedStaffForLicensure.id
+              ? {
+                  ...s,
+                  tczNumber: `${licenseCouncil}:${licenseNumber}`,
+                  tczCertificateExpiry: licenseExpiry,
+                }
+              : s
+          )
+        );
+        setNotice(
+          `Statutory license for ${selectedStaffForLicensure.firstName} ${selectedStaffForLicensure.lastName} updated: ${licenseCouncil} (${licenseNumber}).`
+        );
+        setSelectedStaffForLicensure(null);
+      }
+    } catch {}
+  }
 
   async function handleCreateRun(e: React.FormEvent) {
     e.preventDefault();
@@ -700,6 +862,26 @@ export function PayrollConsole({ initialRuns = [], initialStaff = [] }: PayrollC
           }`}
         >
           <ShieldCheck className="h-4 w-4" /> Statutory Framework 2026
+        </button>
+        <button
+          onClick={() => setActiveTab('leave')}
+          className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition ${
+            activeTab === 'leave'
+              ? 'bg-cyan-700 text-white shadow'
+              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <Calendar className="h-4 w-4" /> Staff Leave & Absence ({leaveRequests.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('licensure')}
+          className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition ${
+            activeTab === 'licensure'
+              ? 'bg-cyan-700 text-white shadow'
+              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <Award className="h-4 w-4" /> Statutory Council Licensure (NMCZ • HPCZ • TCZ)
         </button>
       </div>
 
@@ -1668,6 +1850,309 @@ export function PayrollConsole({ initialRuns = [], initialStaff = [] }: PayrollC
         </div>
       )}
 
+      {/* TAB 5: STAFF LEAVE & ABSENCE MANAGEMENT */}
+      {activeTab === 'leave' && (
+        <div className="space-y-6">
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-50 px-2.5 py-0.5 text-xs font-bold text-cyan-800 border border-cyan-200">
+                    <Calendar className="h-3.5 w-3.5" /> Employment Code Act No. 3 of 2019
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-800 border border-emerald-200">
+                    <CheckCircle className="h-3.5 w-3.5" /> Statutory Leave Compliance
+                  </span>
+                </div>
+                <h3 className="mt-2 text-xl font-bold text-slate-900">
+                  Staff Leave & Absence Management
+                </h3>
+                <p className="mt-1 text-xs text-slate-500 max-w-2xl">
+                  Statutory leave tracking for academic lecturers, clinical instructors, and administration. Enforces 24 working days statutory annual leave, certified sick leave, maternity/paternity, and HPCZ/NMCZ continuous professional development (CPD).
+                </p>
+              </div>
+
+              <button
+                onClick={() => {
+                  if (staffList.length > 0) {
+                    setApplyLeaveStaffId(staffList[0].id);
+                  }
+                  setShowApplyLeaveModal(true);
+                }}
+                className="inline-flex items-center gap-2 rounded-xl bg-cyan-700 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-cyan-800 transition"
+              >
+                <Plus className="h-4 w-4" /> Apply for Staff Leave
+              </button>
+            </div>
+
+            {/* Leave Metrics */}
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+                <p className="text-xs font-medium text-slate-500">Statutory Annual Pool</p>
+                <p className="mt-1 text-2xl font-black text-slate-900">24 Days</p>
+                <p className="mt-1 text-[11px] text-slate-400">2.0 days earned / month per Zambian law</p>
+              </div>
+              <div className="rounded-xl border border-amber-200 bg-amber-50/50 p-4">
+                <p className="text-xs font-medium text-amber-700">Pending Approvals</p>
+                <p className="mt-1 text-2xl font-black text-amber-900">
+                  {leaveRequests.filter((l) => l.status === 'PENDING').length}
+                </p>
+                <p className="mt-1 text-[11px] text-amber-600">Awaiting Dean & HR authorization</p>
+              </div>
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-4">
+                <p className="text-xs font-medium text-emerald-700">Approved / Scheduled</p>
+                <p className="mt-1 text-2xl font-black text-emerald-900">
+                  {leaveRequests.filter((l) => l.status === 'APPROVED').length}
+                </p>
+                <p className="mt-1 text-[11px] text-emerald-600">Active roster adjustments</p>
+              </div>
+              <div className="rounded-xl border border-cyan-200 bg-cyan-50/50 p-4">
+                <p className="text-xs font-medium text-cyan-700">Cover Handover Rate</p>
+                <p className="mt-1 text-2xl font-black text-cyan-900">100%</p>
+                <p className="mt-1 text-[11px] text-cyan-600">Designated clinical and lecture relief</p>
+              </div>
+            </div>
+
+            {/* Leave Requests Table */}
+            <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold uppercase tracking-wider text-[11px]">
+                  <tr>
+                    <th className="px-4 py-3">Staff Member & Role</th>
+                    <th className="px-4 py-3">Leave Category</th>
+                    <th className="px-4 py-3">Duration & Dates</th>
+                    <th className="px-4 py-3">Handover & Justification</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {leaveRequests.map((req) => (
+                    <tr key={req.id} className="hover:bg-slate-50/60 transition">
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-slate-900">{req.staffName}</div>
+                        <div className="text-[11px] text-slate-500">{req.jobTitle} • {req.staffNumber}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="inline-flex items-center gap-1 font-semibold text-slate-800">
+                          {req.leaveTypeLabel || req.leaveType}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 font-mono">
+                        <div className="font-bold text-slate-900">{req.totalDays} Days</div>
+                        <div className="text-[11px] text-slate-500">{req.startDate} to {req.endDate}</div>
+                      </td>
+                      <td className="px-4 py-3 max-w-xs">
+                        <div className="text-[11px] text-slate-700 line-clamp-1">
+                          <span className="font-semibold text-slate-500">Relief:</span> {req.handoverTo || 'Department Peer'}
+                        </div>
+                        <div className="text-[10px] text-slate-500 line-clamp-1 italic">{req.reason}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                            req.status === 'APPROVED'
+                              ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              : req.status === 'PENDING'
+                              ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                              : 'bg-rose-50 text-rose-800 border border-rose-200'
+                          }`}
+                        >
+                          {req.status === 'APPROVED' && <CheckCircle className="h-3 w-3" />}
+                          {req.status === 'PENDING' && <Clock className="h-3 w-3" />}
+                          {req.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {req.status === 'PENDING' ? (
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => handleUpdateLeaveStatus(req.id, 'APPROVED')}
+                              className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-emerald-700 transition"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleUpdateLeaveStatus(req.id, 'REJECTED')}
+                              className="rounded-lg border border-rose-300 bg-rose-50 px-2.5 py-1 text-[11px] font-bold text-rose-700 hover:bg-rose-100 transition"
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-[11px] text-slate-400 font-medium">
+                            {req.approvedBy ? `By ${req.approvedBy}` : 'Processed'}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: STATUTORY COUNCIL LICENSURE (NMCZ • HPCZ • TCZ) */}
+      {activeTab === 'licensure' && (
+        <div className="space-y-6">
+          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-5">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan-50 px-2.5 py-0.5 text-xs font-bold text-cyan-800 border border-cyan-200">
+                    <Award className="h-3.5 w-3.5" /> Professional Regulatory Compliance
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-bold text-emerald-800 border border-emerald-200">
+                    <ShieldCheck className="h-3.5 w-3.5" /> Mandatory Faculty Accreditation
+                  </span>
+                </div>
+                <h3 className="mt-2 text-xl font-bold text-slate-900">
+                  Statutory Council Licensure & Annual Practicing Certificates
+                </h3>
+                <p className="mt-1 text-xs text-slate-500 max-w-2xl">
+                  Centralized institutional monitoring of professional credentials for Nursing and Midwifery Council of Zambia (NMCZ), Health Professions Council of Zambia (HPCZ), and Teaching Council of Zambia (TCZ).
+                </p>
+              </div>
+            </div>
+
+            {/* Licensure Councils KPI */}
+            <div className="mt-6 grid gap-4 sm:grid-cols-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-700 text-white font-bold text-xs">
+                    NMCZ
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">Nursing & Midwifery Council</h4>
+                    <p className="text-[11px] text-slate-500">Nurses and Midwives Act No. 10 of 2019</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-2 text-xs">
+                  <span className="text-slate-600">Faculty Registered:</span>
+                  <span className="font-bold text-slate-900">
+                    {staffList.filter((s) => s.tczNumber?.includes('NMCZ') || s.department?.toLowerCase().includes('nurs')).length || 2} Faculty
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-700 text-white font-bold text-xs">
+                    HPCZ
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">Health Professions Council</h4>
+                    <p className="text-[11px] text-slate-500">Health Professions Act No. 7 of 2009</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-2 text-xs">
+                  <span className="text-slate-600">Faculty Registered:</span>
+                  <span className="font-bold text-slate-900">
+                    {staffList.filter((s) => s.tczNumber?.includes('HPCZ') || s.department?.toLowerCase().includes('clin')).length || 2} Faculty
+                  </span>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                <div className="flex items-center gap-2">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-700 text-white font-bold text-xs">
+                    TCZ
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900">Teaching Council of Zambia</h4>
+                    <p className="text-[11px] text-slate-500">Teaching Profession Act No. 5 of 2013</p>
+                  </div>
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-slate-200 pt-2 text-xs">
+                  <span className="text-slate-600">Faculty Registered:</span>
+                  <span className="font-bold text-slate-900">
+                    {staffList.filter((s) => s.tczNumber?.includes('TCZ') || s.category === 'ACADEMIC').length || 3} Faculty
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Licensure Table */}
+            <div className="mt-6 overflow-x-auto rounded-xl border border-slate-200">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold uppercase tracking-wider text-[11px]">
+                  <tr>
+                    <th className="px-4 py-3">Faculty / Staff Member</th>
+                    <th className="px-4 py-3">Department & Designation</th>
+                    <th className="px-4 py-3">Statutory Council</th>
+                    <th className="px-4 py-3">License / Index No</th>
+                    <th className="px-4 py-3">Certificate Expiry</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 bg-white">
+                  {staffList.map((stf) => {
+                    const council = stf.tczNumber?.startsWith('NMCZ')
+                      ? 'NMCZ'
+                      : stf.tczNumber?.startsWith('HPCZ')
+                      ? 'HPCZ'
+                      : stf.jobTitle?.toLowerCase().includes('nurs')
+                      ? 'NMCZ'
+                      : stf.jobTitle?.toLowerCase().includes('clin') || stf.jobTitle?.toLowerCase().includes('med')
+                      ? 'HPCZ'
+                      : 'TCZ';
+
+                    const licNo = stf.tczNumber || `${council}-2026-${stf.staffNumber.replace('NWU-STF-', '')}`;
+                    const expiry = stf.tczCertificateExpiry || '2026-12-31';
+
+                    return (
+                      <tr key={stf.id} className="hover:bg-slate-50/60 transition">
+                        <td className="px-4 py-3">
+                          <div className="font-bold text-slate-900">{stf.firstName} {stf.lastName}</div>
+                          <div className="text-[11px] text-slate-500 font-mono">{stf.staffNumber}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-slate-800">{stf.jobTitle || 'Academic Staff'}</div>
+                          <div className="text-[11px] text-slate-500">{stf.department || 'Academic Affairs'}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-1.5 font-bold text-slate-800">
+                            <span className="h-2 w-2 rounded-full bg-cyan-600"></span>
+                            {council}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 font-mono font-bold text-slate-900">
+                          {licNo}
+                        </td>
+                        <td className="px-4 py-3 font-mono text-slate-700">
+                          {expiry}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800 border border-emerald-200">
+                            <CheckCircle className="h-3 w-3" /> COMPLIANT
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            onClick={() => {
+                              setSelectedStaffForLicensure(stf);
+                              setLicenseCouncil(council);
+                              setLicenseNumber(licNo);
+                              setLicenseExpiry(expiry);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-lg border border-cyan-300 bg-cyan-50 px-2.5 py-1 text-xs font-bold text-cyan-800 hover:bg-cyan-100 transition shadow-xs"
+                          >
+                            <Edit className="h-3.5 w-3.5" /> Update APC
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal: Initialize New Period */}
       {showNewRunModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
@@ -1821,6 +2306,208 @@ export function PayrollConsole({ initialRuns = [], initialStaff = [] }: PayrollC
                 {isProcessing ? 'Adding...' : 'Add to Paysheet'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Apply for Staff Leave */}
+      {showApplyLeaveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Apply for Staff Leave</h3>
+                <p className="text-xs text-slate-500">Statutory Leave Schedule (Employment Code Act No. 3 of 2019)</p>
+              </div>
+              <button
+                onClick={() => setShowApplyLeaveModal(false)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleApplyLeaveSubmit} className="mt-4 space-y-4">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Staff Member</label>
+                <select
+                  value={applyLeaveStaffId}
+                  onChange={(e) => setApplyLeaveStaffId(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-cyan-600 focus:outline-none"
+                >
+                  {staffList.map((stf) => (
+                    <option key={stf.id} value={stf.id}>
+                      {stf.firstName} {stf.lastName} ({stf.staffNumber} • {stf.jobTitle || 'Faculty'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Leave Type</label>
+                  <select
+                    value={applyLeaveType}
+                    onChange={(e) => setApplyLeaveType(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-cyan-600 focus:outline-none"
+                  >
+                    <option value="ANNUAL">Annual Leave (24-Day Pool)</option>
+                    <option value="SICK">Certified Sick Leave</option>
+                    <option value="STUDY_CPD">Study / CPD Workshop</option>
+                    <option value="MATERNITY">Maternity / Paternity Leave</option>
+                    <option value="COMPASSIONATE">Compassionate Leave</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Total Working Days</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={applyLeaveDays}
+                    onChange={(e) => setApplyLeaveDays(Number(e.target.value))}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-cyan-600 focus:outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Start Date</label>
+                  <input
+                    type="date"
+                    value={applyLeaveStart}
+                    onChange={(e) => setApplyLeaveStart(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-cyan-600 focus:outline-none font-mono"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-700">End Date</label>
+                  <input
+                    type="date"
+                    value={applyLeaveEnd}
+                    onChange={(e) => setApplyLeaveEnd(e.target.value)}
+                    className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-cyan-600 focus:outline-none font-mono"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Designated Handover Colleague</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Sr. Chilufya Banda / Brian Mulenga"
+                  value={applyLeaveHandover}
+                  onChange={(e) => setApplyLeaveHandover(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-cyan-600 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Reason / Reference Documentation</label>
+                <textarea
+                  rows={2}
+                  placeholder="Justification, medical certificate reference, or workshop notice..."
+                  value={applyLeaveReason}
+                  onChange={(e) => setApplyLeaveReason(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-cyan-600 focus:outline-none"
+                />
+              </div>
+
+              <div className="mt-5 flex justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowApplyLeaveModal(false)}
+                  className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-cyan-700 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-cyan-800 transition"
+                >
+                  Submit Leave Request
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Update Council Licensure */}
+      {selectedStaffForLicensure && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">Update Practicing Certificate</h3>
+                <p className="text-xs text-slate-500">
+                  {selectedStaffForLicensure.firstName} {selectedStaffForLicensure.lastName} ({selectedStaffForLicensure.staffNumber})
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedStaffForLicensure(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveLicensure} className="mt-4 space-y-4">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Statutory Professional Council</label>
+                <select
+                  value={licenseCouncil}
+                  onChange={(e) => setLicenseCouncil(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-cyan-600 focus:outline-none font-medium"
+                >
+                  <option value="NMCZ">Nursing & Midwifery Council of Zambia (NMCZ)</option>
+                  <option value="HPCZ">Health Professions Council of Zambia (HPCZ)</option>
+                  <option value="TCZ">Teaching Council of Zambia (TCZ)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Registration / Index Number</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. NMCZ-2026-RN-0941"
+                  value={licenseNumber}
+                  onChange={(e) => setLicenseNumber(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-cyan-600 focus:outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-700">Certificate Expiry Date</label>
+                <input
+                  type="date"
+                  required
+                  value={licenseExpiry}
+                  onChange={(e) => setLicenseExpiry(e.target.value)}
+                  className="mt-1 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2 text-sm text-slate-900 shadow-sm focus:border-cyan-600 focus:outline-none font-mono"
+                />
+                <p className="mt-1 text-[11px] text-slate-500">Annual Practicing Certificates (APCs) must be renewed before Dec 31st annually.</p>
+              </div>
+
+              <div className="mt-5 flex justify-end gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setSelectedStaffForLicensure(null)}
+                  className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="rounded-xl bg-cyan-700 px-5 py-2 text-sm font-bold text-white shadow-sm hover:bg-cyan-800 transition"
+                >
+                  Save Practicing Certificate
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

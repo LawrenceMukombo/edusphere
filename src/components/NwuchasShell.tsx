@@ -41,6 +41,9 @@ import { TopWelcomeBanner } from '@/components/TopWelcomeBanner';
 import { NwuchasEmblemSvg } from '@/components/NwuchasLogo';
 import { TwoFactorChallengeModal } from '@/components/auth/TwoFactorChallengeModal';
 import { isSensitiveModule, getSensitiveModulePolicy } from '@/lib/sensitiveModules';
+import { NotificationCenter } from '@/components/notifications/NotificationCenter';
+import { InactivityAutoLockWidget } from '@/components/security/InactivityTimeoutProvider';
+import { SYSTEM_VERSION } from '@/config/version';
 
 type NavigationItem = { href: string; label: string; icon: LucideIcon; isSensitive?: boolean };
 type NavigationGroup = { label: string; items: NavigationItem[] };
@@ -328,19 +331,8 @@ export function NwuchasShell({ children }: { children: React.ReactNode }) {
             >
               Documents
             </Link>
-            <Link
-              href="/login"
-              className="rounded-md border border-slate-300 px-3 py-2 font-semibold text-slate-700 hover:border-cyan-600 hover:text-cyan-700 hover:bg-slate-50"
-            >
-              Sign in
-            </Link>
-            <Link
-              aria-label="Institution profile"
-              href="/institution"
-              className="grid h-9 w-9 place-items-center rounded-md border border-slate-300 text-slate-600 hover:border-cyan-600 hover:text-cyan-700 hover:bg-slate-50"
-            >
-              <Bell size={17} />
-            </Link>
+            <InactivityAutoLockWidget />
+            <NotificationCenter />
           </div>
         </div>
       </header>
@@ -661,6 +653,10 @@ export function NwuchasShell({ children }: { children: React.ReactNode }) {
                 © 2026 North Western University College of Health and Applied Sciences. All rights reserved.
               </span>
               <div className="flex flex-wrap items-center justify-end gap-x-2 text-slate-900 font-semibold text-[11px] shrink-0">
+                <span className="rounded-full bg-slate-950 text-white px-2 py-0.5 text-[10px] font-black tracking-wider">
+                  {SYSTEM_VERSION.version} • {SYSTEM_VERSION.environment.toUpperCase()}
+                </span>
+                <span className="hidden sm:inline">•</span>
                 <span>Plot 511/518 Shilenda Road, Manyama, Lumwana, Zambia</span>
                 <span className="hidden sm:inline">•</span>
                 <span>Hotlines: <strong>0964240051 / 0955550051 / 0979000051 / 0974896096 / 0974240051</strong></span>

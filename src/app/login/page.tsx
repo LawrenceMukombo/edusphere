@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { LogIn, ShieldCheck, ArrowLeft, KeyRound, AlertCircle, CheckCircle2, HeartPulse } from 'lucide-react';
 import { NwuchasLogo, NwuchasEmblemSvg, NWUCHAS_IDENTITY } from '@/components/NwuchasLogo';
+import { SYSTEM_VERSION } from '@/config/version';
 
 function LoginForm() {
   const router = useRouter();
@@ -13,6 +14,8 @@ function LoginForm() {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [pin, setPin] = useState('');
+  const [authMode, setAuthMode] = useState<'password' | 'pin'>('password');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -25,6 +28,36 @@ function LoginForm() {
   const [changeError, setChangeError] = useState('');
   const [changeSuccess, setChangeSuccess] = useState('');
   const [changeBusy, setChangeBusy] = useState(false);
+
+  async function submitPin(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setBusy(true);
+    setError('');
+
+    try {
+      const response = await fetch('/api/auth/pin', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'verify', email: email.trim(), pin }),
+      });
+
+      const payload = await response.json();
+      setBusy(false);
+
+      if (!response.ok || !payload.success) {
+        setError(payload.message ?? 'Quick PIN authentication failed.');
+        return;
+      }
+
+      const dest = redirectParam ?? (payload.user?.role === 'PARENT_GUARDIAN' ? '/portal/parent' : '/portal/executive');
+      router.push(dest);
+      router.refresh();
+    } catch (err: any) {
+      setBusy(false);
+      setError(err.message ?? 'Connection error during PIN verification.');
+    }
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -277,120 +310,156 @@ function LoginForm() {
           </div>
         )}
 
-        <form onSubmit={submit} className="mt-5 space-y-4">
-          <div>
-            <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-1.5">
-              Institutional Email
-            </label>
-            <input
-              required
-              type="email"
-              placeholder="e.g. it.admin@nwuchas.edu.zm"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:border-[#007B99] focus:ring-2 focus:ring-[#007B99]/20 focus:outline-none transition shadow-2xs font-medium"
-            />
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-700">
-                Password
-              </label>
-              <span className="text-[11px] text-slate-400">Institutional credentials</span>
+        {/* Inactivity Timeout Banner */}
+        {searchParams.get('reason') === 'timeout' && (
+          <div className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3.5 text-xs text-amber-900 flex items-start gap-2.5">
+            <AlertCircle size={16} className="shrink-0 text-amber-600 mt-0.5" />
+            <div>
+              <p className="font-bold">Session Auto-Locked Due to Inactivity</p>
+              <p className="text-[11px] mt-0.5 text-amber-800">
+                Workstation was secured according to institutional policy. Enter your standard password or Quick PIN to resume.
+              </p>
             </div>
-            <input
-              required
-              type="password"
-              placeholder="••••••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:border-[#007B99] focus:ring-2 focus:ring-[#007B99]/20 focus:outline-none transition shadow-2xs font-medium"
-            />
           </div>
+        )}
 
-          {/* Submit Button with Mandated Teal-Blue */}
+        {/* Authentication Mode Tabs: Standard Password vs Quick PIN */}
+        <div className="mt-5 grid grid-cols-2 rounded-xl bg-slate-100 p-1 border border-slate-200">
           <button
-            type="submit"
-            disabled={busy}
-            className="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-[#007B99] px-5 py-3 text-xs font-extrabold text-white shadow-md hover:bg-[#00627a] active:bg-[#004f63] transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            type="button"
+            onClick={() => {
+              setAuthMode('password');
+              setError('');
+            }}
+            className={`rounded-lg py-1.5 text-xs font-bold transition cursor-pointer ${
+              authMode === 'password'
+                ? 'bg-white text-slate-900 shadow-xs'
+                : 'text-slate-500 hover:text-slate-900'
+            }`}
           >
-            {busy ? (
-              <>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                <span>Authenticating with NWUCHAS Directory…</span>
-              </>
-            ) : (
-              <>
-                <LogIn size={15} />
-                <span>Sign in to NWUCHAS-CMIS</span>
-              </>
-            )}
+            Password Sign-In
           </button>
-        </form>
-
-        {/* Quick Sign-in Shortcuts for Demonstration Personas */}
-        <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-xs">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
-              Quick Sign-in (Local Demonstration)
-            </span>
-            <span className="text-[10px] text-slate-400 font-semibold">Click to prefill</span>
-          </div>
-          <div className="grid grid-cols-2 gap-1.5">
-            <button
-              type="button"
-              onClick={() => {
-                setEmail('principal@nwuchas.edu.zm');
-                setPassword('NWUCHAS-DEV-ONLY-CHANGE-ME');
-                setError('');
-              }}
-              className="text-left rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 hover:border-[#007B99] hover:bg-sky-50/50 transition cursor-pointer"
-            >
-              <div className="font-extrabold text-[11px] text-slate-800">Executive Principal</div>
-              <div className="text-[10px] text-slate-500 truncate">principal@nwuchas.edu.zm</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEmail('owner@nwuchas.edu.zm');
-                setPassword('NWUCHAS-Owner-2026!');
-                setError('');
-              }}
-              className="text-left rounded-lg border border-amber-200 bg-amber-50/40 px-2.5 py-1.5 hover:border-amber-400 hover:bg-amber-100/50 transition cursor-pointer"
-            >
-              <div className="font-extrabold text-[11px] text-amber-900 flex items-center gap-1">
-                <span>College Owner</span>
-                <span className="rounded bg-amber-200 text-amber-900 px-1 text-[9px] font-black">Super Admin</span>
-              </div>
-              <div className="text-[10px] text-amber-700 truncate">owner@nwuchas.edu.zm</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEmail('registrar@nwuchas.edu.zm');
-                setPassword('NWUCHAS-DEV-ONLY-CHANGE-ME');
-                setError('');
-              }}
-              className="text-left rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 hover:border-[#007B99] hover:bg-sky-50/50 transition cursor-pointer"
-            >
-              <div className="font-extrabold text-[11px] text-slate-800">Academic Registrar</div>
-              <div className="text-[10px] text-slate-500 truncate">registrar@nwuchas.edu.zm</div>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setEmail('it.admin@nwuchas.edu.zm');
-                setPassword('NWUCHAS-DEV-ONLY-CHANGE-ME');
-                setError('');
-              }}
-              className="text-left rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 hover:border-[#007B99] hover:bg-sky-50/50 transition cursor-pointer"
-            >
-              <div className="font-extrabold text-[11px] text-slate-800">IT Administrator</div>
-              <div className="text-[10px] text-slate-500 truncate">it.admin@nwuchas.edu.zm</div>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setAuthMode('pin');
+              setError('');
+            }}
+            className={`rounded-lg py-1.5 text-xs font-bold transition cursor-pointer flex items-center justify-center gap-1 ${
+              authMode === 'pin'
+                ? 'bg-white text-[#007B99] shadow-xs'
+                : 'text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <KeyRound size={12} />
+            <span>Quick PIN</span>
+          </button>
         </div>
+
+        {authMode === 'password' ? (
+          <form onSubmit={submit} className="mt-4 space-y-4">
+            <div>
+              <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-1.5">
+                Institutional Email
+              </label>
+              <input
+                required
+                type="email"
+                placeholder="e.g. it.admin@nwuchas.edu.zm"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:border-[#007B99] focus:ring-2 focus:ring-[#007B99]/20 focus:outline-none transition shadow-2xs font-medium"
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-700">
+                  Password
+                </label>
+                <span className="text-[11px] text-slate-400">Institutional credentials</span>
+              </div>
+              <input
+                required
+                type="password"
+                placeholder="••••••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:border-[#007B99] focus:ring-2 focus:ring-[#007B99]/20 focus:outline-none transition shadow-2xs font-medium"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={busy}
+              className="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-[#007B99] px-5 py-3 text-xs font-extrabold text-white shadow-md hover:bg-[#00627a] active:bg-[#004f63] transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {busy ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span>Authenticating with NWUCHAS Directory…</span>
+                </>
+              ) : (
+                <>
+                  <LogIn size={15} />
+                  <span>Sign in to NWUCHAS-CMIS</span>
+                </>
+              )}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={submitPin} className="mt-4 space-y-4">
+            <div>
+              <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-1.5">
+                Institutional Email
+              </label>
+              <input
+                required
+                type="email"
+                placeholder="e.g. principal@nwuchas.edu.zm"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:border-[#007B99] focus:ring-2 focus:ring-[#007B99]/20 focus:outline-none transition shadow-2xs font-medium"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-extrabold uppercase tracking-wider text-slate-700 mb-1.5">
+                4-6 Digit Quick PIN
+              </label>
+              <input
+                required
+                type="password"
+                maxLength={6}
+                placeholder="••••"
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-center text-lg font-mono tracking-widest text-slate-900 placeholder-slate-400 focus:border-[#007B99] focus:ring-2 focus:ring-[#007B99]/20 focus:outline-none transition shadow-2xs"
+              />
+              <p className="mt-1 text-[11px] text-slate-500">
+                Quick unlock PIN configured in your profile.
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              disabled={busy || pin.length < 4}
+              className="w-full mt-2 inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#007B99] to-[#0b2545] px-5 py-3 text-xs font-extrabold text-white shadow-md hover:brightness-110 active:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {busy ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  <span>Verifying PIN…</span>
+                </>
+              ) : (
+                <>
+                  <KeyRound size={15} />
+                  <span>Quick Unlock with PIN</span>
+                </>
+              )}
+            </button>
+          </form>
+        )}
 
 
 
@@ -429,6 +498,10 @@ export default function LoginPage() {
             © 2026 North Western University College of Health and Applied Sciences. All rights reserved.
           </span>
           <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-2.5 gap-y-1 font-semibold text-slate-900">
+            <span className="rounded-full bg-slate-900 text-white px-2 py-0.5 text-[10px] font-black">
+              {SYSTEM_VERSION.version} • {SYSTEM_VERSION.environment.toUpperCase()}
+            </span>
+            <span className="hidden sm:inline">•</span>
             <span>Plot 511/518 Shilenda Road, Manyama, Lumwana, Zambia</span>
             <span className="hidden sm:inline">•</span>
             <span>Hotlines: <strong>0964240051 / 0955550051 / 0979000051 / 0974896096 / 0974240051</strong></span>
