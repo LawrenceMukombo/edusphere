@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FileText,
   Search,
@@ -17,114 +17,53 @@ import { DocumentCrudModal, OfficialDocumentRecord } from '../documents/Document
 
 interface DocumentsConsoleProps {
   initialRecords?: any[];
+  initialDocuments?: any[];
 }
 
-export function DocumentsConsole({ initialRecords = [] }: DocumentsConsoleProps) {
-  // Hydrate from live PostgreSQL records
-  const hydratedDocs: OfficialDocumentRecord[] = initialRecords.length > 0
-    ? initialRecords.map((r: any) => {
+function mapDocToRecord(d: any): OfficialDocumentRecord {
+  const catMap: Record<string, 'REGULATORY' | 'ACADEMIC' | 'CLINICAL' | 'FINANCE'> = {
+    OFFER_LETTER: 'REGULATORY',
+    ACCEPTANCE_LETTER: 'REGULATORY',
+    BONAFIDE_STUDENT: 'REGULATORY',
+    INTRODUCTION_LETTER: 'REGULATORY',
+    ACADEMIC_TRANSCRIPT: 'ACADEMIC',
+    EXAM_CLEARANCE: 'ACADEMIC',
+    CLINICAL_COMPLETION: 'CLINICAL',
+    FEE_CLEARANCE: 'FINANCE',
+  };
+  return {
+    id: d.id,
+    reference: d.referenceNumber || (d.title ? d.title.split(' — ')[0] : `NWU-DOC-${d.id.slice(-4)}`),
+    title: d.title ? (d.title.includes(' — ') ? d.title.split(' — ')[1] : d.title) : 'Official Document',
+    category: catMap[d.documentType] || 'REGULATORY',
+    fileFormat: 'PDF',
+    fileSize: '1.2 MB',
+    datePublished: new Date(d.issuedAt || d.createdAt || Date.now()).toLocaleDateString('en-GB'),
+    authority: d.signatoryTitle || 'Office of the Academic Registrar',
+    summary: d.purpose || d.summary || d.title || '',
+    version: d.status || 'v1.0 (Audited)',
+    fullBody: d.payloadJson || d.customRemarks || '',
+  };
+}
+
+export function DocumentsConsole({ initialRecords = [], initialDocuments = [] }: DocumentsConsoleProps) {
+  const [docs, setDocs] = useState<OfficialDocumentRecord[]>(() => {
+    if (initialDocuments && initialDocuments.length > 0) {
+      return initialDocuments.map(mapDocToRecord);
+    }
+    if (initialRecords && initialRecords.length > 0) {
+      return initialRecords.map((r: any) => {
         if (r.metadataJson) {
           try {
             return JSON.parse(r.metadataJson);
-          } catch {
-            // fallback
-          }
+          } catch {}
         }
-        return {
-          id: r.id,
-          reference: r.title.split(' — ')[0] || `NWU-DOC-2026-0${r.id.slice(-2)}`,
-          title: r.title.split(' — ')[1] || r.title,
-          category: 'REGULATORY',
-          fileFormat: 'PDF',
-          fileSize: '1.5 MB',
-          datePublished: new Date(r.updatedAt || Date.now()).toLocaleDateString('en-GB'),
-          authority: 'Office of the Academic Registrar',
-          summary: r.summary || '',
-          version: 'v1.0 (Audited)',
-        };
-      })
-    : [
-        {
-          id: 'doc-1',
-          reference: 'NWU-DOC-001',
-          title: 'Provisional Admission & Acceptance Offer Letter (2026)',
-          category: 'REGULATORY',
-          authority: 'Office of the Academic Registrar',
-          datePublished: '10/01/2026',
-          version: 'v2.4',
-          fileFormat: 'PDF',
-          fileSize: '340 KB',
-          summary:
-            'Official admission offer containing student enrollment number, programme allocation, fee matrix, medical examination form, and statutory acceptance declaration.',
-        },
-        {
-          id: 'doc-2',
-          reference: 'NWU-DOC-002',
-          title: 'NMCZ / HPCZ Statutory Student Indexing Verification Form',
-          category: 'REGULATORY',
-          authority: 'Council Indexing Liaison Office',
-          datePublished: '14/01/2026',
-          version: 'v1.8',
-          fileFormat: 'PDF',
-          fileSize: '410 KB',
-          summary:
-            'Official regulatory submission docket capturing ECZ Grade 12 statement of results, certified National Registration Card (NRC), birth certificate, and police finger-print clearances.',
-        },
-        {
-          id: 'doc-3',
-          reference: 'NWU-DOC-003',
-          title: 'Official Examination Clearance Slip & Hall Entry Docket',
-          category: 'ACADEMIC',
-          authority: 'Chief Examinations Invigilator',
-          datePublished: '28/01/2026',
-          version: 'v3.0',
-          fileFormat: 'PDF',
-          fileSize: '290 KB',
-          summary:
-            'Digital security hall entry pass verifying 85% attendance roll-call compliance, zero fee balance clearance from the Bursary, and CBT biometric verification barcode.',
-        },
-        {
-          id: 'doc-4',
-          reference: 'NWU-DOC-004',
-          title: 'Student Clinical Logbook & Preceptor Evaluation Dossier',
-          category: 'CLINICAL',
-          authority: 'Director of Clinical Practice',
-          datePublished: '05/02/2026',
-          version: 'v2.1',
-          fileFormat: 'PDF',
-          fileSize: '820 KB',
-          summary:
-            'Prescribed procedural logbook for hospital ward attachments: surgical scrubbing, IV cannulation, normal delivery management, catheterization, and post-operative monitoring sign-offs.',
-        },
-        {
-          id: 'doc-5',
-          reference: 'NWU-DOC-005',
-          title: 'Official Academic Transcript & Statement of Results (Security Watermark)',
-          category: 'ACADEMIC',
-          authority: 'Academic Senate & Examinations Committee',
-          datePublished: '12/02/2026',
-          version: 'v2.0',
-          fileFormat: 'PDF',
-          fileSize: '510 KB',
-          summary:
-            'Formal certified transcript recording credit units, course grades, GPA, OSCE practical performance, clinical rotations completed, and official college seal.',
-        },
-        {
-          id: 'doc-6',
-          reference: 'NWU-DOC-006',
-          title: 'Standard Campus Tenancy & Hostel Accommodation Agreement',
-          category: 'FINANCE',
-          authority: 'Campus Operations & Dean of Students',
-          datePublished: '18/02/2026',
-          version: 'v1.5',
-          fileFormat: 'PDF',
-          fileSize: '220 KB',
-          summary:
-            'Binding residential agreement for hostel accommodation at Florence Nightingale and Albert Schweitzer halls, specifying room allocation rules, curfew policies, and utility services.',
-        },
-      ];
+        return mapDocToRecord(r);
+      });
+    }
+    return [];
+  });
 
-  const [docs, setDocs] = useState<OfficialDocumentRecord[]>(hydratedDocs);
   const [selectedCat, setSelectedCat] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [notice, setNotice] = useState<string>('');
@@ -133,6 +72,25 @@ export function DocumentsConsole({ initialRecords = [] }: DocumentsConsoleProps)
   const [selectedDoc, setSelectedDoc] = useState<OfficialDocumentRecord | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCreateMode, setIsCreateMode] = useState<boolean>(false);
+
+  // Live database fetch from /api/documents
+  const fetchLiveDocs = async () => {
+    try {
+      const res = await fetch('/api/documents');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          setDocs(json.data.map(mapDocToRecord));
+        }
+      }
+    } catch (err) {
+      console.error('[DocumentsConsole] Error fetching live documents:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveDocs();
+  }, []);
 
   const filteredDocs = docs.filter((d) => {
     const matchesCat = selectedCat === 'ALL' || d.category === selectedCat;
@@ -159,51 +117,65 @@ export function DocumentsConsole({ initialRecords = [] }: DocumentsConsoleProps)
   }
 
   async function handleSaveDoc(updated: OfficialDocumentRecord) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
+    const authHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+
     if (isCreateMode) {
-      setDocs([updated, ...docs]);
-      setNotice(`Official Document "${updated.title}" (${updated.reference}) registered in institutional archive.`);
       try {
-        await fetch('/api/modules/documents', {
+        const res = await fetch('/api/documents', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders,
           body: JSON.stringify({
-            title: `${updated.reference} — ${updated.title}`,
-            status: 'ACTIVE',
-            summary: updated.summary,
-            metadataJson: JSON.stringify(updated),
+            documentType: 'OFFER_LETTER',
+            title: updated.title,
+            purpose: updated.summary,
+            signatoryTitle: updated.authority,
+            customRemarks: updated.fullBody,
           }),
         });
+        const json = await res.json();
+        if (json.success && json.data) {
+          setDocs([mapDocToRecord(json.data), ...docs]);
+          setNotice(`Official Document "${updated.title}" (${json.data.referenceNumber}) registered in institutional archive.`);
+        } else {
+          setDocs([updated, ...docs]);
+          setNotice(`Official Document "${updated.title}" (${updated.reference}) registered.`);
+        }
       } catch (err) {
         console.error('Failed to persist document creation:', err);
+        setDocs([updated, ...docs]);
       }
     } else {
-      setDocs(docs.map((d) => (d.id === updated.id ? updated : d)));
-      setNotice(`Document records for "${updated.title}" (${updated.reference}) updated.`);
       try {
-        await fetch('/api/modules/documents', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+        await fetch('/api/documents', {
+          method: 'PUT',
+          headers: authHeaders,
           body: JSON.stringify({
             id: updated.id,
-            title: `${updated.reference} — ${updated.title}`,
-            status: 'ACTIVE',
-            summary: updated.summary,
-            metadataJson: JSON.stringify(updated),
+            action: 'APPROVE',
+            notes: updated.summary,
           }),
         });
+        setNotice(`Document records for "${updated.title}" (${updated.reference}) updated.`);
       } catch (err) {
         console.error('Failed to persist document update:', err);
       }
+      setDocs(docs.map((d) => (d.id === updated.id ? updated : d)));
     }
     setTimeout(() => setNotice(''), 5000);
   }
 
   async function handleDeleteDoc(id: string) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
     setDocs(docs.filter((d) => d.id !== id));
-    setNotice('Document archived from active controlled registry.');
+    setNotice('Document archived and revoked from active controlled registry.');
     try {
-      await fetch(`/api/modules/documents?id=${id}`, {
+      await fetch(`/api/documents?id=${id}`, {
         method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
     } catch (err) {
       console.error('Failed to persist document deletion:', err);

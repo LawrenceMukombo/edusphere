@@ -6,7 +6,7 @@ import { X, ShieldCheck, Check, Server, Globe, Key, AlertCircle } from 'lucide-r
 export interface GatewayRail {
   id: string;
   name: string;
-  provider: 'MTN' | 'AIRTEL' | 'ABSA' | 'ZNBS' | 'ZANACO' | 'OTHER';
+  provider: 'MTN' | 'AIRTEL' | 'ZAMTEL' | 'ABSA' | 'ZNBS' | 'ZANACO' | 'OTHER';
   status: 'ONLINE' | 'DEGRADED' | 'MAINTENANCE' | 'OFFLINE';
   description: string;
   endpoint: string;

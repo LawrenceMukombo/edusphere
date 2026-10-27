@@ -11,6 +11,7 @@ export const permissions = [
   'institution:manage',
   'system:configure',
   'audit:read',
+  'content:manage',
 
   // Admissions & Candidate Journey
   'admission:apply',
@@ -235,11 +236,11 @@ export function getPersonaForRole(role: SystemRole): PersonaType {
       return 'HR_OFFICER';
     case SystemRole.INSTITUTION_ADMIN:
     case SystemRole.SCHOOL_PROPRIETOR:
+    case SystemRole.PLATFORM_SUPER_ADMIN:
     case SystemRole.HEADTEACHER:
     case SystemRole.DEPUTY_HEADTEACHER:
       return 'EXECUTIVE_PRINCIPAL';
     case SystemRole.IT_ADMIN:
-    case SystemRole.PLATFORM_SUPER_ADMIN:
       return 'ICT_ADMIN';
     case SystemRole.AUDITOR_READONLY:
       return 'AUDITOR_REGULATOR';
@@ -256,6 +257,7 @@ const permissionsByRole: ReadonlyMap<SystemRole, readonly Permission[]> = new Ma
       'institution:manage',
       'system:configure',
       'audit:read',
+      'content:manage',
       'admission:review',
       'admission:decide',
       'curriculum:manage',
@@ -268,11 +270,11 @@ const permissionsByRole: ReadonlyMap<SystemRole, readonly Permission[]> = new Ma
   ],
   [
     SystemRole.PLATFORM_SUPER_ADMIN,
-    ['institution:manage', 'system:configure', 'audit:read', 'assets:manage'],
+    ['institution:manage', 'system:configure', 'audit:read', 'assets:manage', 'content:manage'],
   ],
   [
     SystemRole.IT_ADMIN,
-    ['system:configure', 'audit:read', 'assets:manage'],
+    ['system:configure', 'audit:read', 'assets:manage', 'content:manage'],
   ],
   [
     SystemRole.APPLICANT,
@@ -288,7 +290,7 @@ const permissionsByRole: ReadonlyMap<SystemRole, readonly Permission[]> = new Ma
   ],
   [
     SystemRole.REGISTRAR,
-    ['admission:enrol', 'curriculum:manage', 'results:publish', 'transcripts:issue', 'attendance:verify'],
+    ['admission:enrol', 'curriculum:manage', 'results:publish', 'transcripts:issue', 'attendance:verify', 'content:manage'],
   ],
   [
     SystemRole.LECTURER,
@@ -353,6 +355,10 @@ const permissionsByRole: ReadonlyMap<SystemRole, readonly Permission[]> = new Ma
 ]);
 
 export function hasPermission(role: SystemRole, permission: Permission): boolean {
+  // College Owner & Super Administrator Master Override: Unrestricted control over all modules & workflows
+  if (role === SystemRole.PLATFORM_SUPER_ADMIN || role === SystemRole.SCHOOL_PROPRIETOR) {
+    return true;
+  }
   return permissionsByRole.get(role)?.includes(permission) ?? false;
 }
 

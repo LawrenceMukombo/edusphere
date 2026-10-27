@@ -10,11 +10,50 @@ describe('AC-08 & AC-09: Attendance & Offline Reconciliation', () => {
   let pupilId: string;
 
   beforeAll(async () => {
-    const cls = await prisma.class.findFirst();
-    classId = cls!.id;
+    let cls = await prisma.class.findFirst();
+    let term = await prisma.term.findFirst();
 
-    const term = await prisma.term.findFirst();
-    termId = term!.id;
+    if (!cls || !term) {
+      const org = await prisma.organisation.findFirst();
+      const campus = await prisma.campus.findFirst({ where: { organisationId: org!.id } });
+      let academicYear = await prisma.academicYear.findFirst({ where: { organisationId: org!.id } });
+      if (!academicYear) {
+        academicYear = await prisma.academicYear.create({
+          data: {
+            organisationId: org!.id,
+            name: '2026 Academic Year',
+            startDate: new Date('2026-01-01'),
+            endDate: new Date('2026-12-31'),
+            isCurrent: true,
+          },
+        });
+      }
+      if (!term) {
+        term = await prisma.term.create({
+          data: {
+            academicYearId: academicYear.id,
+            name: 'Term 1 / Semester 1',
+            termNumber: 1,
+            startDate: new Date('2026-01-10'),
+            endDate: new Date('2026-04-30'),
+            isCurrent: true,
+          },
+        });
+      }
+      if (!cls) {
+        cls = await prisma.class.create({
+          data: {
+            campusId: campus!.id,
+            academicYearId: academicYear.id,
+            name: 'Nursing Cohort A',
+            capacity: 50,
+          },
+        });
+      }
+    }
+
+    classId = cls.id;
+    termId = term.id;
 
     const pupil = await prisma.learner.findFirst();
     pupilId = pupil!.id;

@@ -57,6 +57,15 @@ model Organisation {
   settlementBatches        SettlementBatch[]
   payrollRuns              PayrollRun[]
   libraryBooks             LibraryBook[]
+  programmeFeeSchedules    ProgrammeFeeSchedule[]
+  studentWallets           StudentWallet[]
+  reversalRequests         PaymentReversalRequest[]
+  bankStatementImports     BankStatementImport[]
+  bankSuspenseEntries      BankSuspenseEntry[]
+  clearanceDockets         ClearanceDocket[]
+  assets                   AssetItem[]
+  officialDocuments        OfficialDocument[]
+  contentCards             InstitutionalContentCard[]
 
   @@index([code])
 }
@@ -90,6 +99,7 @@ model Campus {
   staff             Staff[]
   transportRoutes   TransportRoute[]
   hostelBuildings   HostelBuilding[]
+  assets            AssetItem[]
 
   @@unique([organisationId, code])
   @@index([organisationId])
@@ -179,6 +189,8 @@ model User {
   isActive                 Boolean                  @default(true)
   mfaEnabled               Boolean                  @default(false)
   lastLoginAt              DateTime?
+  passwordLastChangedAt    DateTime?                @default(now())
+  mustChangePassword       Boolean                  @default(false)
   createdAt                DateTime                 @default(now())
   updatedAt                DateTime                 @updatedAt
   admissionStatusHistories AdmissionStatusHistory[]
@@ -258,6 +270,9 @@ model Learner {
   libraryLoans           LibraryLoan[]
   graduationClearance    GraduationClearance?
   alumniProfile          AlumniProfile?
+  studentWallet          StudentWallet?
+  clearanceDockets       ClearanceDocket[]
+  officialDocuments      OfficialDocument[]
 
   @@unique([organisationId, studentNumber])
   @@index([organisationId, status])
@@ -337,8 +352,9 @@ model AcademicYear {
   organisation   Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
   classes        Class[]
   enrolments     Enrolment[]
-  feeSchedules   FeeSchedule[]
-  terms          Term[]
+  feeSchedules          FeeSchedule[]
+  programmeFeeSchedules ProgrammeFeeSchedule[]
+  terms                 Term[]
 
   @@unique([organisationId, name])
   @@index([organisationId, isCurrent])
@@ -591,8 +607,9 @@ model Payment {
   learner         Learner             @relation(fields: [learnerId], references: [id], onDelete: Cascade)
   organisation    Organisation        @relation(fields: [organisationId], references: [id], onDelete: Cascade)
   allocations     PaymentAllocation[]
-  receipt         Receipt?
-  PaymentRefund   PaymentRefund[]
+  receipt          Receipt?
+  PaymentRefund    PaymentRefund[]
+  reversalRequests PaymentReversalRequest[]
 
   @@unique([organisationId, paymentNumber])
   @@index([organisationId, referenceNumber])
@@ -878,6 +895,13 @@ enum FeeCategory {
   UNIFORM
   DEVELOPMENT_LEVY
   OTHER
+  NMCZ_INDEXING
+  HPCZ_INDEXING
+  CLINICAL_PRACTICUM
+  SKILLS_LAB
+  OSCE_EXAMINATION
+  HOSTEL_ACCOMMODATION
+  REGISTRATION_ADMIN
 }
 
 enum InvoiceStatus {
@@ -893,6 +917,7 @@ enum PaymentMethod {
   BANK_DEPOSIT
   AIRTEL_MONEY
   MTN_MONEY
+  ZAMTEL_MONEY
   CHEQUE
 }
 
@@ -902,6 +927,8 @@ enum LedgerEntryType {
   CREDIT_CONCESSION
   DEBIT_REVERSAL
   CREDIT_REFUND
+  CREDIT_ADVANCE
+  DEBIT_ADVANCE_APPLICATION
 }
 
 enum EmploymentStatus {
@@ -1082,6 +1109,7 @@ model Programme {
   courses         CourseModule[]
   cohorts         Cohort[]
   indexingRecords RegulatoryIndexing[]
+  feeSchedules    ProgrammeFeeSchedule[]
 
   @@unique([organisationId, code])
   @@index([organisationId, departmentId])
@@ -1814,3 +1842,357 @@ model AlumniProfile {
 
   learner Learner @relation(fields: [learnerId], references: [id], onDelete: Cascade)
 }
+
+// ----------------------------------------------------------------------------
+// TERTIARY HEALTH SCIENCES FEE MATRIX & ADVANCE WALLETS
+// ----------------------------------------------------------------------------
+
+enum ResidencyType {
+  DAY_SCHOLAR
+  HOSTEL_RESIDENT
+  IN_SERVICE
+  INTERNATIONAL
+}
+
+model ProgrammeFeeSchedule {
+  id             String        @id @default(uuid())
+  organisationId String
+  programmeId    String
+  academicYearId String
+  semesterNumber Int           @default(1)
+  residencyType  ResidencyType @default(DAY_SCHOLAR)
+  category       FeeCategory
+  name           String
+  amountZMW      Decimal       @db.Decimal(10, 2)
+  isMandatory    Boolean       @default(true)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @default(now()) @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  programme    Programme    @relation(fields: [programmeId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, programmeId, academicYearId])
+}
+
+model StudentWallet {
+  id             String              @id @default(uuid())
+  organisationId String
+  learnerId      String              @unique
+  balance        Decimal             @default(0.00) @db.Decimal(10, 2)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  organisation   Organisation        @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  learner        Learner             @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+  transactions   WalletTransaction[]
+
+  @@index([organisationId])
+}
+
+enum WalletTxType {
+  CREDIT_ADVANCE
+  DEBIT_APPLICATION
+  REFUND
+}
+
+model WalletTransaction {
+  id           String        @id @default(uuid())
+  walletId     String
+  amount       Decimal       @db.Decimal(10, 2)
+  type         WalletTxType  @default(CREDIT_ADVANCE)
+  reference    String?
+  description  String
+  balanceAfter Decimal       @db.Decimal(10, 2)
+  createdAt    DateTime      @default(now())
+
+  wallet StudentWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+}
+
+// ----------------------------------------------------------------------------
+// FOUR-EYES PAYMENT REVERSALS
+// ----------------------------------------------------------------------------
+
+enum ReversalStatus {
+  PENDING_APPROVAL
+  APPROVED
+  REJECTED
+}
+
+model PaymentReversalRequest {
+  id              String         @id @default(uuid())
+  organisationId  String
+  paymentId       String
+  requestedById   String
+  requestedByName String?
+  reason          String
+  status          ReversalStatus @default(PENDING_APPROVAL)
+  reviewedById    String?
+  reviewedByName  String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+  ledgerEntryId   String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  payment      Payment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, status])
+  @@index([paymentId])
+}
+
+// ----------------------------------------------------------------------------
+// BANK RECONCILIATION & SUSPENSE QUEUE
+// ----------------------------------------------------------------------------
+
+enum SuspenseStatus {
+  PENDING
+  ALLOCATED
+  REFUNDED
+}
+
+model BankStatementImport {
+  id             String              @id @default(uuid())
+  organisationId String
+  bankName       String
+  statementDate  DateTime            @default(now())
+  filename       String?
+  totalRows      Int                 @default(0)
+  matchedRows    Int                 @default(0)
+  suspenseRows   Int                 @default(0)
+  totalAmountZMW Decimal             @db.Decimal(12, 2)
+  importedById   String?
+  createdAt      DateTime            @default(now())
+
+  organisation Organisation        @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  entries      BankSuspenseEntry[]
+
+  @@index([organisationId])
+}
+
+model BankSuspenseEntry {
+  id                 String         @id @default(uuid())
+  importBatchId      String
+  organisationId     String
+  transactionDate    DateTime
+  referenceNumber    String
+  narration          String
+  amountZMW          Decimal        @db.Decimal(10, 2)
+  extractedStudentId String?
+  matchedLearnerId   String?
+  status             SuspenseStatus @default(PENDING)
+  allocatedAt        DateTime?
+  allocatedById      String?
+  matchedPaymentId   String?
+  notes              String?
+  createdAt          DateTime       @default(now())
+
+  importBatch  BankStatementImport @relation(fields: [importBatchId], references: [id], onDelete: Cascade)
+  organisation Organisation        @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, status])
+  @@index([referenceNumber])
+}
+
+// ----------------------------------------------------------------------------
+// FINANCIAL EXAM & CLINICAL CLEARANCE DOCKET
+// ----------------------------------------------------------------------------
+
+enum DocketType {
+  EXAMINATION_CLEARANCE
+  CLINICAL_ROTATION_CLEARANCE
+}
+
+model ClearanceDocket {
+  id               String     @id @default(uuid())
+  organisationId   String
+  learnerId        String
+  docketType       DocketType @default(EXAMINATION_CLEARANCE)
+  docketNumber     String     @unique
+  termOrSemester   String
+  tuitionBalance   Decimal    @db.Decimal(10, 2)
+  paymentPct       Decimal    @db.Decimal(5, 2)
+  isCleared        Boolean    @default(false)
+  issuedAt         DateTime   @default(now())
+  expiresAt        DateTime
+  verificationCode String     @unique
+  qrCodeData       String
+  issuedById       String?
+  metadataJson     String?
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  learner      Learner      @relation(fields: [learnerId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, learnerId])
+  @@index([verificationCode])
+}
+
+// ----------------------------------------------------------------------------
+// ASSET REGISTER & LOGISTICAL EQUIPMENT MANAGEMENT
+// ----------------------------------------------------------------------------
+
+enum AssetCategory {
+  LABORATORY
+  POWER_ENERGY
+  FLEET_TRANSPORT
+  IT_COMPUTING
+  BOARDING_RESIDENTIAL
+  SPORTS_FACILITIES
+  FURNITURE_CLASSROOM
+  MEDICAL_CLINICAL
+  OTHER
+}
+
+enum AssetCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  CRITICAL
+  SCRAP
+}
+
+enum AssetStatus {
+  OPERATIONAL
+  UNDER_MAINTENANCE
+  DECOMMISSIONED
+  DISPOSED
+}
+
+model AssetItem {
+  id                  String                @id @default(uuid())
+  organisationId      String
+  campusId            String?
+  assetTag            String                @unique
+  name                String
+  category            AssetCategory         @default(LABORATORY)
+  location            String
+  serialNumber        String?
+  purchaseDate        DateTime              @default(now())
+  purchaseCostZMW     Decimal               @db.Decimal(12, 2)
+  currentValueZMW     Decimal               @db.Decimal(12, 2)
+  depreciationRatePct Float                 @default(10.0)
+  condition           AssetCondition        @default(EXCELLENT)
+  status              AssetStatus           @default(OPERATIONAL)
+  assignedToStaffId   String?
+  custodianName       String?
+  qrCodeData          String?
+  notes               String?
+  isDeleted           Boolean               @default(false)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  organisation        Organisation          @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  campus              Campus?               @relation(fields: [campusId], references: [id], onDelete: SetNull)
+  maintenanceLogs     AssetMaintenanceLog[]
+
+  @@index([organisationId, category])
+  @@index([organisationId, status])
+  @@index([assetTag])
+}
+
+model AssetMaintenanceLog {
+  id                    String         @id @default(uuid())
+  assetId               String
+  serviceDate           DateTime       @default(now())
+  description           String
+  costZMW               Decimal        @default(0.00) @db.Decimal(10, 2)
+  technicianName        String
+  nextScheduledService  DateTime?
+  conditionAfterService AssetCondition @default(GOOD)
+  performedById         String?
+  createdAt             DateTime       @default(now())
+
+  asset                 AssetItem      @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId])
+}
+
+// ----------------------------------------------------------------------------
+// OFFICIAL DOCUMENTS & VERIFICATION WORKFLOW
+// ----------------------------------------------------------------------------
+
+enum OfficialDocType {
+  OFFER_LETTER
+  ACCEPTANCE_LETTER
+  INTRODUCTION_LETTER
+  TRANSFER_CLEARANCE
+  FEE_CLEARANCE
+  ACADEMIC_TRANSCRIPT
+  BONAFIDE_STUDENT
+  CLINICAL_COMPLETION
+}
+
+enum OfficialDocStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  ISSUED
+  REVOKED
+  REJECTED
+}
+
+model OfficialDocument {
+  id                    String            @id @default(uuid())
+  organisationId        String
+  learnerId             String?
+  documentType          OfficialDocType   @default(OFFER_LETTER)
+  status                OfficialDocStatus @default(DRAFT)
+  referenceNumber       String            @unique
+  title                 String
+  recipientName         String?
+  recipientOrganization String?
+  purpose               String?
+  signatoryName         String            @default("Academic Registrar")
+  signatoryTitle        String            @default("Office of the Registrar")
+  payloadJson           String
+  qrVerificationCode    String            @unique
+  verificationHash      String
+  issuedAt              DateTime?
+  issuedById            String?
+  approvedAt            DateTime?
+  approvedById          String?
+  rejectionReason       String?
+  isArchived            Boolean           @default(false)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  organisation          Organisation      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  learner               Learner?          @relation(fields: [learnerId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, documentType])
+  @@index([organisationId, status])
+  @@index([learnerId])
+  @@index([qrVerificationCode])
+}
+
+model InstitutionalContentCard {
+  id             String       @id @default(uuid())
+  organisationId String
+  pageKey        String       // "landing", "about", "vision", "programmes", "admissions", "clinical", "facilities", "contact", "modules"
+  sectionKey     String       // "hero", "vision_mission", "programmes", "steps", "clinical", "facilities", "about", "contact"
+  cardKey        String       // "hero_main", "hero_intake", "vision", "mission", "values", "prog_rn", "prog_coe", "prog_ph", "step_1", etc.
+  title          String
+  subtitle       String?
+  badge          String?
+  body           String
+  iconName       String?
+  ctaLabel       String?
+  ctaUrl         String?
+  metadataJson   String?      // Dynamic JSON array for bullet points, tags, requirements, key facts
+  displayOrder   Int          @default(0)
+  isPublished    Boolean      @default(true)
+  lastEditedBy   String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@unique([organisationId, pageKey, sectionKey, cardKey])
+  @@index([organisationId, pageKey])
+  @@index([organisationId, sectionKey])
+}
+
+

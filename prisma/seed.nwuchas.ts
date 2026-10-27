@@ -152,6 +152,7 @@ async function main() {
 
   // 3. CORE USER PERSONAS
   const userSpecs: Array<{ role: SystemRole; email: string; firstName: string; lastName: string; phone: string }> = [
+    { role: SystemRole.PLATFORM_SUPER_ADMIN, email: 'owner@nwuchas.edu.zm', firstName: 'Dr. Joseph', lastName: 'Tembo', phone: '+260966000001' },
     { role: SystemRole.INSTITUTION_ADMIN, email: 'principal@nwuchas.edu.zm', firstName: 'Dr. Mwila', lastName: 'Chileshe', phone: '+260977100001' },
     { role: SystemRole.REGISTRAR, email: 'registrar@nwuchas.edu.zm', firstName: 'Mr. Kabwe', lastName: 'Mumba', phone: '+260977100002' },
     { role: SystemRole.ADMISSIONS_OFFICER, email: 'admissions@nwuchas.edu.zm', firstName: 'Ms. Brenda', lastName: 'Mwansa', phone: '+260977100003' },

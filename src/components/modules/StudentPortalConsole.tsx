@@ -91,16 +91,23 @@ export function StudentPortalConsole({
   const [selectedStudent, setSelectedStudent] = useState<StudentProfileRecord | null>(null);
 
   // Client-side fallback fetch from database if loaded without SSR
+  const fetchLiveStudents = async () => {
+    try {
+      const res = await fetch('/api/students');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && Array.isArray(json.data) && json.data.length > 0) {
+          setStudents(mapDatabaseLearners(json.data));
+        }
+      }
+    } catch (err) {
+      console.error('[StudentPortalConsole] API fetch notice:', err);
+    }
+  };
+
   useEffect(() => {
     if (students.length === 0) {
-      fetch('/api/payments')
-        .then((res) => res.json())
-        .then((json) => {
-          if (json.learners && json.learners.length > 0) {
-            setStudents(mapDatabaseLearners(json.learners));
-          }
-        })
-        .catch((err) => console.error('[StudentPortalConsole] API fetch notice:', err));
+      fetchLiveStudents();
     }
   }, []);
 
@@ -127,23 +134,43 @@ export function StudentPortalConsole({
   }
 
   async function handleSaveStudent(updated: StudentProfileRecord) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
     try {
-      await fetch('/api/modules/parent-portal', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      await fetch(`/api/students/${updated.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
-          title: `Clearance Update — ${updated.name} (${updated.studentNumber})`,
-          status: updated.examClearanceStatus,
-          summary: updated.clearanceOverrideNote || `Clearance status updated to ${updated.examClearanceStatus}`,
-          metadataJson: JSON.stringify(updated),
+          sponsorName: updated.sponsorName,
+          guardianPhone: updated.sponsorPhone,
+          nationality: updated.nrcNumber,
+          emergencyContact: updated.sponsorPhone,
         }),
       });
+      setNotice(`Student records & sponsor linkage for ${updated.name} (${updated.studentNumber}) updated in PostgreSQL.`);
     } catch (e) {
-      console.error('Failed to sync clearance update:', e);
+      console.error('Failed to sync student update:', e);
     }
 
     setStudents(students.map((s) => (s.id === updated.id ? updated : s)));
-    setNotice(`Student clearance record for ${updated.name} (${updated.studentNumber}) updated in database.`);
+    setTimeout(() => setNotice(''), 5000);
+  }
+
+  async function handleDeleteStudent(id: string) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
+    try {
+      const res = await fetch(`/api/students/${id}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const json = await res.json();
+      setNotice(json.message || 'Student transitioned to WITHDRAWN status.');
+      setStudents(students.filter((s) => s.id !== id));
+    } catch (e) {
+      console.error('Failed to withdraw student:', e);
+    }
     setTimeout(() => setNotice(''), 5000);
   }
 
@@ -337,6 +364,7 @@ export function StudentPortalConsole({
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onSave={handleSaveStudent}
+        onDelete={handleDeleteStudent}
       />
     </div>
   );

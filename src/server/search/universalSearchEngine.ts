@@ -1,5 +1,5 @@
 // src/server/search/universalSearchEngine.ts — Enterprise Universal Search & Natural Language AI Engine
-import { prisma } from '@/server/db';
+import { prisma } from '../db';
 
 export interface AIOverview {
   query: string;

@@ -49,6 +49,7 @@ interface StudentClearanceCrudModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (updated: StudentProfileRecord) => void;
+  onDelete?: (id: string) => void;
 }
 
 export function StudentClearanceCrudModal({
@@ -56,6 +57,7 @@ export function StudentClearanceCrudModal({
   isOpen,
   onClose,
   onSave,
+  onDelete,
 }: StudentClearanceCrudModalProps) {
   const [formData, setFormData] = useState<StudentProfileRecord | null>(null);
   const [activeTab, setActiveTab] = useState<'CLEARANCE' | 'SLIP'>('CLEARANCE');
@@ -243,20 +245,38 @@ export function StudentClearanceCrudModal({
             </div>
 
             {/* Action Buttons */}
-            <div className="mt-6 flex items-center justify-end gap-3 border-t border-slate-100 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-700 px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-cyan-800 transition"
-              >
-                <Check className="h-4 w-4" /> Save Student Clearance Record
-              </button>
+            <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+              <div>
+                {onDelete && formData?.id && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm(`Are you sure you want to transition ${formData.name} to WITHDRAWN status?`)) {
+                        onDelete(formData.id);
+                        onClose();
+                      }
+                    }}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-bold text-rose-700 hover:bg-rose-100 transition"
+                  >
+                    Withdraw / Archive Student
+                  </button>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-100 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-700 px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-cyan-800 transition"
+                >
+                  <Check className="h-4 w-4" /> Save Student Clearance Record
+                </button>
+              </div>
             </div>
           </form>
         ) : (

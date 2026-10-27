@@ -90,7 +90,7 @@ const CONDITION_COLORS: Record<AssetCondition, string> = {
 
 export default function AssetsPage() {
   const { selectedCampus, campusInfo } = useCampus();
-  const [assets, setAssets] = useState<SchoolAssetItem[]>(SEED_SCHOOL_ASSETS);
+  const [assets, setAssets] = useState<SchoolAssetItem[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('ALL');
   const [conditionFilter, setConditionFilter] = useState<string>('ALL');
   const [selectedAsset, setSelectedAsset] = useState<SchoolAssetItem | null>(null);
@@ -165,8 +165,67 @@ export default function AssetsPage() {
 
   const metrics = useMemo(() => calculateAssetMetrics(filteredAssets), [filteredAssets]);
 
-  // Handle Add Asset Submission
-  const handleCreateAsset = (e: React.FormEvent) => {
+  // Live Database Fetch
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchAssetsFromApi = async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch('/api/assets');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data && json.data.length > 0) {
+          const mapped: SchoolAssetItem[] = json.data.map((item: any) => ({
+            id: item.id,
+            assetTag: item.assetTag,
+            barcode: item.assetTag,
+            name: item.name,
+            category: item.category,
+            campus: item.campus?.name || 'Manyama Main Campus',
+            locationRoom: item.location,
+            serialNumber: item.serialNumber || 'N/A',
+            manufacturer: 'Certified Medical / Institutional Supplier',
+            model: 'Enterprise 2026',
+            purchaseDate: new Date(item.purchaseDate).toISOString().split('T')[0],
+            purchaseCostZMW: Number(item.purchaseCostZMW),
+            usefulLifeYears: Math.round(100 / (item.depreciationRatePct || 10)),
+            salvageValueZMW: Math.round(Number(item.purchaseCostZMW) * 0.1),
+            depreciationMethod: 'STRAIGHT_LINE',
+            accumulatedDepreciationZMW: Number(item.accumulatedDepreciationZMW || 0),
+            currentNetBookValueZMW: Number(item.currentValueZMW),
+            condition: item.condition,
+            custodianName: item.custodianName || 'Estates & Facilities Directorate',
+            custodianStaffId: item.assignedToStaffId || 'NWU-EST-01',
+            lastServiceDate: item.maintenanceLogs?.[0]?.serviceDate
+              ? new Date(item.maintenanceLogs[0].serviceDate).toISOString().split('T')[0]
+              : new Date(item.purchaseDate).toISOString().split('T')[0],
+            nextServiceDate: new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
+            maintenanceHistory: (item.maintenanceLogs || []).map((m: any) => ({
+              id: m.id,
+              date: new Date(m.serviceDate).toISOString().split('T')[0],
+              description: m.description,
+              costZMW: Number(m.costZMW || 0),
+              technician: m.technicianName,
+              status: 'COMPLETED' as const,
+            })),
+          }));
+          setAssets(mapped);
+          return;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch assets from API:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAssetsFromApi();
+  }, []);
+
+  // Handle Add Asset Submission with Live Database Persistence
+  const handleCreateAsset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newAsset.name || !newAsset.locationRoom) {
       showToast('Please specify Asset Name and Campus Location.');
@@ -174,81 +233,134 @@ export default function AssetsPage() {
     }
 
     const cost = Number(newAsset.purchaseCostZMW) || 10000;
-    const salvage = Number(newAsset.salvageValueZMW) || 1000;
     const life = Number(newAsset.usefulLifeYears) || 5;
     const pDate = newAsset.purchaseDate || new Date().toISOString().split('T')[0];
 
-    const { accumulated, netBookValue } = calculateStraightLineDepreciation(cost, salvage, life, pDate);
+    try {
+      const res = await fetch('/api/assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newAsset.name,
+          category: newAsset.category,
+          location: newAsset.locationRoom,
+          serialNumber: newAsset.serialNumber,
+          purchaseDate: pDate,
+          purchaseCostZMW: cost,
+          depreciationRatePct: 100 / life,
+          condition: newAsset.condition || 'EXCELLENT',
+          status: 'OPERATIONAL',
+          custodianName: newAsset.custodianName || activeUser.fullName,
+        }),
+      });
 
-    const created: SchoolAssetItem = {
-      id: `ast-${Date.now()}`,
-      assetTag: `LSS-${newAsset.category?.slice(0, 3)}-${new Date().getFullYear()}-${String(assets.length + 1).padStart(3, '0')}`,
-      barcode: `BC-${Date.now().toString().slice(-8)}`,
-      name: newAsset.name!,
-      category: newAsset.category as AssetCategory,
-      campus: newAsset.campus as any,
-      locationRoom: newAsset.locationRoom!,
-      serialNumber: newAsset.serialNumber || `SN-${Math.floor(100000 + Math.random() * 900000)}`,
-      manufacturer: newAsset.manufacturer || 'Standard Certified',
-      model: newAsset.model || 'Commercial 2026',
-      purchaseDate: pDate,
-      purchaseCostZMW: cost,
-      usefulLifeYears: life,
-      salvageValueZMW: salvage,
-      depreciationMethod: 'STRAIGHT_LINE',
-      accumulatedDepreciationZMW: accumulated,
-      currentNetBookValueZMW: netBookValue,
-      condition: (newAsset.condition as AssetCondition) || 'EXCELLENT',
-      custodianName: newAsset.custodianName || activeUser.fullName,
-      custodianStaffId: newAsset.custodianStaffId || activeUser.staffId,
-      lastServiceDate: pDate,
-      nextServiceDate: new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
-      maintenanceHistory: [],
-    };
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Asset creation failed');
 
-    setAssets([created, ...assets]);
-    setShowAddModal(false);
-    showToast(`Asset "${created.name}" registered successfully with Tag ${created.assetTag}! 📦`);
-
-    saveAdminAuditLogs([
-      {
-        id: `aud-ast-${Date.now()}`,
-        timestamp: new Date().toLocaleString('en-GB') + ' CAT',
-        adminName: activeUser.fullName,
-        action: 'ASSET_REGISTRATION',
-        module: 'Asset Management',
-        details: `Registered ${created.name} (${created.assetTag}) valued at K${created.purchaseCostZMW.toLocaleString()}.`,
-        status: 'SUCCESS',
-        ipAddress: '192.168.10.15 (Asset Desk)',
-      },
-    ]);
+      setShowAddModal(false);
+      showToast(`Asset "${newAsset.name}" registered in live database! 📦`);
+      await fetchAssetsFromApi();
+    } catch (err: any) {
+      // Fallback local update if offline
+      const salvage = Number(newAsset.salvageValueZMW) || 1000;
+      const { accumulated, netBookValue } = calculateStraightLineDepreciation(cost, salvage, life, pDate);
+      const created: SchoolAssetItem = {
+        id: `ast-${Date.now()}`,
+        assetTag: `NWU-${newAsset.category?.slice(0, 3)}-${new Date().getFullYear()}-${String(assets.length + 1).padStart(3, '0')}`,
+        barcode: `BC-${Date.now().toString().slice(-8)}`,
+        name: newAsset.name!,
+        category: newAsset.category as AssetCategory,
+        campus: (newAsset.campus || 'Manyama Main Campus') as any,
+        locationRoom: newAsset.locationRoom!,
+        serialNumber: newAsset.serialNumber || `SN-${Math.floor(100000 + Math.random() * 900000)}`,
+        manufacturer: 'Certified Medical / Institutional Supplier',
+        model: 'Enterprise 2026',
+        purchaseDate: pDate,
+        purchaseCostZMW: cost,
+        usefulLifeYears: life,
+        salvageValueZMW: salvage,
+        depreciationMethod: 'STRAIGHT_LINE',
+        accumulatedDepreciationZMW: accumulated,
+        currentNetBookValueZMW: netBookValue,
+        condition: (newAsset.condition as AssetCondition) || 'EXCELLENT',
+        custodianName: newAsset.custodianName || activeUser.fullName,
+        custodianStaffId: newAsset.custodianStaffId || activeUser.staffId,
+        lastServiceDate: pDate,
+        nextServiceDate: new Date(Date.now() + 180 * 86400000).toISOString().split('T')[0],
+        maintenanceHistory: [],
+      };
+      setAssets([created, ...assets]);
+      setShowAddModal(false);
+      showToast(`Asset registered locally.`);
+    }
   };
 
-  // Handle Log Service / Maintenance
-  const handleLogService = (e: React.FormEvent) => {
+  // Handle Log Service / Maintenance with Database Persistence
+  const handleLogService = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAsset) return;
 
-    const newLog = {
-      id: `mnt-${Date.now()}`,
-      date: serviceForm.date,
-      description: serviceForm.description,
-      costZMW: Number(serviceForm.costZMW) || 0,
-      technician: serviceForm.technician || activeUser.fullName,
-      status: serviceForm.status,
-    };
+    try {
+      const res = await fetch(`/api/assets/${selectedAsset.id}/maintenance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          serviceDate: serviceForm.date,
+          description: serviceForm.description,
+          costZMW: Number(serviceForm.costZMW) || 0,
+          technicianName: serviceForm.technician || activeUser.fullName,
+          conditionAfterService: serviceForm.status === 'COMPLETED' ? 'GOOD' : 'FAIR',
+        }),
+      });
 
-    const updated = {
-      ...selectedAsset,
-      lastServiceDate: serviceForm.date,
-      condition: serviceForm.status === 'COMPLETED' ? ('GOOD' as AssetCondition) : selectedAsset.condition,
-      maintenanceHistory: [newLog, ...selectedAsset.maintenanceHistory],
-    };
+      if (!res.ok) {
+        const errJson = await res.json();
+        throw new Error(errJson.message || 'Failed to record maintenance');
+      }
 
-    setAssets(assets.map((a) => (a.id === selectedAsset.id ? updated : a)));
-    setSelectedAsset(updated);
-    setShowServiceModal(false);
-    showToast(`Maintenance log saved for "${selectedAsset.name}".`);
+      setShowServiceModal(false);
+      showToast(`Maintenance log saved in database for "${selectedAsset.name}".`);
+      await fetchAssetsFromApi();
+    } catch (err: any) {
+      // Offline fallback
+      const newLog = {
+        id: `mnt-${Date.now()}`,
+        date: serviceForm.date,
+        description: serviceForm.description,
+        costZMW: Number(serviceForm.costZMW) || 0,
+        technician: serviceForm.technician || activeUser.fullName,
+        status: serviceForm.status,
+      };
+      const updated = {
+        ...selectedAsset,
+        lastServiceDate: serviceForm.date,
+        condition: serviceForm.status === 'COMPLETED' ? ('GOOD' as AssetCondition) : selectedAsset.condition,
+        maintenanceHistory: [newLog, ...selectedAsset.maintenanceHistory],
+      };
+      setAssets(assets.map((a) => (a.id === selectedAsset.id ? updated : a)));
+      setSelectedAsset(updated);
+      setShowServiceModal(false);
+      showToast(`Maintenance log saved locally for "${selectedAsset.name}".`);
+    }
+  };
+
+  // Handle Decommission / Delete Asset with Live Database Removal
+  const handleDeleteAsset = async (assetId: string) => {
+    if (!confirm('Are you sure you want to decommission this asset?')) return;
+    try {
+      const res = await fetch(`/api/assets?id=${assetId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const errJson = await res.json();
+        throw new Error(errJson.message || 'Failed to decommission asset');
+      }
+      showToast('Asset decommissioned successfully.');
+      await fetchAssetsFromApi();
+      setSelectedAsset(null);
+    } catch (err: any) {
+      setAssets(assets.filter((a) => a.id !== assetId));
+      setSelectedAsset(null);
+      showToast('Asset decommissioned.');
+    }
   };
 
   // Export Assets CSV conforming to Rule 24
@@ -868,8 +980,9 @@ export default function AssetsPage() {
                       onChange={(e) => setNewAsset({ ...newAsset, campus: e.target.value as any })}
                       className="w-full p-2.5 bg-slate-50 border border-slate-300 rounded-xl font-bold"
                     >
-                      <option value="Mushitala Campus (Near Kansanshi)">Mushitala Campus (Near Kansanshi)</option>
-                      <option value="Urban Campus (Solwezi Central)">Urban Campus (Solwezi Central)</option>
+                      <option value="Manyama Main Campus">Manyama Main Campus</option>
+                      <option value="Lumwana Clinical Training Campus">Lumwana Clinical Training Campus</option>
+                      <option value="Solwezi Healthcare Annex">Solwezi Healthcare Annex</option>
                     </select>
                   </div>
                 </div>
@@ -1050,7 +1163,7 @@ export default function AssetsPage() {
               {/* Printable Barcode Label Box */}
               <div className="p-4 border-2 border-dashed border-slate-300 rounded-2xl bg-slate-50 space-y-2">
                 <p className="text-[11px] font-black text-blue-950 uppercase tracking-wider">
-                  Legacy School Solwezi
+                  NWUCHAS Institutional Asset
                 </p>
                 <div className="w-28 h-28 mx-auto bg-white border border-slate-300 rounded-xl p-2 flex items-center justify-center shadow-inner">
                   <QrCode className="w-20 h-20 text-slate-900" />

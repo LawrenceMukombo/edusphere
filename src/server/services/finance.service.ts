@@ -1,11 +1,20 @@
 // EduSphere SMIS — Financial Ledger & Billing Service
 import { prisma } from '../db';
-import { FeeCategory, InvoiceStatus, PaymentMethod, LedgerEntryType } from '@prisma/client';
+import {
+  FeeCategory,
+  InvoiceStatus,
+  PaymentMethod,
+  LedgerEntryType,
+  ResidencyType,
+  WalletTxType,
+  ReversalStatus,
+} from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
 export class FinanceService {
   /**
    * Generate an Invoice for a learner with duplicate prevention (idempotency)
+   * Automatically draws down and applies available Student Advance Wallet balances.
    */
   static async issueInvoice(data: {
     organisationId: string;
@@ -35,8 +44,8 @@ export class FinanceService {
     }, 0);
 
     return prisma.$transaction(async (tx) => {
-      // Create invoice
-      const invoice = await tx.invoice.create({
+      // 1. Create base invoice
+      let invoice = await tx.invoice.create({
         data: {
           organisationId: data.organisationId,
           learnerId: data.learnerId,
@@ -61,16 +70,15 @@ export class FinanceService {
         include: { lines: true },
       });
 
-      // Calculate previous learner balance
+      // 2. Post immutable debit charge to ledger
       const lastEntry = await tx.ledgerEntry.findFirst({
         where: { organisationId: data.organisationId, learnerId: data.learnerId },
         orderBy: { postedAt: 'desc' },
       });
 
       const prevBalance = lastEntry ? Number(lastEntry.balanceAfter) : 0;
-      const newBalance = prevBalance + totalAmount;
+      let runningLedgerBalance = prevBalance + totalAmount;
 
-      // Post immutable debit entry to ledger
       await tx.ledgerEntry.create({
         data: {
           organisationId: data.organisationId,
@@ -78,57 +86,260 @@ export class FinanceService {
           invoiceId: invoice.id,
           entryType: LedgerEntryType.DEBIT_CHARGE,
           amount: new Decimal(totalAmount.toFixed(2)),
-          balanceAfter: new Decimal(newBalance.toFixed(2)),
+          balanceAfter: new Decimal(runningLedgerBalance.toFixed(2)),
           description: `Invoice Issued: ${data.invoiceNumber}`,
         },
       });
+
+      // 3. Auto-apply any available Student Advance Wallet credit (GAP-05)
+      const wallet = await tx.studentWallet.findUnique({
+        where: { learnerId: data.learnerId },
+      });
+
+      if (wallet && Number(wallet.balance) > 0) {
+        const creditToApply = Math.min(Number(wallet.balance), totalAmount);
+        if (creditToApply > 0) {
+          const newWalletBalance = Number(wallet.balance) - creditToApply;
+
+          await tx.studentWallet.update({
+            where: { id: wallet.id },
+            data: { balance: new Decimal(newWalletBalance.toFixed(2)) },
+          });
+
+          await tx.walletTransaction.create({
+            data: {
+              walletId: wallet.id,
+              amount: new Decimal(creditToApply.toFixed(2)),
+              type: WalletTxType.DEBIT_APPLICATION,
+              reference: invoice.invoiceNumber,
+              description: `Advance balance applied to ${invoice.invoiceNumber}`,
+              balanceAfter: new Decimal(newWalletBalance.toFixed(2)),
+            },
+          });
+
+          const newPaidAmount = creditToApply;
+          const newInvBalance = totalAmount - creditToApply;
+          const newStatus = newInvBalance <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID;
+
+          invoice = await tx.invoice.update({
+            where: { id: invoice.id },
+            data: {
+              paidAmount: new Decimal(newPaidAmount.toFixed(2)),
+              balance: new Decimal(newInvBalance.toFixed(2)),
+              status: newStatus,
+            },
+            include: { lines: true },
+          });
+
+          runningLedgerBalance -= creditToApply;
+
+          await tx.ledgerEntry.create({
+            data: {
+              organisationId: data.organisationId,
+              learnerId: data.learnerId,
+              invoiceId: invoice.id,
+              entryType: LedgerEntryType.DEBIT_ADVANCE_APPLICATION,
+              amount: new Decimal(creditToApply.toFixed(2)),
+              balanceAfter: new Decimal(runningLedgerBalance.toFixed(2)),
+              description: `Advance Credit Applied: ${data.invoiceNumber} (K${creditToApply.toFixed(2)})`,
+            },
+          });
+        }
+      }
 
       return invoice;
     });
   }
 
   /**
-   * Record a payment (Cash, Bank, Mobile Money), generate a receipt, and allocate to invoice
+   * 1-Click Batch Cohort Invoicing (GAP-04)
+   * Invoices all enrolled students in a cohort (e.g., Nursing Jan 2026 Cohort).
+   */
+  static async batchInvoiceCohort(params: {
+    organisationId: string;
+    cohortId: string;
+    termId: string;
+    dueDate: string | Date;
+    semesterNumber?: number;
+    residencyType?: ResidencyType;
+    lines?: Array<{ category: FeeCategory; description: string; unitPrice: number; quantity?: number }>;
+    actorId?: string;
+  }) {
+    const cohort = await prisma.cohort.findUnique({
+      where: { id: params.cohortId },
+      include: { programme: true },
+    });
+    if (!cohort) throw new Error('Cohort not found.');
+
+    // 1. Resolve fee lines from ProgrammeFeeSchedule or fallback
+    let invoiceLines = params.lines;
+    const targetSemester = params.semesterNumber ?? cohort.currentSemester;
+    const targetResidency = params.residencyType ?? ResidencyType.DAY_SCHOLAR;
+
+    if (!invoiceLines || invoiceLines.length === 0) {
+      const scheduleItems = await prisma.programmeFeeSchedule.findMany({
+        where: {
+          organisationId: params.organisationId,
+          programmeId: cohort.programmeId,
+          semesterNumber: targetSemester,
+          residencyType: targetResidency,
+        },
+      });
+
+      if (scheduleItems.length > 0) {
+        invoiceLines = scheduleItems.map((item) => ({
+          category: item.category,
+          description: item.name,
+          unitPrice: Number(item.amountZMW),
+          quantity: 1,
+        }));
+      } else {
+        // Tertiary Health Sciences default schedule fallback
+        invoiceLines = [
+          {
+            category: FeeCategory.TUITION,
+            description: `${cohort.programme.name} — Semester ${targetSemester} Tuition Fee`,
+            unitPrice: Number(cohort.programme.tuitionFeePerSem) || 6500,
+            quantity: 1,
+          },
+          {
+            category: FeeCategory.CLINICAL_PRACTICUM,
+            description: 'Hospital Affiliation & Clinical Practicum Facility Fee',
+            unitPrice: Number(cohort.programme.clinicalFeePerSem) || 1500,
+            quantity: 1,
+          },
+          {
+            category: FeeCategory.NMCZ_INDEXING,
+            description: 'Statutory Health Council Indexation & Assessment Levy',
+            unitPrice: 1200,
+            quantity: 1,
+          },
+          {
+            category: FeeCategory.SKILLS_LAB,
+            description: 'Clinical Simulation Skills Lab Consumables',
+            unitPrice: 850,
+            quantity: 1,
+          },
+        ];
+      }
+    }
+
+    // 2. Resolve learners for this cohort
+    // Look for learners tied to this programme, enrolled in classes matching cohort, or general enrolled
+    let learners = await prisma.learner.findMany({
+      where: {
+        organisationId: params.organisationId,
+        status: 'ENROLLED',
+        OR: [
+          { currentClass: { name: { contains: cohort.name, mode: 'insensitive' } } },
+          { currentClass: { stream: { contains: cohort.intake, mode: 'insensitive' } } },
+          { courseRegistrations: { some: { courseModule: { programmeId: cohort.programmeId } } } },
+        ],
+      },
+      select: { id: true, studentNumber: true, firstName: true, lastName: true },
+    });
+
+    // If no specific class match found, include enrolled learners in the organization
+    if (learners.length === 0) {
+      learners = await prisma.learner.findMany({
+        where: {
+          organisationId: params.organisationId,
+          status: 'ENROLLED',
+        },
+        take: cohort.capacity || 120,
+        select: { id: true, studentNumber: true, firstName: true, lastName: true },
+      });
+    }
+
+    const term = await prisma.term.findUnique({ where: { id: params.termId } });
+    const termLabel = term ? term.name.replace(/\s+/g, '') : 'SEM1';
+
+    const results = {
+      cohortId: cohort.id,
+      cohortName: cohort.name,
+      programmeName: cohort.programme.name,
+      totalStudentsFound: learners.length,
+      invoicesCreated: 0,
+      skippedExisting: 0,
+      totalAmountBilled: 0,
+      invoices: [] as any[],
+    };
+
+    const totalPerInvoice = invoiceLines.reduce((sum, l) => sum + (l.unitPrice * (l.quantity || 1)), 0);
+
+    for (const learner of learners) {
+      const idempotencyKey = `INV-${cohort.name}-${learner.studentNumber}-${termLabel}`.replace(/[^A-Za-z0-9_-]/g, '-');
+      const invoiceNumber = `INV-${new Date().getFullYear()}-${learner.studentNumber.slice(-4)}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      // Check if already invoiced under this idempotency key
+      const existing = await prisma.invoice.findUnique({ where: { idempotencyKey } });
+      if (existing) {
+        results.skippedExisting++;
+        continue;
+      }
+
+      const inv = await this.issueInvoice({
+        organisationId: params.organisationId,
+        learnerId: learner.id,
+        termId: params.termId,
+        invoiceNumber,
+        dueDate: params.dueDate,
+        idempotencyKey,
+        lines: invoiceLines,
+      });
+
+      results.invoicesCreated++;
+      results.totalAmountBilled += totalPerInvoice;
+      results.invoices.push({
+        id: inv.id,
+        invoiceNumber: inv.invoiceNumber,
+        learnerId: learner.id,
+        studentNumber: learner.studentNumber,
+        name: `${learner.firstName} ${learner.lastName}`,
+        amount: totalPerInvoice,
+        status: inv.status,
+      });
+    }
+
+    return results;
+  }
+
+  /**
+   * Record a payment (Cash, Bank, Mobile Money), generate a receipt, and allocate to invoice(s).
+   * Implements Waterfall Allocation (GAP-05) across open invoices, and surplus credit into StudentWallet.
    */
   static async recordPayment(data: {
     organisationId: string;
     learnerId: string;
-    invoiceId: string;
-    paymentNumber: string;
-    receiptNumber: string;
+    invoiceId?: string;
+    paymentNumber?: string;
+    receiptNumber?: string;
     amount: number;
     paymentMethod: PaymentMethod;
     referenceNumber: string;
     notes?: string;
+    recordedById?: string;
   }) {
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: data.invoiceId },
-    });
-    if (!invoice) throw new Error('Invoice not found.');
-
     const paymentAmount = new Decimal(data.amount.toFixed(2));
+    const paymentNumber = data.paymentNumber || `PAY-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+    const receiptNumber = data.receiptNumber || `REC-2026-${Math.floor(10000 + Math.random() * 90000)}`;
 
     return prisma.$transaction(async (tx) => {
-      // 1. Create Payment record
+      // 1. Create Payment record with recordedById for auditability
       const payment = await tx.payment.create({
         data: {
           organisationId: data.organisationId,
           learnerId: data.learnerId,
-          paymentNumber: data.paymentNumber,
+          paymentNumber,
           amount: paymentAmount,
           paymentMethod: data.paymentMethod,
           referenceNumber: data.referenceNumber,
+          recordedById: data.recordedById,
           notes: data.notes,
-          allocations: {
-            create: {
-              invoiceId: data.invoiceId,
-              allocatedAmount: paymentAmount,
-            },
-          },
           receipt: {
             create: {
               organisationId: data.organisationId,
-              receiptNumber: data.receiptNumber,
+              receiptNumber,
               amount: paymentAmount,
             },
           },
@@ -136,21 +347,98 @@ export class FinanceService {
         include: { receipt: true },
       });
 
-      // 2. Update invoice balances
-      const updatedPaid = Number(invoice.paidAmount) + data.amount;
-      const updatedBalance = Number(invoice.totalAmount) - updatedPaid;
-      const newStatus = updatedBalance <= 0 ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID;
+      // 2. Resolve target invoices in Waterfall order (oldest overdue first)
+      let candidateInvoices = [];
+      if (data.invoiceId) {
+        const primary = await tx.invoice.findUnique({ where: { id: data.invoiceId } });
+        if (primary) {
+          candidateInvoices.push(primary);
+        }
+        // Fetch remaining unpaid invoices
+        const others = await tx.invoice.findMany({
+          where: {
+            organisationId: data.organisationId,
+            learnerId: data.learnerId,
+            id: { not: data.invoiceId },
+            status: { in: [InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID] },
+          },
+          orderBy: { dueDate: 'asc' },
+        });
+        candidateInvoices.push(...others);
+      } else {
+        candidateInvoices = await tx.invoice.findMany({
+          where: {
+            organisationId: data.organisationId,
+            learnerId: data.learnerId,
+            status: { in: [InvoiceStatus.ISSUED, InvoiceStatus.PARTIALLY_PAID] },
+          },
+          orderBy: { dueDate: 'asc' },
+        });
+      }
 
-      await tx.invoice.update({
-        where: { id: data.invoiceId },
-        data: {
-          paidAmount: new Decimal(updatedPaid.toFixed(2)),
-          balance: new Decimal(Math.max(0, updatedBalance).toFixed(2)),
-          status: newStatus,
-        },
-      });
+      // 3. Multi-Invoice Waterfall Allocation
+      let remainingPayment = data.amount;
+      for (const inv of candidateInvoices) {
+        if (remainingPayment <= 0.001) break;
+        const invBalance = Number(inv.balance);
+        if (invBalance <= 0) continue;
 
-      // 3. Post immutable credit entry to ledger
+        const allocAmount = Math.min(remainingPayment, invBalance);
+        if (allocAmount > 0) {
+          await tx.paymentAllocation.create({
+            data: {
+              paymentId: payment.id,
+              invoiceId: inv.id,
+              allocatedAmount: new Decimal(allocAmount.toFixed(2)),
+            },
+          });
+
+          const updatedPaid = Number(inv.paidAmount) + allocAmount;
+          const updatedBalance = Number(inv.totalAmount) - updatedPaid;
+          const newStatus = updatedBalance <= 0.009 ? InvoiceStatus.PAID : InvoiceStatus.PARTIALLY_PAID;
+
+          await tx.invoice.update({
+            where: { id: inv.id },
+            data: {
+              paidAmount: new Decimal(updatedPaid.toFixed(2)),
+              balance: new Decimal(Math.max(0, updatedBalance).toFixed(2)),
+              status: newStatus,
+            },
+          });
+
+          remainingPayment -= allocAmount;
+        }
+      }
+
+      // 4. Surplus Payment into Student Advance Wallet (GAP-05)
+      // When payment exceeds all open invoices, the excess amount is credited to the Student Advance Wallet
+      if (remainingPayment > 0.009) {
+        const excessAmount = remainingPayment;
+        const wallet = await tx.studentWallet.upsert({
+          where: { learnerId: data.learnerId },
+          update: {
+            balance: { increment: new Decimal(excessAmount.toFixed(2)) },
+          },
+          create: {
+            organisationId: data.organisationId,
+            learnerId: data.learnerId,
+            balance: new Decimal(excessAmount.toFixed(2)),
+          },
+        });
+
+        await tx.walletTransaction.create({
+          data: {
+            walletId: wallet.id,
+            amount: new Decimal(excessAmount.toFixed(2)),
+            type: WalletTxType.CREDIT_ADVANCE,
+            reference: data.referenceNumber,
+            description: `Surplus payment credited to advance wallet: Ref ${data.referenceNumber}`,
+            balanceAfter: wallet.balance,
+          },
+        });
+      }
+
+      // 5. Post immutable credit entry to ledger
       const lastEntry = await tx.ledgerEntry.findFirst({
         where: { organisationId: data.organisationId, learnerId: data.learnerId },
         orderBy: { postedAt: 'desc' },
@@ -167,7 +455,9 @@ export class FinanceService {
           entryType: LedgerEntryType.CREDIT_PAYMENT,
           amount: paymentAmount,
           balanceAfter: new Decimal(newLedgerBalance.toFixed(2)),
-          description: `Payment Received: Ref ${data.referenceNumber} (${data.paymentMethod})`,
+          description: `Payment Received: Ref ${data.referenceNumber} (${data.paymentMethod})${
+            remainingPayment > 0.009 ? ` [K${remainingPayment.toFixed(2)} to Advance Wallet]` : ''
+          }`,
         },
       });
 
@@ -176,23 +466,83 @@ export class FinanceService {
   }
 
   /**
-   * Reverse a bounced or erroneous payment using a corrective reversing entry (no deletes!)
+   * Cashier initiates a payment reversal request (Four-Eyes principle step 1) (GAP-07)
    */
-  static async reversePayment(data: {
+  static async requestPaymentReversal(data: {
     organisationId: string;
     paymentId: string;
+    requestedById: string;
+    requestedByName?: string;
     reason: string;
   }) {
     const payment = await prisma.payment.findUnique({
       where: { id: data.paymentId },
-      include: { allocations: true },
     });
     if (!payment) throw new Error('Payment not found.');
 
+    const pending = await prisma.paymentReversalRequest.findFirst({
+      where: {
+        paymentId: data.paymentId,
+        status: ReversalStatus.PENDING_APPROVAL,
+      },
+    });
+    if (pending) {
+      throw new Error('A reversal request for this payment is already pending Bursar review.');
+    }
+
+    return prisma.paymentReversalRequest.create({
+      data: {
+        organisationId: data.organisationId,
+        paymentId: data.paymentId,
+        requestedById: data.requestedById,
+        requestedByName: data.requestedByName,
+        reason: data.reason,
+        status: ReversalStatus.PENDING_APPROVAL,
+      },
+    });
+  }
+
+  /**
+   * Bursar approves payment reversal request (Four-Eyes principle step 2) (GAP-07)
+   * Strictly enforces that initiator cannot approve their own reversal request.
+   */
+  static async approvePaymentReversal(data: {
+    organisationId: string;
+    requestId: string;
+    reviewedById: string;
+    reviewedByName?: string;
+    reviewerRole: string;
+  }) {
+    const request = await prisma.paymentReversalRequest.findUnique({
+      where: { id: data.requestId },
+      include: {
+        payment: {
+          include: { allocations: true },
+        },
+      },
+    });
+
+    if (!request) throw new Error('Reversal request not found.');
+    if (request.status !== ReversalStatus.PENDING_APPROVAL) {
+      throw new Error(`Reversal request cannot be approved because it is already ${request.status}.`);
+    }
+
+    // Four-Eyes Rule Enforced: Approver MUST be different from requester
+    if (request.requestedById === data.reviewedById) {
+      throw new Error('Four-Eyes Security Violation: The requesting cashier cannot approve their own reversal request.');
+    }
+
+    // Role check: Must be Bursar or Admin
+    const APPROVER_ROLES = ['BURSAR', 'INSTITUTION_ADMIN', 'ACCOUNTANT', 'PLATFORM_SUPER_ADMIN'];
+    if (!APPROVER_ROLES.includes(data.reviewerRole)) {
+      throw new Error('Forbidden: Only Bursar or Institution Admin can approve ledger reversals.');
+    }
+
+    const payment = request.payment;
     const reverseAmount = Number(payment.amount);
 
     return prisma.$transaction(async (tx) => {
-      // Revert invoice balances
+      // 1. Revert invoice balances
       for (const alloc of payment.allocations) {
         const inv = await tx.invoice.findUnique({ where: { id: alloc.invoiceId } });
         if (inv) {
@@ -209,7 +559,7 @@ export class FinanceService {
         }
       }
 
-      // Compute balance
+      // 2. Compute ledger balance
       const lastEntry = await tx.ledgerEntry.findFirst({
         where: { organisationId: data.organisationId, learnerId: payment.learnerId },
         orderBy: { postedAt: 'desc' },
@@ -218,7 +568,151 @@ export class FinanceService {
       const prevBalance = lastEntry ? Number(lastEntry.balanceAfter) : 0;
       const newLedgerBalance = prevBalance + reverseAmount;
 
-      // Post corrective debit reversal entry
+      // 3. Post corrective debit reversal entry
+      const ledgerEntry = await tx.ledgerEntry.create({
+        data: {
+          organisationId: data.organisationId,
+          learnerId: payment.learnerId,
+          paymentId: payment.id,
+          entryType: LedgerEntryType.DEBIT_REVERSAL,
+          amount: new Decimal(reverseAmount.toFixed(2)),
+          balanceAfter: new Decimal(newLedgerBalance.toFixed(2)),
+          description: `Approved Payment Reversal: ${request.reason} [Req: ${request.id.slice(0, 8)}]`,
+        },
+      });
+
+      // 4. Mark request APPROVED
+      const approvedRequest = await tx.paymentReversalRequest.update({
+        where: { id: request.id },
+        data: {
+          status: ReversalStatus.APPROVED,
+          reviewedById: data.reviewedById,
+          reviewedByName: data.reviewedByName,
+          reviewedAt: new Date(),
+          ledgerEntryId: ledgerEntry.id,
+        },
+      });
+
+      return { request: approvedRequest, ledgerEntry };
+    });
+  }
+
+  /**
+   * Reject a payment reversal request
+   */
+  static async rejectPaymentReversal(data: {
+    organisationId: string;
+    requestId: string;
+    reviewedById: string;
+    reviewedByName?: string;
+    reason: string;
+  }) {
+    const request = await prisma.paymentReversalRequest.findUnique({
+      where: { id: data.requestId },
+    });
+    if (!request) throw new Error('Reversal request not found.');
+
+    return prisma.paymentReversalRequest.update({
+      where: { id: data.requestId },
+      data: {
+        status: ReversalStatus.REJECTED,
+        reviewedById: data.reviewedById,
+        reviewedByName: data.reviewedByName,
+        reviewedAt: new Date(),
+        rejectionReason: data.reason,
+      },
+    });
+  }
+
+  /**
+   * List pending and historical reversal requests
+   */
+  static async listReversalRequests(organisationId: string, status?: ReversalStatus) {
+    return prisma.paymentReversalRequest.findMany({
+      where: {
+        organisationId,
+        ...(status ? { status } : {}),
+      },
+      include: {
+        payment: {
+          include: {
+            learner: {
+              select: { studentNumber: true, firstName: true, lastName: true },
+            },
+            receipt: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Get Student Advance Wallet balance and transaction history (GAP-05)
+   */
+  static async getStudentWallet(organisationId: string, learnerId: string) {
+    const wallet = await prisma.studentWallet.findUnique({
+      where: { learnerId },
+      include: {
+        transactions: {
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+        },
+      },
+    });
+
+    return {
+      learnerId,
+      balance: wallet ? Number(wallet.balance) : 0,
+      transactions: wallet?.transactions || [],
+    };
+  }
+
+  /**
+   * Reverse payment (posts corrective reversing entry to ledger without deletes)
+   * Maintained for direct ledger reversals and four-eyes execution.
+   */
+  static async reversePayment(data: {
+    organisationId: string;
+    paymentId: string;
+    reason: string;
+    actorId?: string;
+  }) {
+
+    // Direct supervisor reversal
+    const payment = await prisma.payment.findUnique({
+      where: { id: data.paymentId },
+      include: { allocations: true },
+    });
+    if (!payment) throw new Error('Payment not found.');
+
+    const reverseAmount = Number(payment.amount);
+
+    return prisma.$transaction(async (tx) => {
+      for (const alloc of payment.allocations) {
+        const inv = await tx.invoice.findUnique({ where: { id: alloc.invoiceId } });
+        if (inv) {
+          const revPaid = Number(inv.paidAmount) - Number(alloc.allocatedAmount);
+          const revBalance = Number(inv.totalAmount) - revPaid;
+          await tx.invoice.update({
+            where: { id: inv.id },
+            data: {
+              paidAmount: new Decimal(Math.max(0, revPaid).toFixed(2)),
+              balance: new Decimal(revBalance.toFixed(2)),
+              status: revPaid <= 0 ? InvoiceStatus.ISSUED : InvoiceStatus.PARTIALLY_PAID,
+            },
+          });
+        }
+      }
+
+      const lastEntry = await tx.ledgerEntry.findFirst({
+        where: { organisationId: data.organisationId, learnerId: payment.learnerId },
+        orderBy: { postedAt: 'desc' },
+      });
+
+      const prevBalance = lastEntry ? Number(lastEntry.balanceAfter) : 0;
+      const newLedgerBalance = prevBalance + reverseAmount;
+
       return tx.ledgerEntry.create({
         data: {
           organisationId: data.organisationId,
@@ -227,11 +721,12 @@ export class FinanceService {
           entryType: LedgerEntryType.DEBIT_REVERSAL,
           amount: new Decimal(reverseAmount.toFixed(2)),
           balanceAfter: new Decimal(newLedgerBalance.toFixed(2)),
-          description: `Payment Reversal: ${data.reason}`,
+          description: `Supervisor Payment Reversal: ${data.reason}`,
         },
       });
     });
   }
+
 
   static async getLearnerStatement(organisationId: string, learnerId: string) {
     const entries = await prisma.ledgerEntry.findMany({

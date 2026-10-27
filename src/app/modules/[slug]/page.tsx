@@ -348,6 +348,29 @@ export default async function ModuleWorkspace({
         })
       : [];
 
+  const liveAssets =
+    module.slug === 'assets' && p.assetItem
+      ? await p.assetItem.findMany({
+          where: { isDeleted: false },
+          include: {
+            campus: true,
+            maintenanceLogs: { orderBy: { serviceDate: 'desc' }, take: 5 },
+          },
+          orderBy: { createdAt: 'desc' },
+        })
+      : [];
+
+  const officialDocuments =
+    module.slug === 'documents' && p.officialDocument
+      ? await p.officialDocument.findMany({
+          where: { isArchived: false },
+          include: {
+            learner: { select: { id: true, studentNumber: true, firstName: true, lastName: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        })
+      : [];
+
   const portalLearners =
     module.slug === 'parent-portal' && p.learner
       ? await p.learner.findMany({
@@ -356,6 +379,8 @@ export default async function ModuleWorkspace({
             indexingRecord: true,
             attendanceRecords: true,
             clinicalLogbookEntries: true,
+            guardians: { include: { guardian: true } },
+            currentClass: true,
           },
           orderBy: { studentNumber: 'asc' },
         })
@@ -432,7 +457,10 @@ export default async function ModuleWorkspace({
           />
         )}
         {module.slug === 'assets' && (
-          <AssetsConsole initialRecords={JSON.parse(JSON.stringify(workspaceRecords))} />
+          <AssetsConsole
+            initialAssets={JSON.parse(JSON.stringify(liveAssets))}
+            initialRecords={JSON.parse(JSON.stringify(workspaceRecords))}
+          />
         )}
         {module.slug === 'communications' && (
           <CommunicationsConsole
@@ -441,7 +469,10 @@ export default async function ModuleWorkspace({
           />
         )}
         {module.slug === 'documents' && (
-          <DocumentsConsole initialRecords={JSON.parse(JSON.stringify(workspaceRecords))} />
+          <DocumentsConsole
+            initialDocuments={JSON.parse(JSON.stringify(officialDocuments))}
+            initialRecords={JSON.parse(JSON.stringify(workspaceRecords))}
+          />
         )}
         {module.slug === 'calendar' && (
           <CalendarConsole initialRecords={JSON.parse(JSON.stringify(workspaceRecords))} />

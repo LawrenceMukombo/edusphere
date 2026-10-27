@@ -22,9 +22,16 @@ import {
   ChevronRight,
   LogOut,
   Sparkles,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import { AllocateBedModal } from '@/components/operations/AllocateBedModal';
 import { DigitalBusPassModal } from '@/components/operations/DigitalBusPassModal';
+import {
+  CreateHostelModal,
+  CreateRoomModal,
+  CreateRouteModal,
+} from '@/components/operations/CampusOperationsCrudModals';
 import { formatCleanEnum } from '@/lib/formatters';
 
 interface OperationsConsoleProps {
@@ -51,6 +58,9 @@ export function OperationsConsole({
   // Modals state
   const [showAllocateModal, setShowAllocateModal] = useState<boolean>(false);
   const [activeBusPassSub, setActiveBusPassSub] = useState<any | null>(null);
+  const [showCreateHostelModal, setShowCreateHostelModal] = useState<boolean>(false);
+  const [activeCreateRoomHostel, setActiveCreateRoomHostel] = useState<{ id: string; name: string } | null>(null);
+  const [showCreateRouteModal, setShowCreateRouteModal] = useState<boolean>(false);
 
   // Scanner Simulator state
   const [scanToken, setScanToken] = useState<string>('NWUCHAS-BUS-NWU-2026-0001');
@@ -196,7 +206,6 @@ export function OperationsConsole({
       });
       if (!res.ok) throw new Error('Failed to return book');
       setNotice('Book returned and copy restored to library catalogue.');
-      // Refresh books
       const reload = await fetch('/api/operations?type=books');
       const data = await reload.json();
       setBooks(data.data || []);
@@ -204,6 +213,94 @@ export function OperationsConsole({
       setNotice(`Error: ${err.message}`);
     }
   }
+
+  const refreshHostels = async () => {
+    try {
+      const res = await fetch('/api/operations?type=hostels');
+      const data = await res.json();
+      if (data.data) setHostels(data.data);
+    } catch (e) {
+      console.error('Failed to refresh hostels:', e);
+    }
+  };
+
+  const refreshRoutes = async () => {
+    try {
+      const res = await fetch('/api/operations?type=routes');
+      const data = await res.json();
+      if (data.data) setRoutes(data.data);
+    } catch (e) {
+      console.error('Failed to refresh routes:', e);
+    }
+  };
+
+  const handleDeleteHostel = async (hostelId: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete hostel building "${name}"? Only hostels with zero occupied beds can be deleted.`)) return;
+    try {
+      const res = await fetch('/api/operations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_hostel', hostelId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Failed to delete hostel');
+      setNotice(`Hostel "${name}" successfully deleted.`);
+      await refreshHostels();
+    } catch (err: any) {
+      setNotice(`Error: ${err.message}`);
+    }
+  };
+
+  const handleDeleteRoom = async (roomId: string, roomNum: string) => {
+    if (!confirm(`Are you sure you want to delete room "${roomNum}"?`)) return;
+    try {
+      const res = await fetch('/api/operations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_room', roomId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Failed to delete room');
+      setNotice(`Room "${roomNum}" successfully deleted.`);
+      await refreshHostels();
+    } catch (err: any) {
+      setNotice(`Error: ${err.message}`);
+    }
+  };
+
+  const handleDeleteBed = async (bedId: string, bedNum: string) => {
+    if (!confirm(`Are you sure you want to remove bed "${bedNum}"?`)) return;
+    try {
+      const res = await fetch('/api/operations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_bed', bedId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Failed to delete bed');
+      setNotice(`Bed "${bedNum}" removed.`);
+      await refreshHostels();
+    } catch (err: any) {
+      setNotice(`Error: ${err.message}`);
+    }
+  };
+
+  const handleDeleteRoute = async (routeId: string, routeCode: string) => {
+    if (!confirm(`Are you sure you want to delete route "${routeCode}"?`)) return;
+    try {
+      const res = await fetch('/api/operations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete_route', routeId }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.message || 'Failed to delete route');
+      setNotice(`Route "${routeCode}" deleted.`);
+      await refreshRoutes();
+    } catch (err: any) {
+      setNotice(`Error: ${err.message}`);
+    }
+  };
 
   return (
     <div className="mt-8 space-y-6">
@@ -234,11 +331,27 @@ export function OperationsConsole({
         </div>
 
         {activeTab === 'hostel' && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowCreateHostelModal(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-cyan-300 bg-cyan-50 px-3.5 py-2.5 text-xs font-bold text-cyan-800 hover:bg-cyan-100 transition shadow-xs"
+            >
+              <Plus className="h-4 w-4" /> Add Hostel Building
+            </button>
+            <button
+              onClick={() => setShowAllocateModal(true)}
+              className="inline-flex items-center gap-2 rounded-xl bg-cyan-700 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-cyan-800 transition"
+            >
+              <Home className="h-4 w-4" /> Allocate Bed
+            </button>
+          </div>
+        )}
+        {activeTab === 'transport' && (
           <button
-            onClick={() => setShowAllocateModal(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-cyan-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-cyan-800 transition"
+            onClick={() => setShowCreateRouteModal(true)}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-700 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-cyan-800 transition"
           >
-            <Home className="h-4 w-4" /> Allocate Hostel Bed
+            <Plus className="h-4 w-4" /> Add Shuttle Route
           </button>
         )}
       </div>
@@ -344,6 +457,22 @@ export function OperationsConsole({
                       <p className="text-base font-extrabold text-emerald-900">{vacantBeds}</p>
                     </div>
                   </div>
+
+                  {/* Hostel Card Actions */}
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs">
+                    <button
+                      onClick={() => setActiveCreateRoomHostel({ id: h.id, name: h.name })}
+                      className="inline-flex items-center gap-1 rounded-lg border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-bold text-cyan-800 hover:bg-cyan-100 transition shadow-xs"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add Room
+                    </button>
+                    <button
+                      onClick={() => handleDeleteHostel(h.id, h.name)}
+                      className="inline-flex items-center gap-1 rounded-lg border border-rose-200 bg-white px-2.5 py-1 text-xs font-bold text-rose-700 hover:bg-rose-50 transition shadow-xs"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> Delete Building
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -393,7 +522,20 @@ export function OperationsConsole({
                           >
                             <td className="px-4 py-3.5">
                               <p className="font-bold text-slate-900">{h.name}</p>
-                              <p className="text-[11px] text-slate-500">{r.roomNumber} (Floor {r.floor})</p>
+                              <div className="flex items-center justify-between">
+                                <p className="text-[11px] text-slate-500">{r.roomNumber} (Floor {r.floor})</p>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteRoom(r.id, `${h.name} - ${r.roomNumber}`);
+                                  }}
+                                  title="Delete Room"
+                                  className="rounded p-0.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
                             </td>
                             <td className="px-3 py-3.5 font-semibold text-slate-800">{b.bedNumber}</td>
                             <td className="px-3 py-3.5">
@@ -430,12 +572,21 @@ export function OperationsConsole({
                                   <LogOut className="h-3 w-3" /> Check Out
                                 </button>
                               ) : (
-                                <button
-                                  onClick={() => setShowAllocateModal(true)}
-                                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2.5 py-1 text-xs font-bold text-white hover:bg-emerald-800 transition shadow-xs"
-                                >
-                                  Assign
-                                </button>
+                                <div className="inline-flex items-center justify-end gap-1.5">
+                                  <button
+                                    onClick={() => setShowAllocateModal(true)}
+                                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2.5 py-1 text-xs font-bold text-white hover:bg-emerald-800 transition shadow-xs"
+                                  >
+                                    Assign
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteBed(b.id, b.bedNumber)}
+                                    title="Delete Bed"
+                                    className="rounded-lg p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
                               )}
                             </td>
                           </tr>
@@ -485,6 +636,16 @@ export function OperationsConsole({
                     <span className="text-slate-500">Capacity:</span>
                     <p className="font-bold text-slate-900">{rt.capacity || 30} Seats</p>
                   </div>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-slate-100 pt-3 text-xs">
+                  <span className="font-bold text-slate-700">K{Number(rt.feePerSemesterZMW || 1500).toLocaleString()} / Term</span>
+                  <button
+                    onClick={() => handleDeleteRoute(rt.id, rt.routeCode)}
+                    className="inline-flex items-center gap-1 rounded-md border border-rose-200 bg-white px-2 py-0.5 text-xs font-bold text-rose-700 hover:bg-rose-50 transition shadow-xs"
+                  >
+                    <Trash2 className="h-3 w-3" /> Delete Route
+                  </button>
                 </div>
               </div>
             ))}
@@ -878,6 +1039,31 @@ export function OperationsConsole({
           onClose={() => setActiveBusPassSub(null)}
         />
       )}
+
+      {/* Modal: Create Hostel Building */}
+      <CreateHostelModal
+        isOpen={showCreateHostelModal}
+        onClose={() => setShowCreateHostelModal(false)}
+        onSuccess={refreshHostels}
+      />
+
+      {/* Modal: Create Room */}
+      {activeCreateRoomHostel && (
+        <CreateRoomModal
+          isOpen={!!activeCreateRoomHostel}
+          hostelId={activeCreateRoomHostel.id}
+          hostelName={activeCreateRoomHostel.name}
+          onClose={() => setActiveCreateRoomHostel(null)}
+          onSuccess={refreshHostels}
+        />
+      )}
+
+      {/* Modal: Create Transport Route */}
+      <CreateRouteModal
+        isOpen={showCreateRouteModal}
+        onClose={() => setShowCreateRouteModal(false)}
+        onSuccess={refreshRoutes}
+      />
     </div>
   );
 }

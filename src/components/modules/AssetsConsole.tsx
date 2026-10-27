@@ -28,11 +28,32 @@ import { AssetCrudModal, AssetRecord } from '../assets/AssetCrudModal';
 
 interface AssetsConsoleProps {
   initialRecords?: any[];
+  initialAssets?: any[];
 }
 
 function parseAssetRecords(records: any[]): AssetRecord[] {
   if (!records || records.length === 0) return [];
   return records.map((r) => {
+    // If real AssetItem model
+    if (r.assetTag) {
+      return {
+        id: r.id,
+        tag: r.assetTag,
+        name: r.name,
+        category: r.category || 'LABORATORY',
+        location: r.location || 'Manyama Campus',
+        custodian: r.custodianName || 'Estates Directorate',
+        acquisitionDate: new Date(r.purchaseDate || Date.now()).toLocaleDateString('en-GB'),
+        valueZmw: Number(r.currentValueZMW || r.purchaseCostZMW || 0),
+        status: r.status || 'OPERATIONAL',
+        lastServiced: new Date().toLocaleDateString('en-GB'),
+        nextService: new Date(Date.now() + 90 * 86400000).toLocaleDateString('en-GB'),
+        notes: r.notes || '',
+        serialNumber: r.serialNumber || 'N/A',
+        supplier: 'Approved Medical & Institutional Supplier',
+      };
+    }
+    // Legacy JSON metadata format
     try {
       if (r.metadataJson) {
         const p = JSON.parse(r.metadataJson);
@@ -56,8 +77,8 @@ function parseAssetRecords(records: any[]): AssetRecord[] {
     } catch (e) {}
     return {
       id: r.id,
-      tag: r.title.split('—')[0]?.trim() || 'NWU-AST',
-      name: r.title,
+      tag: r.title?.split('—')[0]?.trim() || 'NWU-AST',
+      name: r.title || 'Institutional Asset',
       category: 'FACILITY',
       location: 'Manyama Campus',
       custodian: 'Facilities Unit',
@@ -66,15 +87,19 @@ function parseAssetRecords(records: any[]): AssetRecord[] {
       status: (r.status as any) || 'OPERATIONAL',
       lastServiced: '10/10/2026',
       nextService: '10/01/2027',
-      notes: r.summary,
+      notes: r.summary || '',
       serialNumber: 'N/A',
       supplier: 'N/A',
     };
   });
 }
 
-export function AssetsConsole({ initialRecords = [] }: AssetsConsoleProps) {
-  const [assets, setAssets] = useState<AssetRecord[]>(() => parseAssetRecords(initialRecords));
+export function AssetsConsole({ initialRecords = [], initialAssets = [] }: AssetsConsoleProps) {
+  const [assets, setAssets] = useState<AssetRecord[]>(() => {
+    if (initialAssets && initialAssets.length > 0) return parseAssetRecords(initialAssets);
+    if (initialRecords && initialRecords.length > 0) return parseAssetRecords(initialRecords);
+    return [];
+  });
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -85,18 +110,23 @@ export function AssetsConsole({ initialRecords = [] }: AssetsConsoleProps) {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isCreateMode, setIsCreateMode] = useState<boolean>(false);
 
-  // Client-side fallback fetch from database if page loaded without SSR props
-  useEffect(() => {
-    if (assets.length === 0) {
-      fetch('/api/modules/assets')
-        .then((res) => res.json())
-        .then((json) => {
-          if (json.success && json.data) {
-            setAssets(parseAssetRecords(json.data));
-          }
-        })
-        .catch((err) => console.error('[AssetsConsole] API fetch notice:', err));
+  // Client-side fetch from /api/assets
+  const fetchLiveAssets = async () => {
+    try {
+      const res = await fetch('/api/assets');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          setAssets(parseAssetRecords(json.data));
+        }
+      }
+    } catch (err) {
+      console.error('[AssetsConsole] API fetch notice:', err);
     }
+  };
+
+  useEffect(() => {
+    fetchLiveAssets();
   }, []);
 
   const filteredAssets = assets.filter((asset) => {
@@ -125,16 +155,29 @@ export function AssetsConsole({ initialRecords = [] }: AssetsConsoleProps) {
   }
 
   async function handleSaveAsset(updated: AssetRecord) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
+    const authHeaders: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+
     if (isCreateMode) {
       try {
-        const res = await fetch('/api/modules/assets', {
+        const res = await fetch('/api/assets', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: authHeaders,
           body: JSON.stringify({
-            title: `${updated.tag} — ${updated.name}`,
-            status: updated.status,
-            summary: updated.notes,
-            metadataJson: JSON.stringify(updated),
+            assetTag: updated.tag,
+            name: updated.name,
+            category: updated.category,
+            location: updated.location,
+            purchaseCostZMW: updated.valueZmw,
+            currentValueZMW: updated.valueZmw,
+            condition: 'EXCELLENT',
+            status: updated.status || 'OPERATIONAL',
+            custodianName: updated.custodian,
+            serialNumber: updated.serialNumber,
+            notes: updated.notes,
           }),
         });
         const json = await res.json();
@@ -148,15 +191,18 @@ export function AssetsConsole({ initialRecords = [] }: AssetsConsoleProps) {
       setNotice(`Capital Asset "${updated.name}" (${updated.tag}) registered in database.`);
     } else {
       try {
-        await fetch('/api/modules/assets', {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+        await fetch('/api/assets', {
+          method: 'PUT',
+          headers: authHeaders,
           body: JSON.stringify({
             id: updated.id,
-            title: `${updated.tag} — ${updated.name}`,
+            name: updated.name,
+            category: updated.category,
+            location: updated.location,
+            currentValueZMW: updated.valueZmw,
             status: updated.status,
-            summary: updated.notes,
-            metadataJson: JSON.stringify(updated),
+            custodianName: updated.custodian,
+            notes: updated.notes,
           }),
         });
       } catch (e) {
@@ -169,8 +215,12 @@ export function AssetsConsole({ initialRecords = [] }: AssetsConsoleProps) {
   }
 
   async function handleDeleteAsset(id: string) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') || '' : '';
     try {
-      await fetch(`/api/modules/assets?id=${id}`, { method: 'DELETE' });
+      await fetch(`/api/assets?id=${id}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
     } catch (e) {
       console.error('Failed to delete asset from database:', e);
     }

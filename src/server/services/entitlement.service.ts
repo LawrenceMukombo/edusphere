@@ -1,5 +1,7 @@
 import { prisma } from '../db';
 import crypto from 'crypto';
+import { DocketType } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 
 export class EntitlementService {
   /**
@@ -323,5 +325,211 @@ export class EntitlementService {
    */
   static async validateServiceAccess(learnerId: string, serviceType: any) {
     return this.checkEntitlement(learnerId, serviceType);
+  }
+
+  /**
+   * Generate an official, printable Financial Exam Clearance Docket or Clinical Rotation Pass (GAP-08)
+   * With cryptographic HMAC-SHA256 signature and structured QR code verification data.
+   */
+  static async generateClearanceDocket(params: {
+    organisationId: string;
+    learnerId: string;
+    docketType?: DocketType;
+    termOrSemester?: string;
+    issuedById?: string;
+  }) {
+    const docketType = params.docketType || DocketType.EXAMINATION_CLEARANCE;
+
+    // 1. Fetch learner with full academic and financial profile
+    const learner = await prisma.learner.findUnique({
+      where: { id: params.learnerId },
+      include: {
+        campus: true,
+        currentClass: true,
+        indexingRecord: true,
+        invoices: {
+          where: { organisationId: params.organisationId },
+          include: { lines: true },
+        },
+      },
+    });
+
+    if (!learner) throw new Error('Learner not found.');
+
+    // 2. Compute financial thresholds
+    let totalInvoiced = 0;
+    let totalPaid = 0;
+    for (const inv of learner.invoices) {
+      totalInvoiced += Number(inv.totalAmount);
+      totalPaid += Number(inv.paidAmount);
+    }
+
+    const balance = Math.max(0, totalInvoiced - totalPaid);
+    const paymentPercentage = totalInvoiced > 0 ? (totalPaid / totalInvoiced) * 100 : 100;
+
+    // Examination threshold: >= 75% or zero balance
+    // Clinical rotation threshold: >= 60%
+    const isCleared =
+      docketType === DocketType.EXAMINATION_CLEARANCE
+        ? paymentPercentage >= 75 || balance <= 0
+        : paymentPercentage >= 60;
+
+    const termLabel = params.termOrSemester || 'Semester 1 (2026)';
+    const docketPrefix = docketType === DocketType.EXAMINATION_CLEARANCE ? 'EXAM' : 'CLIN';
+    const docketNumber = `DOCK-${docketPrefix}-2026-${learner.studentNumber.replace(/[^A-Za-z0-9]/g, '').slice(-4)}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    // 3. Cryptographic HMAC-SHA256 verification code
+    const secret = process.env.SESSION_SECRET || 'NWUCHAS-ENTERPRISE-EXAM-SECRET-2026';
+    const hmacPayload = `${docketType}:${learner.studentNumber}:${docketNumber}:${isCleared}:${termLabel}`;
+    const verificationCode = crypto.createHmac('sha256', secret).update(hmacPayload).digest('hex').slice(0, 24).toUpperCase();
+
+    // 4. Structured QR verification payload
+    const qrData = {
+      doc: docketType === DocketType.EXAMINATION_CLEARANCE ? 'NWUCHAS_EXAM_DOCKET' : 'NWUCHAS_CLINICAL_PASS',
+      docketNo: docketNumber,
+      code: verificationCode,
+      stuNo: learner.studentNumber,
+      name: `${learner.firstName} ${learner.lastName}`,
+      prog: learner.currentClass?.name || 'Diploma in Registered Nursing',
+      sem: termLabel,
+      cleared: isCleared,
+      balanceZMW: balance.toFixed(2),
+      paidPct: paymentPercentage.toFixed(1),
+      council: learner.indexingRecord?.council || 'NMCZ',
+      indexingNo: learner.indexingRecord?.indexNumber || 'PENDING',
+      issuedAt: new Date().toISOString(),
+    };
+
+    const qrCodeData = JSON.stringify(qrData);
+    const expiresAt = new Date(Date.now() + 120 * 24 * 60 * 60 * 1000); // 120 days validity
+
+    const metadata = {
+      studentName: `${learner.firstName} ${learner.lastName}`,
+      studentNumber: learner.studentNumber,
+      gender: learner.gender,
+      programmeName: learner.currentClass?.name || 'Health Sciences Programme',
+      campusName: learner.campus?.name || 'NWUCHAS Main Campus (Manyama)',
+      photoUrl: learner.photoUrl || '/assets/avatars/student-placeholder.png',
+      indexingNumber: learner.indexingRecord?.indexNumber || null,
+      council: learner.indexingRecord?.council || 'NMCZ',
+      academicYear: '2026',
+      totalBilledZMW: totalInvoiced,
+      totalPaidZMW: totalPaid,
+      outstandingBalanceZMW: balance,
+      paymentPercentage,
+      clearanceThreshold: docketType === DocketType.EXAMINATION_CLEARANCE ? '75% Tuition Paid' : '60% Tuition Paid',
+      officialStamps: [
+        'Directorate of Academic Affairs & Examinations',
+        'Bursary & Student Financial Services',
+        'Senate Board of Examiners Authentication',
+      ],
+    };
+
+    const docket = await prisma.clearanceDocket.create({
+      data: {
+        organisationId: params.organisationId,
+        learnerId: learner.id,
+        docketType,
+        docketNumber,
+        termOrSemester: termLabel,
+        tuitionBalance: new Decimal(balance.toFixed(2)),
+        paymentPct: new Decimal(paymentPercentage.toFixed(2)),
+        isCleared,
+        expiresAt,
+        verificationCode,
+        qrCodeData,
+        issuedById: params.issuedById,
+        metadataJson: JSON.stringify(metadata),
+      },
+    });
+
+    return {
+      docket,
+      verificationCode,
+      qrCodeData,
+      metadata,
+    };
+  }
+
+  /**
+   * Cryptographically verify a Clearance Docket or QR Token (GAP-08)
+   */
+  static async verifyClearanceDocket(query: string) {
+    let cleanCode = query.trim();
+
+    // If query is a JSON string from QR scanner
+    if (query.startsWith('{') && query.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(query);
+        cleanCode = parsed.code || parsed.docketNo || cleanCode;
+      } catch {
+        // use raw string
+      }
+    }
+
+    const docket = await prisma.clearanceDocket.findFirst({
+      where: {
+        OR: [
+          { verificationCode: cleanCode },
+          { docketNumber: cleanCode },
+        ],
+      },
+      include: {
+        learner: {
+          select: {
+            id: true,
+            studentNumber: true,
+            firstName: true,
+            lastName: true,
+            photoUrl: true,
+            gender: true,
+          },
+        },
+      },
+    });
+
+    if (!docket) {
+      return {
+        isValid: false,
+        message: 'Invalid or fraudulent clearance docket code. No record found.',
+      };
+    }
+
+    const now = new Date();
+    if (now > docket.expiresAt) {
+      return {
+        isValid: false,
+        isExpired: true,
+        message: `Clearance docket expired on ${docket.expiresAt.toLocaleDateString()}.`,
+        docket,
+      };
+    }
+
+    const parsedMetadata = docket.metadataJson ? JSON.parse(docket.metadataJson) : null;
+
+    return {
+      isValid: true,
+      isCleared: docket.isCleared,
+      message: docket.isCleared
+        ? `VERIFIED: Cleared for ${docket.docketType === 'EXAMINATION_CLEARANCE' ? 'Examination Hall Entry' : 'Clinical Ward Placement'}`
+        : 'SUSPENDED: Fee clearance threshold not satisfied.',
+      docket,
+      learner: docket.learner,
+      metadata: parsedMetadata,
+    };
+  }
+
+  /**
+   * List historical clearance dockets for audit or student portal retrieval
+   */
+  static async listClearanceDockets(organisationId: string, learnerId?: string) {
+    return prisma.clearanceDocket.findMany({
+      where: {
+        organisationId,
+        ...(learnerId ? { learnerId } : {}),
+      },
+      orderBy: { issuedAt: 'desc' },
+      take: 50,
+    });
   }
 }

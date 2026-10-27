@@ -38,8 +38,16 @@ export function TopWelcomeBanner() {
   const [showRoleSwitcher, setShowRoleSwitcher] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [is2FAActive, setIs2FAActive] = useState(false);
-  // Simulated dynamic online users count (between 14 and 19 for realism)
-  const [onlineCount, setOnlineCount] = useState(16);
+  const [isLocalDev, setIsLocalDev] = useState(false);
+
+  // Detect local development environment (strictly disabled in production)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const isLocalhost =
+        window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+      setIsLocalDev(isLocalhost && process.env.NODE_ENV !== 'production');
+    }
+  }, []);
 
   // Live Clock Ticking Every Second
   useEffect(() => {
@@ -48,18 +56,6 @@ export function TopWelcomeBanner() {
       setCurrentTime(new Date());
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
-
-  // Periodic subtle jitter on online users count
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setOnlineCount((prev) => {
-        const delta = Math.random() > 0.5 ? 1 : -1;
-        const next = prev + delta;
-        return next < 12 ? 14 : next > 24 ? 18 : next;
-      });
-    }, 25000);
-    return () => clearInterval(interval);
   }, []);
 
   // Sync Active User & 2FA State
@@ -126,7 +122,7 @@ export function TopWelcomeBanner() {
 
   return (
     <>
-      <div className="w-full border-b border-slate-200 bg-gradient-to-r from-slate-900 via-[#0b2545] to-[#004f63] text-white text-xs py-2 px-3 sm:px-6 select-none z-30 relative shadow-sm">
+      <div className="w-full border-b border-slate-200 bg-gradient-to-r from-slate-900 via-[#0b2545] to-[#004f63] text-white text-xs py-2 px-3 sm:px-6 select-none z-40 relative shadow-sm">
         <div className="w-full flex flex-wrap items-center justify-between gap-3">
           
           {/* Left: User Avatar, Welcome Greeting, Clean Role Badge & Profile Trigger */}
@@ -163,127 +159,114 @@ export function TopWelcomeBanner() {
                 {cleanRole}
               </span>
 
-              {/* Role Switcher Toggle Button */}
-              <div className="relative inline-block">
-                <button
-                  type="button"
-                  onClick={() => setShowRoleSwitcher(!showRoleSwitcher)}
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 text-white text-[10px] font-semibold transition active:scale-95"
-                  title="Switch simulated staff account for RBAC validation"
-                >
-                  <span>Switch Role</span>
-                  <ChevronDown className={`w-3 h-3 text-white/80 transition-transform ${showRoleSwitcher ? 'rotate-180' : ''}`} />
-                </button>
+              {/* Role Switcher Toggle Button (Strictly Local Development Only — Never in Production) */}
+              {isLocalDev && (
+                <div className="relative inline-block">
+                  <button
+                    type="button"
+                    onClick={() => setShowRoleSwitcher(!showRoleSwitcher)}
+                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md bg-white/10 hover:bg-white/20 border border-white/20 text-white text-[10px] font-semibold transition active:scale-95"
+                    title="Switch local persona for dev RBAC testing"
+                  >
+                    <span>Switch Role (Dev)</span>
+                    <ChevronDown className={`w-3 h-3 text-white/80 transition-transform ${showRoleSwitcher ? 'rotate-180' : ''}`} />
+                  </button>
 
-                {/* Role Switcher Dropdown */}
-                {showRoleSwitcher && (
-                  <>
-                    {/* Click-outside backdrop */}
-                    <div
-                      className="fixed inset-0 z-40 cursor-default"
-                      onClick={() => setShowRoleSwitcher(false)}
-                    />
+                  {/* Role Switcher Dropdown */}
+                  {showRoleSwitcher && (
+                    <>
+                      {/* Click-outside backdrop */}
+                      <div
+                        className="fixed inset-0 z-40 cursor-default"
+                        onClick={() => setShowRoleSwitcher(false)}
+                      />
 
-                    <div className="absolute left-0 top-full mt-2 w-80 sm:w-[380px] bg-slate-900/98 backdrop-blur-xl border border-sky-900/80 rounded-2xl shadow-2xl p-2.5 z-50 text-xs text-white animate-in fade-in slide-in-from-top-2 ring-1 ring-white/10">
-                      <div className="p-2 border-b border-slate-800 flex items-center justify-between">
-                        <div>
-                          <span className="font-extrabold text-white text-xs tracking-wide">Switch Staff Account (RBAC)</span>
-                          <p className="text-[10px] text-slate-400">NWUCHAS College Leadership & Staff</p>
+                      <div className="absolute left-0 top-full mt-2 w-80 sm:w-[380px] bg-slate-900/98 backdrop-blur-xl border border-sky-900/80 rounded-2xl shadow-2xl p-2.5 z-50 text-xs text-white animate-in fade-in slide-in-from-top-2 ring-1 ring-white/10">
+                        <div className="p-2 border-b border-slate-800 flex items-center justify-between">
+                          <div>
+                            <span className="font-extrabold text-white text-xs tracking-wide">Switch Staff Account (Dev RBAC)</span>
+                            <p className="text-[10px] text-slate-400">NWUCHAS College Leadership & Staff</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowRoleSwitcher(false)}
+                            className="h-6 w-6 rounded-md hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition"
+                          >
+                            <X size={14} />
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => setShowRoleSwitcher(false)}
-                          className="h-6 w-6 rounded-md hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white transition"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
 
-                      <div className="max-h-72 overflow-y-auto divide-y divide-slate-800/60 py-1.5 space-y-1">
-                        {INITIAL_SECURITY_USERS.map((u) => {
-                          const userInitials = u.fullName
-                            .split(' ')
-                            .filter(Boolean)
-                            .slice(0, 2)
-                            .map((p) => p[0].toUpperCase())
-                            .join('');
-                          const isSelected = currentUser.id === u.id;
+                        <div className="max-h-72 overflow-y-auto divide-y divide-slate-800/60 py-1.5 space-y-1">
+                          {INITIAL_SECURITY_USERS.map((u) => {
+                            const userInitials = u.fullName
+                              .split(' ')
+                              .filter(Boolean)
+                              .slice(0, 2)
+                              .map((p) => p[0].toUpperCase())
+                              .join('');
+                            const isSelected = currentUser.id === u.id;
 
-                          return (
-                            <button
-                              key={u.id}
-                              type="button"
-                              onClick={() => handleSelectUser(u)}
-                              className={`w-full text-left p-2 rounded-xl transition flex items-center justify-between gap-2.5 ${
-                                isSelected
-                                  ? 'bg-gradient-to-r from-[#007B99]/30 to-[#8DC63F]/20 border border-[#007B99]/60 text-white shadow-sm'
-                                  : 'hover:bg-white/5 border border-transparent text-slate-200'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[#007B99] to-[#8DC63F] p-0.5 shrink-0 shadow-xs">
-                                  <div className="h-full w-full rounded-full bg-slate-900 flex items-center justify-center text-white font-extrabold text-[10px]">
-                                    {userInitials}
+                            return (
+                              <button
+                                key={u.id}
+                                type="button"
+                                onClick={() => handleSelectUser(u)}
+                                className={`w-full text-left p-2 rounded-xl transition flex items-center justify-between gap-2.5 ${
+                                  isSelected
+                                    ? 'bg-gradient-to-r from-[#007B99]/30 to-[#8DC63F]/20 border border-[#007B99]/60 text-white shadow-sm'
+                                    : 'hover:bg-white/5 border border-transparent text-slate-200'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <div className="h-7 w-7 rounded-full bg-gradient-to-br from-[#007B99] to-[#8DC63F] p-0.5 shrink-0 shadow-xs">
+                                    <div className="h-full w-full rounded-full bg-slate-900 flex items-center justify-center text-white font-extrabold text-[10px]">
+                                      {userInitials}
+                                    </div>
                                   </div>
-                                </div>
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <p className="font-bold text-white text-xs truncate">{u.fullName}</p>
-                                    <span className="font-mono text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-800 text-sky-300 border border-slate-700">
-                                      {u.staffId}
-                                    </span>
-                                  </div>
-                                  <p className="text-[10px] text-slate-300 truncate">
-                                    {u.jobTitle || formatCleanEnum(u.role)}
-                                  </p>
-                                  {u.department && (
-                                    <p className="text-[9px] text-[#8DC63F] truncate">
-                                      {u.department}
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <p className="font-bold text-white text-xs truncate">{u.fullName}</p>
+                                      <span className="font-mono text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-800 text-sky-300 border border-slate-700">
+                                        {u.staffId}
+                                      </span>
+                                    </div>
+                                    <p className="text-[10px] text-slate-300 truncate">
+                                      {u.jobTitle || formatCleanEnum(u.role)}
                                     </p>
-                                  )}
+                                    {u.department && (
+                                      <p className="text-[9px] text-[#8DC63F] truncate">
+                                        {u.department}
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
-                              </div>
-                              {isSelected ? (
-                                <CheckCircle2 size={16} className="text-[#8DC63F] shrink-0" />
-                              ) : (
-                                <div className="h-4 w-4 rounded-full border border-slate-700 shrink-0" />
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
+                                {isSelected ? (
+                                  <CheckCircle2 size={16} className="text-[#8DC63F] shrink-0" />
+                                ) : (
+                                  <div className="h-4 w-4 rounded-full border border-slate-700 shrink-0" />
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
 
-                      <div className="p-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
-                        <span className="flex items-center gap-1 text-slate-300">
-                          <ShieldCheck size={12} className="text-[#8DC63F]" />
-                          <span>Active: <strong className="text-white">{cleanRole}</strong></span>
-                        </span>
-                        <span className="text-[9px] text-slate-400">NWUCHAS CMIS</span>
+                        <div className="p-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-400">
+                          <span className="flex items-center gap-1 text-slate-300">
+                            <ShieldCheck size={12} className="text-[#8DC63F]" />
+                            <span>Active: <strong className="text-white">{cleanRole}</strong></span>
+                          </span>
+                          <span className="text-[9px] text-slate-400">NWUCHAS CMIS</span>
+                        </div>
                       </div>
-                    </div>
-                  </>
-                )}
-              </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Right: Online Users Telemetry, Live Date & Clock to the Second */}
+          {/* Right: Live Date & Clock Ticking to the Second */}
           <div className="flex items-center gap-3 shrink-0">
-            {/* Live Online Users Telemetry */}
-            <div
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/10 border border-white/10 text-white text-[11px] font-semibold"
-              title="Real-time authenticated staff, faculty and registrar sessions online"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8DC63F] opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#8DC63F]" />
-              </span>
-              <Users className="w-3.5 h-3.5 text-[#8DC63F] shrink-0" />
-              <span>
-                <strong className="text-white font-extrabold">{onlineCount}</strong>
-                <span className="hidden md:inline text-slate-200"> Online</span>
-              </span>
-            </div>
 
             {/* Date & Live Clock Ticking to the Second */}
             <div className="inline-flex items-center gap-2 text-white font-mono text-[11px] sm:text-xs bg-white/10 px-2.5 py-1 rounded-lg border border-white/10 shadow-inner">
@@ -365,11 +348,11 @@ export function TopWelcomeBanner() {
 
               <div className="rounded-xl border border-teal-200 bg-teal-50/50 p-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Radio className="w-4 h-4 text-[#007B99] animate-pulse" />
-                  <span className="font-semibold text-teal-950">Active Users Online: <strong>{onlineCount} Staff Members</strong></span>
+                  <Radio className="w-4 h-4 text-[#007B99]" />
+                  <span className="font-semibold text-teal-950">Institutional Session: <strong>Authenticated & Scoped</strong></span>
                 </div>
                 <span className="text-[10px] font-bold bg-[#8DC63F] text-slate-900 px-2 py-0.5 rounded-full">
-                  Telemetric Link
+                  RBAC Verified
                 </span>
               </div>
             </div>

@@ -57,6 +57,10 @@ export interface AuthSession {
   learnerId?: string | null;
   guardianId?: string | null;
   isMfaVerified?: boolean;
+  mfaVerifiedAt?: number;
+  isSuperAdmin?: boolean;
+  mustChangePassword?: boolean;
+  passwordDaysRemaining?: number;
 }
 
 export function signToken(session: AuthSession, expiresInSeconds = 28800): string {
@@ -122,5 +126,26 @@ export async function requireAuth(req: Request): Promise<AuthSession> {
   }
   return session;
 }
+
+/**
+ * Enforces Two-Factor Authentication (2FA) verification on sensitive modules / operations.
+ * Throws a typed 403 error (MFA_REQUIRED) if the session has not completed 2FA step-up verification.
+ */
+export async function requireMfa(req: Request): Promise<AuthSession> {
+  const session = await requireAuth(req);
+  if (!session.isMfaVerified) {
+    const err = new Error('Two-factor authentication (2FA) verification required for this sensitive operation.');
+    (err as any).statusCode = 403;
+    (err as any).code = 'MFA_REQUIRED';
+    throw err;
+  }
+  return session;
+}
+
+/** Check if session has verified 2FA */
+export function isMfaVerified(session: AuthSession | null): boolean {
+  return Boolean(session?.isMfaVerified);
+}
+
 
 

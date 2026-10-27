@@ -18,13 +18,16 @@ import {
   Globe,
   GraduationCap,
   HeartPulse,
+  KeyRound,
   LayoutDashboard,
+  Lock,
   Menu,
   MessageSquareText,
   PanelLeftClose,
   PanelLeftOpen,
   Search,
   Settings2,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
   UsersRound,
@@ -36,15 +39,17 @@ import type { LucideIcon } from 'lucide-react';
 import { UniversalSearchModal } from '@/components/search/UniversalSearchModal';
 import { TopWelcomeBanner } from '@/components/TopWelcomeBanner';
 import { NwuchasEmblemSvg } from '@/components/NwuchasLogo';
+import { TwoFactorChallengeModal } from '@/components/auth/TwoFactorChallengeModal';
+import { isSensitiveModule, getSensitiveModulePolicy } from '@/lib/sensitiveModules';
 
-type NavigationItem = { href: string; label: string; icon: LucideIcon };
+type NavigationItem = { href: string; label: string; icon: LucideIcon; isSensitive?: boolean };
 type NavigationGroup = { label: string; items: NavigationItem[] };
 
 const groups: NavigationGroup[] = [
   {
     label: 'Academic & learners',
     items: [
-      { href: '/modules/admissions', label: 'Admissions & candidate portal', icon: UsersRound },
+      { href: '/modules/admissions', label: 'Admissions & candidate portal', icon: UsersRound, isSensitive: true },
       { href: '/modules/academics', label: 'Academics & examinations', icon: BookOpenCheck },
       { href: '/modules/attendance', label: 'Attendance & engagement', icon: ClipboardCheck },
       { href: '/modules/clinical-learning', label: 'Clinical learning', icon: HeartPulse },
@@ -53,10 +58,10 @@ const groups: NavigationGroup[] = [
   {
     label: 'Operations & finance',
     items: [
-      { href: '/modules/finance', label: 'Finance & payments', icon: WalletCards },
-      { href: '/modules/hr', label: 'Staff & HR', icon: UsersRound },
+      { href: '/modules/finance', label: 'Finance & payments', icon: WalletCards, isSensitive: true },
+      { href: '/modules/hr', label: 'Staff & HR', icon: UsersRound, isSensitive: true },
       { href: '/modules/operations', label: 'Campus operations', icon: Building2 },
-      { href: '/modules/assets', label: 'Asset register', icon: Wrench },
+      { href: '/modules/assets', label: 'Asset register', icon: Wrench, isSensitive: true },
     ],
   },
   {
@@ -71,7 +76,7 @@ const groups: NavigationGroup[] = [
     label: 'Portals & administration',
     items: [
       { href: '/modules/parent-portal', label: 'Student & sponsor portal', icon: GraduationCap },
-      { href: '/modules/administration', label: 'Administration & settings', icon: Settings2 },
+      { href: '/modules/administration', label: 'Administration & settings', icon: Settings2, isSensitive: true },
       { href: '/modules/integration-status', label: 'Integrations & compliance', icon: ShieldCheck },
     ],
   },
@@ -87,6 +92,39 @@ export function NwuchasShell({ children }: { children: React.ReactNode }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+
+  // Institutional Two-Factor Authentication (2FA) State for Sensitive Modules
+  const [isMfaVerified, setIsMfaVerified] = useState<boolean>(false);
+  const [isMfaModalOpen, setIsMfaModalOpen] = useState<boolean>(false);
+  const [mfaTargetModule, setMfaTargetModule] = useState<string>('finance');
+
+  // Query 2FA verification status on mount and path change
+  useEffect(() => {
+    let isMounted = true;
+    const checkMfaStatus = async () => {
+      try {
+        const cached = localStorage.getItem('nwuchas_mfa_verified');
+        if (cached === 'true') {
+          setIsMfaVerified(true);
+        }
+        const res = await fetch('/api/auth/2fa/status');
+        if (res.ok && isMounted) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            const verified = Boolean(json.data.isMfaVerified);
+            setIsMfaVerified(verified);
+            if (verified) {
+              localStorage.setItem('nwuchas_mfa_verified', 'true');
+            } else {
+              localStorage.removeItem('nwuchas_mfa_verified');
+            }
+          }
+        }
+      } catch {}
+    };
+    checkMfaStatus();
+    return () => { isMounted = false; };
+  }, [pathname]);
 
   // Restore sidebar state & category collapsed preferences from localStorage
   useEffect(() => {
@@ -151,6 +189,41 @@ export function NwuchasShell({ children }: { children: React.ReactNode }) {
     pathname.startsWith('/apply') ||
     pathname.startsWith('/login') ||
     pathname === '/offline.html';
+
+  // Check if current route requires 2FA
+  const isCurrentRouteSensitive = isSensitiveModule(pathname);
+  const currentPolicy = getSensitiveModulePolicy(pathname);
+
+  // Auto-open 2FA modal if user accesses a sensitive route without verification
+  useEffect(() => {
+    if (isCurrentRouteSensitive && !isMfaVerified && !isPublicRoute) {
+      const cleanSlug = pathname.replace(/^\/modules\//, '').replace(/^\/portal\//, '').split('/')[0];
+      setMfaTargetModule(cleanSlug || 'finance');
+      setIsMfaModalOpen(true);
+    }
+  }, [pathname, isCurrentRouteSensitive, isMfaVerified, isPublicRoute]);
+
+  const handleLockMfa = async () => {
+    try {
+      await fetch('/api/auth/2fa/revoke', { method: 'POST' });
+      setIsMfaVerified(false);
+      localStorage.removeItem('nwuchas_mfa_verified');
+      if (isCurrentRouteSensitive) {
+        setIsMfaModalOpen(true);
+      }
+    } catch {}
+  };
+
+  const handleMfaSuccess = () => {
+    setIsMfaVerified(true);
+    localStorage.setItem('nwuchas_mfa_verified', 'true');
+    setIsMfaModalOpen(false);
+  };
+
+  const openMfaChallengeForModule = (slug: string) => {
+    setMfaTargetModule(slug);
+    setIsMfaModalOpen(true);
+  };
 
   if (isPublicRoute) {
     return <>{children}</>;
@@ -225,9 +298,30 @@ export function NwuchasShell({ children }: { children: React.ReactNode }) {
               <Search size={16} />
             </button>
 
-            <span className="hidden items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 font-medium text-emerald-800 sm:inline-flex">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> Local development
-            </span>
+            {/* 2FA Institutional Status & Quick Lock Toggle */}
+            {isMfaVerified ? (
+              <button
+                type="button"
+                onClick={handleLockMfa}
+                className="inline-flex items-center gap-1.5 rounded-full border border-emerald-300 bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-800 shadow-2xs hover:bg-emerald-100 transition"
+                title="High Security Active (2FA Verified). Click to lock sensitive modules."
+              >
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <ShieldCheck size={13} className="text-emerald-700" />
+                <span className="hidden sm:inline">2FA Active</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => openMfaChallengeForModule('finance')}
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800 shadow-2xs hover:bg-amber-100 transition"
+                title="Two-factor authentication required for sensitive modules (Finance, Assets, Students, Staff). Click to verify."
+              >
+                <ShieldAlert size={13} className="text-amber-600" />
+                <span className="hidden sm:inline">2FA Required</span>
+              </button>
+            )}
+
             <Link
               href="/modules/documents"
               className="hidden rounded-md px-3 py-2 font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 md:inline-flex"

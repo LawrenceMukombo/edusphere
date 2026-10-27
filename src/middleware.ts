@@ -34,6 +34,7 @@ function isPublicPath(pathname: string, method?: string): boolean {
   if (pathname.startsWith('/api/auth/logout')) return true;
   if (pathname.startsWith('/api/admissions/track')) return true;
   if (pathname === '/api/admissions' && method === 'POST') return true;
+  if (pathname === '/api/content/cards' && method === 'GET') return true;
   if (pathname.startsWith('/icons/') || pathname.startsWith('/images/')) return true;
   return false;
 }

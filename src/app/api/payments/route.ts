@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { extractSessionToken, verifyToken } from '@/server/auth';
 import { LamtonPayService } from '@/server/payments/lamtonpay.service';
+import { MobileMoneyService } from '@/server/payments/mobileMoney.service';
 import { prisma } from '@/server/db';
+import { PaymentChannel } from '@prisma/client';
 
 export async function GET(req: NextRequest) {
   const token = extractSessionToken(req.headers);
@@ -77,6 +79,42 @@ export async function POST(req: NextRequest) {
   const p = prisma as any;
 
   try {
+    // 1. Mobile Money Real-Time Status Query across Airtel, MTN, or Zamtel networks
+    if (body.action === 'query-status' || body.action === 'check-status') {
+      if (!body.intentId) {
+        return NextResponse.json({ success: false, message: 'intentId is required.' }, { status: 400 });
+      }
+      const statusResult = await MobileMoneyService.queryPaymentStatus(body.intentId);
+      return NextResponse.json({ success: true, data: statusResult });
+    }
+
+    // 2. Production Mobile Money Direct Collection Dispatch (USSD Push)
+    if (body.action === 'initiate-mobile-money') {
+      const cleanLearnerId =
+        body.learnerId && typeof body.learnerId === 'string' && body.learnerId.trim() !== ''
+          ? body.learnerId.trim()
+          : undefined;
+
+      const cleanInvoiceId =
+        body.invoiceId && typeof body.invoiceId === 'string' && body.invoiceId.trim() !== ''
+          ? body.invoiceId.trim()
+          : undefined;
+
+      const result = await MobileMoneyService.initiateCollection({
+        organisationId,
+        learnerId: cleanLearnerId,
+        invoiceId: cleanInvoiceId,
+        payerPhone: body.payerPhone,
+        amountZMW: Number(body.amountZMW || body.amount),
+        channel: body.channel as PaymentChannel,
+        payerName: body.payerName,
+        metadata: body.metadata,
+      });
+
+      return NextResponse.json({ success: true, data: result });
+    }
+
+    // 3. Confirm payment (admin / bursar override or verified settlement)
     if (body.action === 'confirm') {
       const result = await LamtonPayService.confirmPayment({
         intentId: body.intentId,
@@ -88,6 +126,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, data: result });
     }
 
+    // 4. Reconcile settlement batch
     if (body.action === 'reconcile-batch') {
       const batch = await p.settlementBatch.update({
         where: { id: body.batchId },
@@ -101,7 +140,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, data: batch });
     }
 
-    if (body.action === 'simulate-webhook') {
+    // 5. Webhook inbox event logging
+    if (body.action === 'simulate-webhook' || body.action === 'post-webhook') {
       const webhook = await p.webhookInboxEvent.create({
         data: {
           providerCode: body.providerCode || 'MTN_MOMO_ZM',
@@ -124,6 +164,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, data: webhook });
     }
 
+    // 6. Default: Create Payment Intent (auto-detects mobile money channels and dispatches USSD prompt)
     const cleanLearnerId =
       body.learnerId && typeof body.learnerId === 'string' && body.learnerId.trim() !== ''
         ? body.learnerId.trim()
@@ -134,12 +175,35 @@ export async function POST(req: NextRequest) {
         ? body.invoiceId.trim()
         : undefined;
 
+    const targetChannel = (body.channel || PaymentChannel.MTN_MOMO) as PaymentChannel;
+
+    // If phone number is provided and channel is a mobile money rail, dispatch via MobileMoneyService
+    if (
+      body.payerPhone &&
+      (targetChannel === PaymentChannel.MTN_MOMO ||
+        targetChannel === PaymentChannel.AIRTEL_MONEY ||
+        targetChannel === PaymentChannel.ZAMTEL_MONEY)
+    ) {
+      const momoResult = await MobileMoneyService.initiateCollection({
+        organisationId,
+        learnerId: cleanLearnerId,
+        invoiceId: cleanInvoiceId,
+        payerPhone: body.payerPhone,
+        amountZMW: Number(body.amountZMW || body.amount),
+        channel: targetChannel,
+        payerName: body.payerName,
+        metadata: body.metadata,
+      });
+
+      return NextResponse.json({ success: true, data: momoResult });
+    }
+
     const intent = await LamtonPayService.createIntent({
       organisationId,
       learnerId: cleanLearnerId,
       invoiceId: cleanInvoiceId,
-      channel: body.channel || 'MTN_MOMO',
-      amountZMW: Number(body.amountZMW),
+      channel: targetChannel,
+      amountZMW: Number(body.amountZMW || body.amount),
       payerPhone: body.payerPhone,
       payerName: body.payerName,
       idempotencyKey:
@@ -152,3 +216,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: error.message }, { status: 400 });
   }
 }
+

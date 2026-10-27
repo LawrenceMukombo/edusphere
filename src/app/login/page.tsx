@@ -16,32 +16,73 @@ function LoginForm() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-
+  // Forced 90-Day (3-Month) Password Rotation State for College Owner / Super Admin
+  const [showForceChangeModal, setShowForceChangeModal] = useState(false);
+  const [pendingUser, setPendingUser] = useState<any>(null);
+  const [currentPwdForChange, setCurrentPwdForChange] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changeError, setChangeError] = useState('');
+  const [changeSuccess, setChangeSuccess] = useState('');
+  const [changeBusy, setChangeBusy] = useState(false);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true);
     setError('');
 
-    // Abort controller with 15-second timeout to prevent UI hanging
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const cleanEmail = email.trim();
+
+    async function executeLoginAttempt(attempt: number): Promise<{ ok: boolean; payload: any }> {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ email: cleanEmail, password }),
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        let payload: any = {};
+        const contentType = response.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          payload = await response.json();
+        } else {
+          const rawText = await response.text();
+          payload = { message: rawText || 'Server responded with non-JSON format.' };
+        }
+
+        return { ok: response.ok, payload };
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        // Automatic retry once on network disconnect or server cold boot
+        if (attempt === 1 && err.name !== 'AbortError') {
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+          return executeLoginAttempt(2);
+        }
+        throw err;
+      }
+    }
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-      const payload = await response.json();
+      const { ok, payload } = await executeLoginAttempt(1);
       setBusy(false);
 
-      if (!response.ok) {
+      if (!ok) {
         setError(payload.message ?? 'Sign-in failed. Please verify credentials.');
+        return;
+      }
+
+      // If mandatory 90-day rotation is due, prompt immediately
+      if (payload.mustChangePassword) {
+        setPendingUser(payload.data?.user);
+        setCurrentPwdForChange(password);
+        setShowForceChangeModal(true);
         return;
       }
 
@@ -56,18 +97,140 @@ function LoginForm() {
       router.push(destination);
       router.refresh();
     } catch (err: any) {
-      clearTimeout(timeoutId);
       setBusy(false);
       if (err.name === 'AbortError') {
-        setError('Connection timed out. The server took too long to respond. Please try again.');
+        setError('Connection timed out. The server took too long to compile or respond. Please retry.');
+      } else if (err.message && err.message.includes('Failed to fetch')) {
+        setError('Unable to reach authentication server on port 3025. Please verify the local server is running and retry.');
       } else {
-        setError('Network communication failed. Please check your connectivity and retry.');
+        setError(`Network communication error (${err.message || 'connection failed'}). Please retry.`);
       }
+    }
+  }
+
+  async function handleRotatePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setChangeError('');
+    setChangeSuccess('');
+    setChangeBusy(true);
+
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          currentPassword: currentPwdForChange,
+          newPassword,
+          confirmPassword,
+        }),
+      });
+
+      const payload = await res.json();
+      setChangeBusy(false);
+
+      if (!res.ok) {
+        setChangeError(payload.message || 'Failed to update password.');
+        return;
+      }
+
+      setChangeSuccess('Password updated successfully! Redirecting...');
+      setTimeout(() => {
+        let destination = '/portal/executive';
+        if (redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//')) {
+          destination = redirectParam;
+        } else if (pendingUser?.defaultRoute) {
+          destination = pendingUser.defaultRoute;
+        }
+        router.push(destination);
+        router.refresh();
+      }, 1000);
+    } catch {
+      setChangeBusy(false);
+      setChangeError('Error connecting to password rotation service.');
     }
   }
 
   return (
     <div className="w-full max-w-lg">
+      {/* Forced 90-Day Password Rotation Modal */}
+      {showForceChangeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/70 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="relative w-full max-w-md rounded-2xl border border-rose-200 bg-white p-6 shadow-2xl text-slate-800 animate-in zoom-in-95">
+            <div className="flex items-center gap-2.5 pb-3 border-b border-rose-100">
+              <div className="h-9 w-9 rounded-xl bg-rose-50 border border-rose-200 flex items-center justify-center text-rose-600">
+                <KeyRound size={20} />
+              </div>
+              <div>
+                <h3 className="text-sm font-extrabold text-slate-900">Mandatory 3-Month Password Rotation</h3>
+                <p className="text-[11px] text-rose-700 font-bold">College Owner & Super Admin Security Policy</p>
+              </div>
+            </div>
+
+            <p className="mt-3 text-xs leading-relaxed text-slate-600">
+              Your account security policy requires rotating your password every <strong>90 days (3 months)</strong> to protect institutional controls and college override privileges.
+            </p>
+
+            {changeError && (
+              <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-800 font-medium">
+                {changeError}
+              </div>
+            )}
+
+            {changeSuccess && (
+              <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 p-2.5 text-xs text-emerald-800 font-bold flex items-center gap-1.5">
+                <CheckCircle2 size={15} />
+                <span>{changeSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleRotatePassword} className="mt-4 space-y-3.5">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Current Password</label>
+                <input
+                  type="password"
+                  required
+                  value={currentPwdForChange}
+                  onChange={(e) => setCurrentPwdForChange(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-[#007B99] focus:outline-none"
+                  placeholder="Enter current password"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">New Password (Min 10 chars, Upper, Lower, Number, Special)</label>
+                <input
+                  type="password"
+                  required
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-[#007B99] focus:outline-none"
+                  placeholder="Create new military-grade password"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Confirm New Password</label>
+                <input
+                  type="password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs focus:border-[#007B99] focus:outline-none"
+                  placeholder="Re-enter new password"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={changeBusy}
+                className="w-full mt-2 rounded-xl bg-gradient-to-r from-[#007B99] to-[#0b2545] py-2.5 text-xs font-black text-white hover:brightness-110 transition shadow-md disabled:opacity-50"
+              >
+                {changeBusy ? 'Rotating Password...' : 'Update Password & Activate New 90-Day Cycle'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
       {/* Top Brand Banner */}
       <div className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex items-center justify-between gap-4">
@@ -165,6 +328,69 @@ function LoginForm() {
             )}
           </button>
         </form>
+
+        {/* Quick Sign-in Shortcuts for Demonstration Personas */}
+        <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50/80 p-3 text-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
+              Quick Sign-in (Local Demonstration)
+            </span>
+            <span className="text-[10px] text-slate-400 font-semibold">Click to prefill</span>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('principal@nwuchas.edu.zm');
+                setPassword('NWUCHAS-DEV-ONLY-CHANGE-ME');
+                setError('');
+              }}
+              className="text-left rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 hover:border-[#007B99] hover:bg-sky-50/50 transition cursor-pointer"
+            >
+              <div className="font-extrabold text-[11px] text-slate-800">Executive Principal</div>
+              <div className="text-[10px] text-slate-500 truncate">principal@nwuchas.edu.zm</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('owner@nwuchas.edu.zm');
+                setPassword('NWUCHAS-Owner-2026!');
+                setError('');
+              }}
+              className="text-left rounded-lg border border-amber-200 bg-amber-50/40 px-2.5 py-1.5 hover:border-amber-400 hover:bg-amber-100/50 transition cursor-pointer"
+            >
+              <div className="font-extrabold text-[11px] text-amber-900 flex items-center gap-1">
+                <span>College Owner</span>
+                <span className="rounded bg-amber-200 text-amber-900 px-1 text-[9px] font-black">Super Admin</span>
+              </div>
+              <div className="text-[10px] text-amber-700 truncate">owner@nwuchas.edu.zm</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('registrar@nwuchas.edu.zm');
+                setPassword('NWUCHAS-DEV-ONLY-CHANGE-ME');
+                setError('');
+              }}
+              className="text-left rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 hover:border-[#007B99] hover:bg-sky-50/50 transition cursor-pointer"
+            >
+              <div className="font-extrabold text-[11px] text-slate-800">Academic Registrar</div>
+              <div className="text-[10px] text-slate-500 truncate">registrar@nwuchas.edu.zm</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setEmail('it.admin@nwuchas.edu.zm');
+                setPassword('NWUCHAS-DEV-ONLY-CHANGE-ME');
+                setError('');
+              }}
+              className="text-left rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 hover:border-[#007B99] hover:bg-sky-50/50 transition cursor-pointer"
+            >
+              <div className="font-extrabold text-[11px] text-slate-800">IT Administrator</div>
+              <div className="text-[10px] text-slate-500 truncate">it.admin@nwuchas.edu.zm</div>
+            </button>
+          </div>
+        </div>
 
 
 

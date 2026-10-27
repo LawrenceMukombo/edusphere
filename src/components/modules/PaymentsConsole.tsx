@@ -71,6 +71,17 @@ const DEFAULT_GATEWAY_RAILS: GatewayRail[] = [
     apiVersion: 'Collections API v1.4',
   },
   {
+    id: 'rail-zamtel',
+    name: 'Zamtel Kwacha (Zambia)',
+    provider: 'ZAMTEL',
+    status: 'ONLINE',
+    description: 'Integration via Zamtel Kwacha Merchant C2B Gateway. Dispatches instant USSD prompt (*115#) and callback settlement.',
+    endpoint: 'gateway.zamtel.co.zm/kwacha/api/v1',
+    settlementSla: 'T+0 Real-Time Callback',
+    merchantCodeOrTerminal: 'Shortcode: NWU-4421',
+    apiVersion: 'Kwacha API v1.2',
+  },
+  {
     id: 'rail-card',
     name: 'Card & EFTPOS (Commercial Bank)',
     provider: 'ABSA',
@@ -141,7 +152,7 @@ export function PaymentsConsole({
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Simulator Form State
-  const [simChannel, setSimChannel] = useState<'MTN_MOMO' | 'AIRTEL_MONEY' | 'CARD_HOSTED'>('MTN_MOMO');
+  const [simChannel, setSimChannel] = useState<'MTN_MOMO' | 'AIRTEL_MONEY' | 'ZAMTEL_MONEY' | 'CARD_HOSTED'>('MTN_MOMO');
   const [simLearnerId, setSimLearnerId] = useState<string>(learners[0]?.id || '');
   const [simInvoiceId, setSimInvoiceId] = useState<string>(invoices[0]?.id || '');
   const [simAmount, setSimAmount] = useState<number>(1500);
@@ -244,7 +255,7 @@ export function PaymentsConsole({
     }
   }
 
-  // Handle USSD Simulator Push
+  // Handle USSD Push Dispatch (Airtel, MTN, Zamtel)
   async function handleSimulatorPush(e: React.FormEvent) {
     e.preventDefault();
     setIsSubmitting(true);
@@ -257,19 +268,20 @@ export function PaymentsConsole({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          action: 'initiate-mobile-money',
           channel: simChannel,
           learnerId: cleanLearnerId,
           invoiceId: cleanInvoiceId,
           amountZMW: Number(simAmount),
           payerPhone: simPayerPhone,
           payerName: simPayerName,
-          idempotencyKey: `sim-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+          idempotencyKey: `momo-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Simulator intent creation failed');
+      if (!res.ok) throw new Error(data.message || 'Mobile money push dispatch failed');
 
-      const created = data.data.intent;
+      const created = data.data.intent || data.data;
       const learnerObj = learnersList.find((l) => l.id === cleanLearnerId);
       const invoiceObj = invoicesList.find((inv) => inv.id === cleanInvoiceId);
       created.learner = learnerObj;
@@ -277,9 +289,46 @@ export function PaymentsConsole({
 
       setIntents([created, ...intents]);
       setSimPushSent(created);
-      showNotification(`USSD Push prompt sent to ${simPayerPhone}. Ready for subscriber PIN authorization.`, 'info');
+      const ussdPrompt = data.data.ussdPrompt ? ` [${data.data.ussdPrompt}]` : '';
+      showNotification(`Live USSD push dispatched to ${simPayerPhone}${ussdPrompt}. Awaiting subscriber PIN authorization.`, 'info');
     } catch (err: any) {
-      showNotification(`Simulator Error: ${err.message}`, 'error');
+      showNotification(`Mobile Money Error: ${err.message}`, 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // Handle Real-Time Mobile Money Network Status Query
+  async function handleQueryStatus(intentId: string) {
+    setIsSubmitting(true);
+
+    try {
+      const res = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'query-status',
+          intentId,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Network status query failed');
+
+      if (data.data.isSettled) {
+        const targetIntent = intents.find((i) => i.id === intentId);
+        const updated = {
+          ...targetIntent,
+          status: 'CONFIRMED',
+          settledAt: new Date(),
+        };
+        setIntents(intents.map((i) => (i.id === intentId ? (updated as any) : i)));
+        if (simPushSent?.id === intentId) setSimPushSent(updated);
+        showNotification(`Carrier Network Confirmed: ${data.data.message}. Official receipt posted to student ledger.`, 'success');
+      } else {
+        showNotification(`Carrier Status: ${data.data.message}`, 'info');
+      }
+    } catch (err: any) {
+      showNotification(`Status Enquiry Error: ${err.message}`, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -291,7 +340,12 @@ export function PaymentsConsole({
 
     try {
       const targetIntent = intents.find((i) => i.id === intentId);
-      const channelCode = targetIntent?.channel === 'AIRTEL_MONEY' ? 'AIRTEL_MONEY_ZM' : 'MTN_MOMO_ZM';
+      const channelCode =
+        targetIntent?.channel === 'AIRTEL_MONEY'
+          ? 'AIRTEL_MONEY_ZM'
+          : targetIntent?.channel === 'ZAMTEL_MONEY'
+          ? 'ZAMTEL_KWACHA_ZM'
+          : 'MTN_MOMO_ZM';
       const providerTxId = `TXN-${channelCode.slice(0, 3)}-${Date.now()}`;
 
       const res = await fetch('/api/payments', {
@@ -629,6 +683,8 @@ export function PaymentsConsole({
                                 ? 'MTN MoMo'
                                 : i.channel === 'AIRTEL_MONEY'
                                 ? 'Airtel Money'
+                                : i.channel === 'ZAMTEL_MONEY'
+                                ? 'Zamtel Kwacha'
                                 : 'Card / Bank'}
                             </span>
                           </td>
@@ -651,13 +707,19 @@ export function PaymentsConsole({
                                 className={`h-2 w-2 rounded-full ${
                                   isConfirmed
                                     ? 'bg-emerald-500'
-                                    : i.status === 'INITIATED'
+                                    : i.status === 'INITIATED' || i.status === 'PENDING_CUSTOMER'
                                     ? 'bg-amber-500'
                                     : 'bg-slate-400'
                                 }`}
                               />
                               <span className="text-slate-800">
-                                {isConfirmed ? 'Confirmed' : i.status === 'INITIATED' ? 'Initiated' : 'Pending'}
+                                {isConfirmed
+                                  ? 'Confirmed'
+                                  : i.status === 'PENDING_CUSTOMER'
+                                  ? 'Handset Prompt'
+                                  : i.status === 'INITIATED'
+                                  ? 'Initiated'
+                                  : 'Pending'}
                               </span>
                             </span>
                           </td>
@@ -665,7 +727,7 @@ export function PaymentsConsole({
                             {new Date(i.createdAt).toLocaleString()}
                           </td>
                           <td className="px-5 py-3.5 text-right">
-                            <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
                               {isConfirmed ? (
                                 <button
                                   onClick={() => setSelectedVoucherIntent(i)}
@@ -674,13 +736,23 @@ export function PaymentsConsole({
                                   <Receipt className="h-3.5 w-3.5 text-slate-500" /> Voucher
                                 </button>
                               ) : (
-                                <button
-                                  onClick={() => handleConfirmPayment(i.id)}
-                                  disabled={isSubmitting}
-                                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-emerald-800 transition shadow-xs disabled:opacity-50"
-                                >
-                                  <Check className="h-3.5 w-3.5" /> Settle & Post
-                                </button>
+                                <>
+                                  <button
+                                    onClick={() => handleQueryStatus(i.id)}
+                                    disabled={isSubmitting}
+                                    title="Query status live from carrier network (Airtel/MTN/Zamtel)"
+                                    className="inline-flex items-center gap-1 rounded-lg border border-cyan-300 bg-cyan-50 px-2.5 py-1 text-[11px] font-bold text-cyan-800 hover:bg-cyan-100 transition shadow-xs disabled:opacity-50"
+                                  >
+                                    <RefreshCw className="h-3 w-3 text-cyan-600" /> Query
+                                  </button>
+                                  <button
+                                    onClick={() => handleConfirmPayment(i.id)}
+                                    disabled={isSubmitting}
+                                    className="inline-flex items-center gap-1 rounded-lg bg-emerald-700 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-emerald-800 transition shadow-xs disabled:opacity-50"
+                                  >
+                                    <Check className="h-3.5 w-3.5" /> Settle & Post
+                                  </button>
+                                </>
                               )}
                             </div>
                           </td>
@@ -705,9 +777,9 @@ export function PaymentsConsole({
                 <Send className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-900">LamtonPay USSD Push Simulator</h3>
+                <h3 className="text-base font-bold text-slate-900">LamtonPay Mobile Money Gateway</h3>
                 <p className="text-xs text-slate-500">
-                  Trigger live mobile money push prompts to Zambian telco networks (MTN MoMo *303# / Airtel Money *778#)
+                  Trigger live mobile money push prompts to Zambian telco networks (MTN MoMo *303# / Airtel Money *778# / Zamtel Kwacha *115#)
                 </p>
               </div>
             </div>
@@ -722,11 +794,13 @@ export function PaymentsConsole({
                       setSimChannel(e.target.value);
                       if (e.target.value === 'MTN_MOMO') setSimPayerPhone('0967812903');
                       if (e.target.value === 'AIRTEL_MONEY') setSimPayerPhone('0978192034');
+                      if (e.target.value === 'ZAMTEL_MONEY') setSimPayerPhone('0955123456');
                     }}
                     className="mt-1 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800 focus:border-cyan-600 focus:outline-none"
                   >
                     <option value="MTN_MOMO">🟡 MTN Mobile Money (*303# Prompt)</option>
                     <option value="AIRTEL_MONEY">🔴 Airtel Money (*778# Prompt)</option>
+                    <option value="ZAMTEL_MONEY">🟢 Zamtel Kwacha (*115# Prompt)</option>
                     <option value="CARD_HOSTED">💳 Visa / Mastercard 3DS Card</option>
                   </select>
                 </div>
@@ -837,7 +911,13 @@ export function PaymentsConsole({
               {/* Screen Area */}
               <div className="min-h-[380px] rounded-2xl border border-slate-300 bg-slate-100 p-4 text-slate-800 shadow-inner">
                 <div className="flex items-center justify-between text-[10px] text-slate-500 font-semibold">
-                  <span>{simChannel === 'AIRTEL_MONEY' ? 'Airtel Zambia' : 'MTN Zambia'}</span>
+                  <span>
+                    {simChannel === 'AIRTEL_MONEY'
+                      ? 'Airtel Zambia'
+                      : simChannel === 'ZAMTEL_MONEY'
+                      ? 'Zamtel Kwacha'
+                      : 'MTN Zambia'}
+                  </span>
                   <span>4G LTE • 100%</span>
                 </div>
 
