@@ -55,6 +55,7 @@ import { ProvisionalOfferLetterModal } from '@/components/admissions/Provisional
 import { FinalAcceptanceLetterModal } from '@/components/admissions/FinalAcceptanceLetterModal';
 import { CandidateAcceptanceModal } from '@/components/admissions/CandidateAcceptanceModal';
 import { NwuchasLogo, NWUCHAS_IDENTITY } from '@/components/NwuchasLogo';
+import { SYSTEM_VERSION } from '@/config/version';
 
 export default function CandidateApplicationPortalPage() {
   const [activeMainTab, setActiveMainTab] = useState<'apply' | 'track'>('apply');
@@ -2293,20 +2294,23 @@ export default function CandidateApplicationPortalPage() {
       </div>
 
       {/* Authentic Signature Lime Green Footer Bar Matching nwuc.edu.zm - Static/Sticky Bottom Bar */}
-      <footer className="sticky bottom-0 z-40 bg-[#8DC63F] text-slate-950 py-2.5 px-4 text-xs font-bold border-t border-[#7ab332] shadow-[0_-4px_16px_rgba(0,0,0,0.12)]">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-2">
-          <span className="text-center md:text-left">
+      <footer className="sticky bottom-0 z-40 bg-[#8DC63F] text-slate-950 py-1.5 px-3 md:px-5 font-bold border-t border-[#7ab332] shadow-[0_-4px_16px_rgba(0,0,0,0.12)] w-full overflow-hidden">
+        <div className="w-full flex items-center justify-between gap-x-2 text-[clamp(8px,0.76vw,12.5px)] leading-tight whitespace-nowrap overflow-x-auto no-scrollbar font-bold text-slate-950">
+          <span className="shrink-0">
             © 2026 North Western University College of Health and Applied Sciences. All rights reserved.
           </span>
-          <div className="flex flex-wrap items-center justify-center md:justify-end gap-x-2.5 gap-y-1 text-[11px] font-semibold text-slate-900">
-            <span>Plot 511/518 Shilenda Road, Manyama, Lumwana, Zambia</span>
-            <span className="hidden sm:inline">•</span>
-            <span>Hotlines: <strong>0964240051 / 0955550051 / 0979000051 / 0974896096 / 0974240051</strong></span>
-            <span className="hidden sm:inline">•</span>
-            <span>WhatsApp: <strong>0955550051 / 0964240051 / 0979000051 / 0974896096 / 0974240051</strong></span>
-            <span className="hidden sm:inline">•</span>
-            <a href="mailto:info@nwuc.edu.zm" className="underline hover:text-slate-950">info@nwuc.edu.zm</a>
-          </div>
+          <span className="text-slate-800 opacity-60">•</span>
+          <span className="rounded-full bg-slate-950 text-white px-2 py-0.5 text-[clamp(7.5px,0.7vw,10.5px)] font-black tracking-wider shrink-0">
+            {SYSTEM_VERSION.version}
+          </span>
+          <span className="text-slate-800 opacity-60">•</span>
+          <span className="shrink-0">Plot 511/518 Shilenda Road, Manyama, Lumwana, Zambia</span>
+          <span className="text-slate-800 opacity-60">•</span>
+          <span className="shrink-0">
+            Hotlines/WhatsApp: <strong>0964240051 / 0955550051 / 0979000051 / 0974896096 / 0974240051</strong>
+          </span>
+          <span className="text-slate-800 opacity-60">•</span>
+          <a href="mailto:info@nwuc.edu.zm" className="underline hover:text-slate-950 shrink-0">info@nwuc.edu.zm</a>
         </div>
       </footer>
 
