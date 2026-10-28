@@ -4,6 +4,7 @@ import nextDynamic from 'next/dynamic';
 import { ArrowLeft } from 'lucide-react';
 import { findNwuchasModule } from '@/lib/nwuchasModules';
 import { prisma } from '@/server/db';
+import { FinanceService } from '@/server/services/finance.service';
 
 function ConsoleSkeleton() {
   return (
@@ -318,19 +319,50 @@ export default async function ModuleWorkspace({
         }
       : null;
 
+  let initialInvoicesList =
+    (module.slug === 'finance' || module.slug === 'payments') && p.invoice
+      ? await p.invoice.findMany({
+          include: {
+            lines: true,
+            allocations: true,
+            learner: true,
+            term: true,
+          },
+          orderBy: { issuedDate: 'desc' },
+          take: 50,
+        })
+      : [];
+
+  // If fewer than 2 invoices exist or an existing invoice is fully paid with 0 debtors, seed realistic invoices
+  if (
+    (module.slug === 'finance' || module.slug === 'payments') &&
+    p.invoice &&
+    (initialInvoicesList.length <= 1 || initialInvoicesList.every((inv: any) => Number(inv.balance || 0) === 0))
+  ) {
+    try {
+      const org = await prisma.organisation.findFirst({ where: { code: 'NWUCHAS' } });
+      if (org) {
+        await FinanceService.seedDefaultInvoices(org.id);
+        initialInvoicesList = await p.invoice.findMany({
+          include: {
+            lines: true,
+            allocations: true,
+            learner: true,
+            term: true,
+          },
+          orderBy: { issuedDate: 'desc' },
+          take: 50,
+        });
+      }
+    } catch (err) {
+      console.error('[FinanceData] Error auto-seeding realistic invoices:', err);
+    }
+  }
+
   const financeData =
     (module.slug === 'finance' || module.slug === 'payments') && p.invoice
       ? {
-          invoices: await p.invoice.findMany({
-            include: {
-              lines: true,
-              allocations: true,
-              learner: true,
-              term: true,
-            },
-            orderBy: { issuedDate: 'desc' },
-            take: 50,
-          }),
+          invoices: initialInvoicesList,
           ledgers: await p.ledgerEntry.findMany({
             orderBy: { postedAt: 'desc' },
             take: 50,

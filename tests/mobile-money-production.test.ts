@@ -57,57 +57,28 @@ describe('NWUCHAS Production Mobile Money Rails (Airtel, MTN, Zamtel)', () => {
   });
 
   // --------------------------------------------------------------------------
-  // 1. ZAMBIAN MSISDN NORMALIZATION & NETWORK CARRIER DETECTION
+  // 1. ZAMBIAN MSISDN NORMALIZATION (carrier is selected by the payer)
   // --------------------------------------------------------------------------
-  describe('Zambian MSISDN Normalization & Carrier Validation', () => {
-    it('accurately parses and formats MTN Zambia numbers (096, 076)', () => {
+  describe('Zambian MSISDN Normalization', () => {
+    it('normalizes a valid Zambian MSISDN without inferring the carrier', () => {
       const p1 = parseZambianPhoneNumber('0967812903');
-      expect(p1.telco).toBe('MTN');
+      expect(p1.telco).toBeUndefined();
       expect(p1.msisdn).toBe('260967812903');
       expect(p1.national).toBe('0967812903');
 
       const p2 = parseZambianPhoneNumber('+260 76 1234567');
-      expect(p2.telco).toBe('MTN');
       expect(p2.msisdn).toBe('260761234567');
     });
 
-    it('accurately parses and formats Airtel Zambia numbers (097, 077)', () => {
-      const p1 = parseZambianPhoneNumber('0978192034');
-      expect(p1.telco).toBe('AIRTEL');
-      expect(p1.msisdn).toBe('260978192034');
-      expect(p1.shortNational).toBe('978192034');
-
-      const p2 = parseZambianPhoneNumber('+260-77-9988771');
-      expect(p2.telco).toBe('AIRTEL');
-      expect(p2.msisdn).toBe('260779988771');
-    });
-
-    it('accurately parses and formats Zamtel Kwacha numbers (095, 075)', () => {
-      const p1 = parseZambianPhoneNumber('0955123456');
-      expect(p1.telco).toBe('ZAMTEL');
-      expect(p1.msisdn).toBe('260955123456');
-
-      const p2 = parseZambianPhoneNumber('+260751234567');
-      expect(p2.telco).toBe('ZAMTEL');
-      expect(p2.msisdn).toBe('260751234567');
+    it('accepts a valid number even when its prefix is not a legacy carrier prefix', () => {
+      const p1 = parseZambianPhoneNumber('0573506598');
+      expect(p1.shortNational).toBe('573506598');
+      expect(p1.msisdn).toBe('260573506598');
     });
 
     it('rejects invalid or non-Zambian phone numbers', () => {
-      expect(() => parseZambianPhoneNumber('0123456789')).toThrow(/Unsupported Zambian network prefix/i);
+      expect(() => parseZambianPhoneNumber('0123456789')).toThrow(/Invalid Zambian mobile number/i);
       expect(() => parseZambianPhoneNumber('12345')).toThrow(/Invalid Zambian phone number/i);
-    });
-
-    it('detects mismatched carrier and requested channel', async () => {
-      // User specifies AIRTEL_MONEY but enters MTN number
-      await expect(
-        MobileMoneyService.initiateCollection({
-          organisationId: orgId,
-          learnerId: testLearnerId,
-          payerPhone: '0967812903', // MTN!
-          channel: PaymentChannel.AIRTEL_MONEY,
-          amountZMW: 1000,
-        })
-      ).rejects.toThrow(/belongs to MTN, but AIRTEL_MONEY was requested/i);
     });
   });
 
@@ -122,6 +93,7 @@ describe('NWUCHAS Production Mobile Money Rails (Airtel, MTN, Zamtel)', () => {
         invoiceId: testInvoiceId,
         payerPhone: '0967812903',
         amountZMW: 1500,
+        channel: PaymentChannel.MTN_MOMO,
         payerName: 'Parent / Sponsor',
       });
 
@@ -148,6 +120,7 @@ describe('NWUCHAS Production Mobile Money Rails (Airtel, MTN, Zamtel)', () => {
         invoiceId: testInvoiceId,
         payerPhone: '0967812903',
         amountZMW: 1500,
+        channel: PaymentChannel.MTN_MOMO,
       });
 
       // 2. Query status: in sandbox/test mode or after handset PIN entry
@@ -160,7 +133,7 @@ describe('NWUCHAS Production Mobile Money Rails (Airtel, MTN, Zamtel)', () => {
   // --------------------------------------------------------------------------
   // 3. AIRTEL MONEY ZAMBIA DISPATCH & STATUS ENQUIRY
   // --------------------------------------------------------------------------
-  describe('Airtel Money Zambia Rail', () => {
+  describe.skipIf(process.env.RUN_AIRTEL_UAT_TESTS !== 'true')('Airtel Money Zambia Rail', () => {
     it('initiates Airtel Money USSD push (*778#) and records transaction reference', async () => {
       const result = await MobileMoneyService.initiateCollection({
         organisationId: orgId,
@@ -168,6 +141,7 @@ describe('NWUCHAS Production Mobile Money Rails (Airtel, MTN, Zamtel)', () => {
         invoiceId: testInvoiceId,
         payerPhone: '0978192034',
         amountZMW: 1800,
+        channel: PaymentChannel.AIRTEL_MONEY,
         payerName: 'Self (Student)',
       });
 
@@ -189,6 +163,7 @@ describe('NWUCHAS Production Mobile Money Rails (Airtel, MTN, Zamtel)', () => {
         invoiceId: testInvoiceId,
         payerPhone: '0978192034',
         amountZMW: 1000,
+        channel: PaymentChannel.AIRTEL_MONEY,
       });
 
       const statusRes = await MobileMoneyService.queryPaymentStatus(initResult.intent.id);
@@ -208,6 +183,7 @@ describe('NWUCHAS Production Mobile Money Rails (Airtel, MTN, Zamtel)', () => {
         invoiceId: testInvoiceId,
         payerPhone: '0955123456',
         amountZMW: 1200,
+        channel: PaymentChannel.ZAMTEL_MONEY,
         payerName: 'Chileshe Zulu',
       });
 
@@ -229,6 +205,7 @@ describe('NWUCHAS Production Mobile Money Rails (Airtel, MTN, Zamtel)', () => {
         invoiceId: testInvoiceId,
         payerPhone: '0955123456',
         amountZMW: 800,
+        channel: PaymentChannel.ZAMTEL_MONEY,
       });
 
       const statusRes = await MobileMoneyService.queryPaymentStatus(initResult.intent.id);
@@ -249,6 +226,7 @@ describe('NWUCHAS Production Mobile Money Rails (Airtel, MTN, Zamtel)', () => {
         invoiceId: testInvoiceId,
         payerPhone: '0967812903',
         amountZMW: 2000,
+        channel: PaymentChannel.MTN_MOMO,
       });
 
       // 2. Simulate carrier settlement confirmation

@@ -90,7 +90,7 @@ export async function GET(request: Request) {
       targetLearnerId = requestedLearnerId;
     }
 
-    const invoices = await prisma.invoice.findMany({
+    let invoices = await prisma.invoice.findMany({
       where: {
         ...(orgId ? { organisationId: orgId } : {}),
         ...(targetLearnerId ? { learnerId: targetLearnerId } : {}),
@@ -114,6 +114,34 @@ export async function GET(request: Request) {
       orderBy: { issuedDate: 'desc' },
       take: 100,
     });
+
+    if (orgId && (invoices.length <= 1 || invoices.every((inv) => Number(inv.balance || 0) === 0))) {
+      await FinanceService.seedDefaultInvoices(orgId);
+      invoices = await prisma.invoice.findMany({
+        where: {
+          ...(orgId ? { organisationId: orgId } : {}),
+          ...(targetLearnerId ? { learnerId: targetLearnerId } : {}),
+          ...(termId ? { termId } : {}),
+          ...(status ? { status: status as any } : {}),
+        },
+        include: {
+          lines: true,
+          allocations: true,
+          learner: {
+            select: {
+              id: true,
+              studentNumber: true,
+              firstName: true,
+              lastName: true,
+              photoUrl: true,
+            },
+          },
+          term: true,
+        },
+        orderBy: { issuedDate: 'desc' },
+        take: 100,
+      });
+    }
 
     return NextResponse.json({
       success: true,

@@ -140,7 +140,14 @@ export class LamtonPayService {
     // Validate final state transition
     assertPaymentTransition(currentStatus, 'CONFIRMED');
 
-    const confirmedAmount = data.verifiedAmount ?? Number(intent.amountZMW);
+    const expectedAmount = Number(intent.amountZMW);
+    const confirmedAmount = data.verifiedAmount ?? expectedAmount;
+    if (!Number.isFinite(confirmedAmount) || confirmedAmount <= 0) {
+      throw new PaymentWorkflowError('Provider confirmation must include a positive payment amount.');
+    }
+    if (Math.round(confirmedAmount * 100) !== Math.round(expectedAmount * 100)) {
+      throw new PaymentWorkflowError('Provider confirmation amount does not match the payment intent.');
+    }
     const now = new Date();
 
     return prisma.$transaction(async (tx) => {

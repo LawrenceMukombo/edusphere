@@ -3,20 +3,18 @@ import crypto from 'crypto';
 import { prisma } from '@/server/db';
 import { LamtonPayService } from '@/server/payments/lamtonpay.service';
 
-const WEBHOOK_SECRET = process.env.LAMTONPAY_WEBHOOK_SECRET || 'lamtonpay-webhook-secret-nwuchas-2026';
+const WEBHOOK_SECRET = process.env.AIRTEL_MONEY_WEBHOOK_SECRET;
 
 export async function POST(req: NextRequest) {
   const rawBody = await req.text();
   const signature = req.headers.get('x-lamtonpay-signature') || req.headers.get('x-signature');
 
-  // Verify HMAC SHA-256 signature
-  const hmac = crypto.createHmac('sha256', WEBHOOK_SECRET);
-  hmac.update(rawBody);
-  const expectedSignature = hmac.digest('hex');
-
-  const isVerified = Boolean(
-    signature && (signature === expectedSignature || signature === `sha256=${expectedSignature}`)
-  );
+  // Airtel callbacks are fail-closed. Enable this handler only after Airtel has
+  // confirmed that its UAT callback signature uses this HMAC contract.
+  const expectedSignature = WEBHOOK_SECRET
+    ? crypto.createHmac('sha256', WEBHOOK_SECRET).update(rawBody).digest('hex')
+    : null;
+  const isVerified = Boolean(signature && expectedSignature && (signature === expectedSignature || signature === `sha256=${expectedSignature}`));
 
   let payload: any;
   try {
@@ -49,6 +47,10 @@ export async function POST(req: NextRequest) {
     if (payload.transaction.status && !['TS', 'SUCCESS', 'COMPLETED'].includes(payload.transaction.status)) {
       isSuccessful = false;
     }
+  }
+
+  if (providerCode === 'AIRTEL_MONEY_ZM' && !isVerified) {
+    return NextResponse.json({ success: false, message: 'Unverified Airtel Money callback.' }, { status: 401 });
   }
 
   // 3. Zamtel Kwacha Callback Payload Mapping

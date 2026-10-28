@@ -16,7 +16,8 @@ export interface NormalizedPhone {
   msisdn: string;       // 260961234567
   national: string;     // 0961234567
   shortNational: string;// 961234567
-  telco: ZambianTelco;
+  /** Carrier prefixes are not used for routing because numbers can be ported. */
+  telco?: ZambianTelco;
   formatted: string;    // +260 96 1234567
 }
 
@@ -28,27 +29,16 @@ export function parseZambianPhoneNumber(phone: string): NormalizedPhone {
     national = '0' + clean.slice(3);
   } else if (clean.startsWith('0') && clean.length === 10) {
     national = clean;
-  } else if ((clean.startsWith('9') || clean.startsWith('7')) && clean.length === 9) {
+  } else if (clean.length === 9) {
     national = '0' + clean;
   } else {
     throw new Error(
-      `Invalid Zambian phone number "${phone}". Expected 10 digits starting with 09x or 07x (e.g., 0967812903).`
+      `Invalid Zambian phone number "${phone}". Use a 10-digit national number or a +260 international number.`
     );
   }
 
-  const prefix = national.slice(0, 3);
-  let telco: ZambianTelco;
-
-  if (['096', '076'].includes(prefix)) {
-    telco = 'MTN';
-  } else if (['097', '077'].includes(prefix)) {
-    telco = 'AIRTEL';
-  } else if (['095', '075'].includes(prefix)) {
-    telco = 'ZAMTEL';
-  } else {
-    throw new Error(
-      `Unsupported Zambian network prefix "${prefix}". Supported: MTN (096/076), Airtel (097/077), Zamtel (095/075).`
-    );
+  if (!/^0[579]\d{8}$/.test(national)) {
+    throw new Error(`Invalid Zambian mobile number "${phone}".`);
   }
 
   const shortNational = national.slice(1);
@@ -60,7 +50,6 @@ export function parseZambianPhoneNumber(phone: string): NormalizedPhone {
     msisdn,
     national,
     shortNational,
-    telco,
     formatted,
   };
 }
@@ -249,12 +238,30 @@ export class AirtelMoneyClient {
   private static tokenCache: TokenCache | null = null;
 
   static getConfig() {
+    const baseUrl = process.env.AIRTEL_MONEY_API_URL;
+    const clientId = process.env.AIRTEL_MONEY_CLIENT_ID;
+    const clientSecret = process.env.AIRTEL_MONEY_CLIENT_SECRET;
+    const country = process.env.AIRTEL_MONEY_COUNTRY;
+    const currency = process.env.AIRTEL_MONEY_CURRENCY;
+    const missing = [
+      !baseUrl && 'AIRTEL_MONEY_API_URL',
+      !clientId && 'AIRTEL_MONEY_CLIENT_ID',
+      !clientSecret && 'AIRTEL_MONEY_CLIENT_SECRET',
+      !country && 'AIRTEL_MONEY_COUNTRY',
+      !currency && 'AIRTEL_MONEY_CURRENCY',
+    ].filter(Boolean);
+    if (missing.length) {
+      throw new PaymentWorkflowError(`Airtel Money is not configured. Missing: ${missing.join(', ')}.`);
+    }
+    if (!baseUrl!.startsWith('https://')) {
+      throw new PaymentWorkflowError('AIRTEL_MONEY_API_URL must use HTTPS.');
+    }
     return {
-      baseUrl: process.env.AIRTEL_MONEY_API_URL || 'https://openapiuat.airtel.africa',
-      clientId: process.env.AIRTEL_MONEY_CLIENT_ID || 'nwuchas-airtel-client-id',
-      clientSecret: process.env.AIRTEL_MONEY_CLIENT_SECRET || 'nwuchas-airtel-client-secret',
-      country: process.env.AIRTEL_MONEY_COUNTRY || 'ZM',
-      currency: process.env.AIRTEL_MONEY_CURRENCY || 'ZMW',
+      baseUrl: baseUrl!.replace(/\/$/, ''),
+      clientId: clientId!,
+      clientSecret: clientSecret!,
+      country: country!,
+      currency: currency!,
     };
   }
 
@@ -276,20 +283,16 @@ export class AirtelMoneyClient {
         signal: AbortSignal.timeout(1200),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        const expiresIn = (data.expires_in || 3600) * 1000;
-        this.tokenCache = {
-          token: data.access_token,
-          expiresAt: Date.now() + expiresIn - 60000,
-        };
-        return data.access_token;
-      }
-    } catch (_) {}
-
-    const fallbackToken = `airtel_mock_token_${Date.now()}`;
-    this.tokenCache = { token: fallbackToken, expiresAt: Date.now() + 3600000 };
-    return fallbackToken;
+      if (!res.ok) throw new PaymentWorkflowError(`Airtel token request failed (${res.status}).`);
+      const data = await res.json();
+      if (!data.access_token) throw new PaymentWorkflowError('Airtel token response did not contain an access token.');
+      const expiresIn = (data.expires_in || 3600) * 1000;
+      this.tokenCache = { token: data.access_token, expiresAt: Date.now() + expiresIn - 60000 };
+      return data.access_token;
+    } catch (error) {
+      if (error instanceof PaymentWorkflowError) throw error;
+      throw new PaymentWorkflowError(`Airtel token request could not be completed: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
   }
 
   static async requestPayment(params: {
@@ -329,21 +332,17 @@ export class AirtelMoneyClient {
         signal: AbortSignal.timeout(1200),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        return {
-          airtelMoneyId: data.data?.transaction?.airtel_money_id || `AIRTEL-ZM-${Date.now()}`,
-          status: data.data?.transaction?.status || 'TIP',
-          message: data.status?.message || 'USSD prompt dispatched to handset.',
-        };
+      if (!res.ok) throw new PaymentWorkflowError(`Airtel payment request failed (${res.status}).`);
+      const data = await res.json();
+      const transaction = data.data?.transaction;
+      if (!transaction?.airtel_money_id || !transaction?.status) {
+        throw new PaymentWorkflowError('Airtel payment response was missing transaction details.');
       }
-    } catch (_) {}
-
-    return {
-      airtelMoneyId: `AIRTEL-ZM-${params.transactionId.slice(-6)}`,
-      status: 'TIP', // Transaction In Progress
-      message: 'Airtel Money USSD prompt sent to subscriber (*778#).',
-    };
+      return { airtelMoneyId: transaction.airtel_money_id, status: transaction.status, message: data.status?.message || 'Airtel accepted the payment request.' };
+    } catch (error) {
+      if (error instanceof PaymentWorkflowError) throw error;
+      throw new PaymentWorkflowError(`Airtel payment request could not be completed: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
   }
 
   static async getTransactionStatus(transactionId: string): Promise<{
@@ -365,21 +364,19 @@ export class AirtelMoneyClient {
         signal: AbortSignal.timeout(1200),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        const txStatus = data.data?.transaction?.status;
-        return {
-          status: txStatus === 'TS' ? 'SUCCESS' : txStatus === 'TF' ? 'FAILED' : 'PENDING',
-          airtelMoneyId: data.data?.transaction?.airtel_money_id,
-          message: data.status?.message,
-        };
-      }
-    } catch (_) {}
-
-    return {
-      status: 'PENDING',
-      message: 'Pending subscriber authorisation on Airtel Money',
-    };
+      if (!res.ok) throw new PaymentWorkflowError(`Airtel status request failed (${res.status}).`);
+      const data = await res.json();
+      const txStatus = data.data?.transaction?.status;
+      if (!txStatus) throw new PaymentWorkflowError('Airtel status response was missing transaction status.');
+      return {
+        status: txStatus === 'TS' ? 'SUCCESS' : txStatus === 'TF' ? 'FAILED' : 'PENDING',
+        airtelMoneyId: data.data?.transaction?.airtel_money_id,
+        message: data.status?.message,
+      };
+    } catch (error) {
+      if (error instanceof PaymentWorkflowError) throw error;
+      throw new PaymentWorkflowError(`Airtel status request could not be completed: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
   }
 }
 
@@ -492,7 +489,8 @@ export interface InitiateMobileMoneyInput {
   invoiceId?: string;
   payerPhone: string;
   amountZMW: number;
-  channel?: PaymentChannel; // Optional: if omitted, auto-detected from phone prefix
+  /** The payer explicitly selects the wallet rail; prefix routing is unsafe for ported numbers. */
+  channel: PaymentChannel;
   payerName?: string;
   metadata?: Record<string, any>;
 }
@@ -510,23 +508,16 @@ export class MobileMoneyService {
     // 1. Parse and validate Zambian phone number
     const parsedPhone = parseZambianPhoneNumber(input.payerPhone);
 
-    // 2. Validate channel match or auto-assign
-    let targetChannel = input.channel;
-    if (!targetChannel) {
-      targetChannel = mapTelcoToPaymentChannel(parsedPhone.telco);
-    } else {
-      // Ensure requested channel matches carrier prefix
-      const expectedChannel = mapTelcoToPaymentChannel(parsedPhone.telco);
-      if (
-        (targetChannel === PaymentChannel.MTN_MOMO && expectedChannel !== PaymentChannel.MTN_MOMO) ||
-        (targetChannel === PaymentChannel.AIRTEL_MONEY && expectedChannel !== PaymentChannel.AIRTEL_MONEY) ||
-        (targetChannel === PaymentChannel.ZAMTEL_MONEY && expectedChannel !== PaymentChannel.ZAMTEL_MONEY)
-      ) {
-        throw new PaymentWorkflowError(
-          `Phone number ${parsedPhone.national} belongs to ${parsedPhone.telco}, but ${targetChannel} was requested. ` +
-          `Please select ${expectedChannel} or provide a matching number.`
-        );
-      }
+    // 2. Do not infer a carrier from the prefix: the provider validates wallet
+    // eligibility and handles ported numbers.
+    const targetChannel = input.channel;
+    const supportedChannels = new Set<PaymentChannel>([
+      PaymentChannel.MTN_MOMO,
+      PaymentChannel.AIRTEL_MONEY,
+      PaymentChannel.ZAMTEL_MONEY,
+    ]);
+    if (!supportedChannels.has(targetChannel)) {
+      throw new PaymentWorkflowError('Select a supported mobile-money payment channel.');
     }
 
     // 3. Create PaymentIntent via LamtonPayService (provides idempotency, businessReference, and record)
@@ -542,7 +533,6 @@ export class MobileMoneyService {
       idempotencyKey,
       metadata: {
         ...input.metadata,
-        telco: parsedPhone.telco,
         formattedPhone: parsedPhone.formatted,
       },
     });
@@ -557,7 +547,7 @@ export class MobileMoneyService {
       ussdCodePrompt: string;
     };
 
-    if (parsedPhone.telco === 'MTN') {
+    if (targetChannel === PaymentChannel.MTN_MOMO) {
       const mtnRef = crypto.randomUUID();
       const mtnRes = await MtnMomoClient.requestToPay({
         referenceId: mtnRef,
@@ -574,7 +564,7 @@ export class MobileMoneyService {
         statusText: 'MTN Mobile Money USSD prompt dispatched. Please enter MoMo PIN on handset.',
         ussdCodePrompt: '*303#',
       };
-    } else if (parsedPhone.telco === 'AIRTEL') {
+    } else if (targetChannel === PaymentChannel.AIRTEL_MONEY) {
       const airtelRes = await AirtelMoneyClient.requestPayment({
         transactionId: intent.businessReference,
         amountZMW: input.amountZMW,
@@ -629,7 +619,7 @@ export class MobileMoneyService {
           phone: parsedPhone.msisdn,
           amountZMW: input.amountZMW,
           businessReference: intent.businessReference,
-          telco: parsedPhone.telco,
+          channel: targetChannel,
         }),
         responsePayload: JSON.stringify(dispatchResult),
       },
@@ -637,7 +627,7 @@ export class MobileMoneyService {
 
     return {
       intent: updatedIntent,
-      telco: parsedPhone.telco,
+      telco: targetChannel === PaymentChannel.AIRTEL_MONEY ? 'AIRTEL' : targetChannel === PaymentChannel.ZAMTEL_MONEY ? 'ZAMTEL' : 'MTN',
       formattedPhone: parsedPhone.formatted,
       ussdPrompt: dispatchResult.ussdCodePrompt,
       instructions: dispatchResult.statusText,
@@ -666,15 +656,9 @@ export class MobileMoneyService {
       };
     }
 
-    const payerPhone = intent.payerPhone || '';
-    let telco: ZambianTelco = 'MTN';
-    try {
-      const parsed = parseZambianPhoneNumber(payerPhone);
-      telco = parsed.telco;
-    } catch (_) {
-      if (intent.channel === PaymentChannel.AIRTEL_MONEY) telco = 'AIRTEL';
-      else if (intent.channel === PaymentChannel.ZAMTEL_MONEY) telco = 'ZAMTEL';
-    }
+    const telco: ZambianTelco =
+      intent.channel === PaymentChannel.AIRTEL_MONEY ? 'AIRTEL' :
+      intent.channel === PaymentChannel.ZAMTEL_MONEY ? 'ZAMTEL' : 'MTN';
 
     let isSuccess = false;
     let isFailed = false;

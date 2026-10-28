@@ -4,6 +4,7 @@ import { LamtonPayService } from '@/server/payments/lamtonpay.service';
 import { MobileMoneyService } from '@/server/payments/mobileMoney.service';
 import { prisma } from '@/server/db';
 import { PaymentChannel } from '@prisma/client';
+import { hasPermission } from '@/server/authorization';
 
 export async function GET(req: NextRequest) {
   const token = extractSessionToken(req.headers);
@@ -116,6 +117,9 @@ export async function POST(req: NextRequest) {
 
     // 3. Confirm payment (admin / bursar override or verified settlement)
     if (body.action === 'confirm') {
+      if (!session || !hasPermission(session.role, 'finance:approve')) {
+        return NextResponse.json({ success: false, message: 'Finance approval permission is required.' }, { status: 403 });
+      }
       const result = await LamtonPayService.confirmPayment({
         intentId: body.intentId,
         providerTransactionId: body.providerTransactionId || `TX-${Date.now()}`,
@@ -142,6 +146,9 @@ export async function POST(req: NextRequest) {
 
     // 5. Webhook inbox event logging
     if (body.action === 'simulate-webhook' || body.action === 'post-webhook') {
+      if (process.env.NODE_ENV === 'production') {
+        return NextResponse.json({ success: false, message: 'Webhook simulation is disabled outside local development.' }, { status: 404 });
+      }
       const webhook = await p.webhookInboxEvent.create({
         data: {
           providerCode: body.providerCode || 'MTN_MOMO_ZM',
