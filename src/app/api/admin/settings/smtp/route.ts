@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAuth } from '@/server/auth';
 import { hasPermission } from '@/server/authorization';
 import { EmailService } from '@/server/email.service';
+import { MfaService } from '@/server/mfa.service';
 import { prisma } from '@/server/db';
 import { logAuditEvent } from '@/server/audit';
 import { SystemRole } from '@prisma/client';
@@ -34,6 +35,7 @@ export async function GET(req: NextRequest) {
     }
 
     const activeConfig = await EmailService.getActiveConfig(orgId);
+    const mfaEnforced = await MfaService.isMfaEnforced(orgId);
 
     // Check if configured in DB
     const dbRecord = await prisma.moduleWorkspaceRecord.findUnique({
@@ -56,6 +58,7 @@ export async function GET(req: NextRequest) {
         user: activeConfig?.user || 'noreply@nwuc.edu.zm',
         fromName: activeConfig?.fromName || 'North Western University College',
         hasPasswordSet: Boolean(activeConfig?.pass),
+        mfaEnforced,
         lastUpdated: dbRecord?.updatedAt || null,
       },
     });
@@ -240,6 +243,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         success: true,
         message: `SMTP Gateway successfully authenticated and saved. Automated emails and 2FA OTP codes are now live from ${user.trim()}!`,
+      });
+    }
+
+    // 4. ACTION: TOGGLE_MFA
+    if (action === 'TOGGLE_MFA') {
+      const enabled = Boolean(body.enabled);
+      await MfaService.setMfaEnforced(
+        orgId,
+        enabled,
+        `${session.firstName} ${session.lastName} (${session.email})`
+      );
+
+      await logAuditEvent({
+        organisationId: orgId,
+        userId: session.userId,
+        action: enabled ? 'MFA_ENFORCEMENT_ENABLED' : 'MFA_ENFORCEMENT_DISABLED',
+        entityType: 'SystemSettings',
+        entityId: 'INSTITUTIONAL_MFA_POLICY',
+        details: { mfaEnforced: enabled },
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: enabled
+          ? 'Two-Factor Authentication step-up security is now ENFORCED across all sensitive modules.'
+          : 'Two-Factor Authentication step-up security is now OPTIONAL/PAUSED. Users can access modules directly.',
+        data: { mfaEnforced: enabled },
       });
     }
 

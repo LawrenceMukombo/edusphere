@@ -259,6 +259,90 @@ export class MfaService {
   }
 
   /**
+   * Cached institutional 2FA enforcement setting
+   */
+  private static mfaEnforcedCache: { value: boolean; timestamp: number } | null = null;
+
+  /**
+   * Checks whether institutional 2FA step-up enforcement is active.
+   * Default: false (configurable via Settings -> Email & 2FA Gateway)
+   */
+  static async isMfaEnforced(organisationId?: string): Promise<boolean> {
+    const now = Date.now();
+    if (this.mfaEnforcedCache && now - this.mfaEnforcedCache.timestamp < 30000) {
+      return this.mfaEnforcedCache.value;
+    }
+
+    try {
+      const org = organisationId
+        ? organisationId
+        : ((await prisma.organisation.findFirst({ where: { code: 'NWUCHAS' } })) || (await prisma.organisation.findFirst()))?.id;
+
+      if (org) {
+        const record = await prisma.moduleWorkspaceRecord.findUnique({
+          where: {
+            organisationId_moduleSlug_title: {
+              organisationId: org,
+              moduleSlug: 'system_settings_mfa',
+              title: 'INSTITUTIONAL_MFA_POLICY',
+            },
+          },
+        });
+
+        if (record?.metadataJson) {
+          const parsed = JSON.parse(record.metadataJson);
+          const enabled = Boolean(parsed.mfaEnforced);
+          this.mfaEnforcedCache = { value: enabled, timestamp: now };
+          return enabled;
+        }
+      }
+    } catch (e) {
+      console.warn('[MfaService] Could not check MFA policy from database:', e);
+    }
+
+    // Default: Disabled until administrator explicitly activates it in Settings
+    this.mfaEnforcedCache = { value: false, timestamp: now };
+    return false;
+  }
+
+  /**
+   * Sets institutional 2FA enforcement policy (stored in DB)
+   */
+  static async setMfaEnforced(organisationId: string, enabled: boolean, updatedBy: string): Promise<void> {
+    const payload = {
+      mfaEnforced: enabled,
+      updatedAt: new Date().toISOString(),
+      updatedBy,
+    };
+
+    await prisma.moduleWorkspaceRecord.upsert({
+      where: {
+        organisationId_moduleSlug_title: {
+          organisationId,
+          moduleSlug: 'system_settings_mfa',
+          title: 'INSTITUTIONAL_MFA_POLICY',
+        },
+      },
+      create: {
+        organisationId,
+        moduleSlug: 'system_settings_mfa',
+        title: 'INSTITUTIONAL_MFA_POLICY',
+        status: enabled ? 'ACTIVE' : 'INACTIVE',
+        summary: `Institutional 2FA Step-Up Enforcement: ${enabled ? 'ENABLED' : 'DISABLED'}`,
+        metadataJson: JSON.stringify(payload),
+      },
+      update: {
+        status: enabled ? 'ACTIVE' : 'INACTIVE',
+        summary: `Institutional 2FA Step-Up Enforcement: ${enabled ? 'ENABLED' : 'DISABLED'}`,
+        metadataJson: JSON.stringify(payload),
+        updatedAt: new Date(),
+      },
+    });
+
+    this.mfaEnforcedCache = { value: enabled, timestamp: Date.now() };
+  }
+
+  /**
    * Resets or clears challenges for testing purposes
    */
   static clearAllChallenges(): void {

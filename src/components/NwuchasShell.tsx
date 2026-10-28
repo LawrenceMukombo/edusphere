@@ -98,6 +98,7 @@ export function NwuchasShell({ children }: { children: React.ReactNode }) {
 
   // Institutional Two-Factor Authentication (2FA) State for Sensitive Modules
   const [isMfaVerified, setIsMfaVerified] = useState<boolean>(false);
+  const [isMfaEnforced, setIsMfaEnforced] = useState<boolean>(false);
   const [isMfaModalOpen, setIsMfaModalOpen] = useState<boolean>(false);
   const [mfaTargetModule, setMfaTargetModule] = useState<string>('finance');
 
@@ -115,7 +116,9 @@ export function NwuchasShell({ children }: { children: React.ReactNode }) {
           const json = await res.json();
           if (json.success && json.data) {
             const verified = Boolean(json.data.isMfaVerified);
+            const enforced = Boolean(json.data.mfaEnforced);
             setIsMfaVerified(verified);
+            setIsMfaEnforced(enforced);
             if (verified) {
               localStorage.setItem('nwuchas_mfa_verified', 'true');
             } else {
@@ -197,14 +200,14 @@ export function NwuchasShell({ children }: { children: React.ReactNode }) {
   const isCurrentRouteSensitive = isSensitiveModule(pathname);
   const currentPolicy = getSensitiveModulePolicy(pathname);
 
-  // Auto-open 2FA modal if user accesses a sensitive route without verification
+  // Auto-open 2FA modal only if institutional 2FA enforcement is enabled in system settings
   useEffect(() => {
-    if (isCurrentRouteSensitive && !isMfaVerified && !isPublicRoute) {
+    if (isMfaEnforced && isCurrentRouteSensitive && !isMfaVerified && !isPublicRoute) {
       const cleanSlug = pathname.replace(/^\/modules\//, '').replace(/^\/portal\//, '').split('/')[0];
       setMfaTargetModule(cleanSlug || 'finance');
       setIsMfaModalOpen(true);
     }
-  }, [pathname, isCurrentRouteSensitive, isMfaVerified, isPublicRoute]);
+  }, [pathname, isMfaEnforced, isCurrentRouteSensitive, isMfaVerified, isPublicRoute]);
 
   const handleLockMfa = async () => {
     try {

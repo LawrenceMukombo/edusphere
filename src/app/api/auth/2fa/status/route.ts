@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { authenticateRequest } from '@/server/auth';
 import { prisma } from '@/server/db';
 import { SENSITIVE_MODULE_POLICIES } from '@/lib/sensitiveModules';
+import { MfaService } from '@/server/mfa.service';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +30,8 @@ export async function GET(req: Request) {
       },
     });
 
+    const mfaEnforced = await MfaService.isMfaEnforced(session.organisationId || undefined);
+
     return NextResponse.json({
       success: true,
       data: {
@@ -38,6 +41,7 @@ export async function GET(req: Request) {
         isMfaVerified: Boolean(session.isMfaVerified),
         mfaVerifiedAt: session.mfaVerifiedAt || null,
         mfaConfigured: Boolean(user?.mfaEnabled),
+        mfaEnforced,
         hasPhoneConfigured: Boolean(user?.phone),
         sensitiveModules: Object.keys(SENSITIVE_MODULE_POLICIES),
       },
