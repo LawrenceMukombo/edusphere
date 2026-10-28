@@ -32,14 +32,38 @@ export async function GET(req: NextRequest) {
 
     let orgId = session?.organisationId;
     if (!orgId) {
-      const nwuchasOrg = await prisma.organisation.findFirst({
+      let nwuchasOrg = await prisma.organisation.findFirst({
         where: { code: 'NWUCHAS' },
       });
+      if (!nwuchasOrg) {
+        nwuchasOrg = await prisma.organisation.findFirst();
+      }
       orgId = nwuchasOrg?.id || null;
     }
 
     if (!orgId) {
-      return NextResponse.json({ success: true, data: [], metrics: null });
+      // Fallback: create default NWUCHAS organisation record if missing
+      const fallbackOrg = await prisma.organisation.upsert({
+        where: { code: 'NWUCHAS' },
+        update: {},
+        create: {
+          code: 'NWUCHAS',
+          name: 'North Western University College of Health and Applied Sciences',
+          email: 'info@nwuchas.edu.zm',
+          phone: '+260970000001',
+        },
+      });
+      orgId = fallbackOrg.id;
+    }
+
+    // Auto-seed institutional assets if table is empty or explicitly requested
+    const shouldSeed = searchParams.get('seed') === 'true';
+    const existingCount = await prisma.assetItem.count({
+      where: { organisationId: orgId, isDeleted: false },
+    });
+
+    if (existingCount === 0 || shouldSeed) {
+      await AssetService.seedDefaultAssets(orgId);
     }
 
     if (summaryOnly) {

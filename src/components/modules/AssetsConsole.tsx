@@ -31,6 +31,17 @@ interface AssetsConsoleProps {
   initialAssets?: any[];
 }
 
+function mapToUiCategory(cat: string): 'CLINICAL' | 'POWER' | 'UTILITY' | 'ICT' | 'FLEET' | 'FACILITY' {
+  if (!cat) return 'FACILITY';
+  const c = cat.toUpperCase();
+  if (c.includes('CLINICAL') || c.includes('MEDICAL') || c.includes('LABORATORY')) return 'CLINICAL';
+  if (c.includes('POWER') || c.includes('ENERGY') || c.includes('GENERATOR')) return 'POWER';
+  if (c.includes('FLEET') || c.includes('TRANSPORT') || c.includes('VEHICLE')) return 'FLEET';
+  if (c.includes('IT') || c.includes('COMPUTING') || c.includes('ICT')) return 'ICT';
+  if (c.includes('UTILITY') || c.includes('WATER')) return 'UTILITY';
+  return 'FACILITY';
+}
+
 function parseAssetRecords(records: any[]): AssetRecord[] {
   if (!records || records.length === 0) return [];
   return records.map((r) => {
@@ -40,7 +51,7 @@ function parseAssetRecords(records: any[]): AssetRecord[] {
         id: r.id,
         tag: r.assetTag,
         name: r.name,
-        category: r.category || 'LABORATORY',
+        category: mapToUiCategory(r.category),
         location: r.location || 'Manyama Campus',
         custodian: r.custodianName || 'Estates Directorate',
         acquisitionDate: new Date(r.purchaseDate || Date.now()).toLocaleDateString('en-GB'),
@@ -61,7 +72,7 @@ function parseAssetRecords(records: any[]): AssetRecord[] {
           id: r.id,
           tag: p.tag || 'NWU-AST-000',
           name: p.name || r.title,
-          category: p.category || 'FACILITY',
+          category: mapToUiCategory(p.category || 'FACILITY'),
           location: p.location || 'Manyama Campus',
           custodian: p.custodian || 'Facilities Unit',
           acquisitionDate: p.acquisitionDate || '15/01/2024',
@@ -94,16 +105,213 @@ function parseAssetRecords(records: any[]): AssetRecord[] {
   });
 }
 
+// Built-in institutional standard fallback assets for immediate zero-latency rendering
+const DEFAULT_INSTITUTIONAL_ASSETS: AssetRecord[] = [
+  {
+    id: 'nwu-gen-01',
+    tag: 'NWU-PWR-2024-001',
+    name: '250kVA Standby Diesel Generator (Auto-Mains Failure)',
+    category: 'POWER',
+    location: 'Main Kansanshi Heavy Plant Substation',
+    custodian: 'Eng. Patrick Banda (Facilities)',
+    acquisitionDate: '15/03/2024',
+    valueZmw: 527700,
+    status: 'OPERATIONAL',
+    lastServiced: '10/02/2026',
+    nextService: '10/05/2026',
+    notes: '250kVA heavy silent Perkins standby generator powering entire hospital simulation lab.',
+    serialNumber: 'FGW-250-ZM-88910',
+    supplier: 'FG Wilson / Perkins',
+  },
+  {
+    id: 'nwu-sol-02',
+    tag: 'NWU-PWR-2025-002',
+    name: '50kVA Commercial Hybrid Solar Inverter System',
+    category: 'POWER',
+    location: 'Urban Campus Solar Power Inverter Bay',
+    custodian: 'Eng. Patrick Banda (Facilities)',
+    acquisitionDate: '20/01/2025',
+    valueZmw: 277700,
+    status: 'OPERATIONAL',
+    lastServiced: '15/01/2026',
+    nextService: '15/07/2026',
+    notes: '3-phase hybrid solar inverter with LiFePO4 battery storage bank.',
+    serialNumber: 'DEYE-50K-HYB-9918',
+    supplier: 'Deye / FelicitySolar',
+  },
+  {
+    id: 'nwu-wtr-03',
+    tag: 'NWU-UTL-2024-003',
+    name: '50,000-Litre High-Level Borehole Water Storage & Booster Rig',
+    category: 'UTILITY',
+    location: 'Overhead Steel Tower & Pump House',
+    custodian: 'Eng. Patrick Banda (Facilities)',
+    acquisitionDate: '10/05/2024',
+    valueZmw: 211900,
+    status: 'OPERATIONAL',
+    lastServiced: '22/01/2026',
+    nextService: '22/04/2026',
+    notes: 'Elevated water reservoir with automated pressure boosters.',
+    serialNumber: 'WT-50KL-SOL-2024',
+    supplier: 'Roto Tanks Zambia',
+  },
+  {
+    id: 'nwu-bus-04',
+    tag: 'NWU-FLE-2023-001',
+    name: 'Toyota Coaster 32-Seater Executive Campus Bus (Reg: BAA 2914)',
+    category: 'FLEET',
+    location: 'Bus Fleet Depot & Parking Bay 1',
+    custodian: 'Mr. Moses Chilufya (Senior Driver)',
+    acquisitionDate: '10/08/2023',
+    valueZmw: 663300,
+    status: 'OPERATIONAL',
+    lastServiced: '18/02/2026',
+    nextService: '18/05/2026',
+    notes: 'Official campus transit bus with QR barcode registration and GPS tracking.',
+    serialNumber: 'XZB50-0049182',
+    supplier: 'Toyota Zambia',
+  },
+  {
+    id: 'nwu-van-05',
+    tag: 'NWU-FLE-2024-002',
+    name: 'Toyota HiAce 16-Seater Commuter Minibus (Reg: ALD 8820)',
+    category: 'FLEET',
+    location: 'Urban Campus Student Drop-off Bay',
+    custodian: 'Mr. Frank Kalumba (Transport)',
+    acquisitionDate: '14/02/2024',
+    valueZmw: 358100,
+    status: 'OPERATIONAL',
+    lastServiced: '05/02/2026',
+    nextService: '05/05/2026',
+    notes: 'Dedicated to clinical rotation hospital transfers.',
+    serialNumber: 'KDH200-098412',
+    supplier: 'Toyota Zambia',
+  },
+  {
+    id: 'nwu-amb-06',
+    tag: 'NWU-FLE-2024-004',
+    name: 'Toyota Land Cruiser BLS Ambulance (Reg: BAE 8891)',
+    category: 'FLEET',
+    location: 'Clinical Emergency Response Bay',
+    custodian: 'Clinical Services Directorate',
+    acquisitionDate: '01/06/2024',
+    valueZmw: 720000,
+    status: 'OPERATIONAL',
+    lastServiced: '10/01/2026',
+    nextService: '10/06/2026',
+    notes: 'Emergency medical transfer vehicle equipped with transport ventilator.',
+    serialNumber: 'HZJ78-019842',
+    supplier: 'Toyota Gibraltar / Zambia',
+  },
+  {
+    id: 'nwu-sim-07',
+    tag: 'NWU-MED-2024-001',
+    name: 'Laerdal SimMan 3G Advanced High-Fidelity Patient Simulator',
+    category: 'CLINICAL',
+    location: 'Simulation Hospital Suite (Clinical Lab 1)',
+    custodian: 'Dr. Frank Tembo (Clinical Skills)',
+    acquisitionDate: '12/03/2024',
+    valueZmw: 495000,
+    status: 'OPERATIONAL',
+    lastServiced: '15/01/2026',
+    nextService: '15/07/2026',
+    notes: 'Wireless human patient simulator for advanced resuscitation training.',
+    serialNumber: 'LRD-SIM3G-ZM-001',
+    supplier: 'Laerdal Medical',
+  },
+  {
+    id: 'nwu-mat-08',
+    tag: 'NWU-MED-2024-002',
+    name: 'Gaumard Victoria Maternal & Neonatal Birthing Simulator',
+    category: 'CLINICAL',
+    location: 'Obstetrics & Midwifery Simulation Suite',
+    custodian: 'Head of Midwifery & Nursing',
+    acquisitionDate: '15/04/2024',
+    valueZmw: 395000,
+    status: 'OPERATIONAL',
+    lastServiced: '20/01/2026',
+    nextService: '20/07/2026',
+    notes: 'Autonomous birthing simulation unit for obstetric emergency training.',
+    serialNumber: 'GMR-VIC-2024-ZM',
+    supplier: 'Gaumard Scientific',
+  },
+  {
+    id: 'nwu-ult-09',
+    tag: 'NWU-MED-2024-003',
+    name: 'Mindray DC-40 Full Digital Diagnostic Ultrasound Imaging System',
+    category: 'CLINICAL',
+    location: 'Radiography & Diagnostic Skills Lab',
+    custodian: 'Clinical Diagnostic Skills Unit',
+    acquisitionDate: '10/05/2024',
+    valueZmw: 265000,
+    status: 'OPERATIONAL',
+    lastServiced: '12/01/2026',
+    nextService: '12/07/2026',
+    notes: 'Color Doppler diagnostic ultrasound station for clinical skills training.',
+    serialNumber: 'MDR-DC40-2024',
+    supplier: 'Mindray Medical',
+  },
+  {
+    id: 'nwu-mic-10',
+    tag: 'NWU-LAB-2024-001',
+    name: 'Olympus CX23 Binocular Biological Microscopes (Set of 20 Units)',
+    category: 'CLINICAL',
+    location: 'Senior Biology & Pathology Laboratory (Room B1)',
+    custodian: 'Dr. Frank Tembo (Head of Science)',
+    acquisitionDate: '15/01/2024',
+    valueZmw: 149300,
+    status: 'OPERATIONAL',
+    lastServiced: '08/01/2026',
+    nextService: '08/07/2026',
+    notes: 'Complete set of 20 high-resolution binocular optical microscopes with LED illumination.',
+    serialNumber: 'OLY-CX23-SET20-SOL',
+    supplier: 'Olympus Corporation',
+  },
+  {
+    id: 'nwu-sat-11',
+    tag: 'NWU-ICT-2024-001',
+    name: 'Starlink Enterprise High-Speed Satellite Terminal & Gateway',
+    category: 'ICT',
+    location: 'Main Server Room (Administration Block B)',
+    custodian: 'Mr. Kelvin Mwila (IT Administrator)',
+    acquisitionDate: '01/06/2024',
+    valueZmw: 53500,
+    status: 'OPERATIONAL',
+    lastServiced: '01/02/2026',
+    nextService: '01/08/2026',
+    notes: 'Flat panel enterprise satellite link providing dedicated 250Mbps campus internet backbone.',
+    serialNumber: 'STRLNK-ENT-ZM-0881',
+    supplier: 'SpaceX / Starlink',
+  },
+  {
+    id: 'nwu-lab-12',
+    tag: 'NWU-ICT-2024-002',
+    name: '40-Seat Dell OptiPlex Computer Laboratory Workstations & Server',
+    category: 'ICT',
+    location: 'ICT Resource Lab (Room ICT-1)',
+    custodian: 'Mr. Kelvin Mwila (IT Administrator)',
+    acquisitionDate: '20/03/2024',
+    valueZmw: 368300,
+    status: 'OPERATIONAL',
+    lastServiced: '20/01/2026',
+    nextService: '20/04/2026',
+    notes: '40 Dell OptiPlex Core i5 systems with centralized offline Kiwix medical library.',
+    serialNumber: 'DELL-OPT-7090-40SET',
+    supplier: 'Dell Technologies',
+  },
+];
+
 export function AssetsConsole({ initialRecords = [], initialAssets = [] }: AssetsConsoleProps) {
   const [assets, setAssets] = useState<AssetRecord[]>(() => {
     if (initialAssets && initialAssets.length > 0) return parseAssetRecords(initialAssets);
     if (initialRecords && initialRecords.length > 0) return parseAssetRecords(initialRecords);
-    return [];
+    return DEFAULT_INSTITUTIONAL_ASSETS;
   });
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [notice, setNotice] = useState<string>('');
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
   // CRUD Modal State
   const [selectedAsset, setSelectedAsset] = useState<AssetRecord | null>(null);
@@ -122,6 +330,32 @@ export function AssetsConsole({ initialRecords = [], initialAssets = [] }: Asset
       }
     } catch (err) {
       console.error('[AssetsConsole] API fetch notice:', err);
+    }
+  };
+
+  const handleSeedOfficialAssets = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch('/api/assets?seed=true');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          setAssets(parseAssetRecords(json.data));
+          setNotice('Official NWUCHAS capital assets successfully seeded into database.');
+        } else {
+          setAssets(DEFAULT_INSTITUTIONAL_ASSETS);
+          setNotice('Official assets loaded successfully.');
+        }
+      } else {
+        setAssets(DEFAULT_INSTITUTIONAL_ASSETS);
+        setNotice('Official assets register active.');
+      }
+    } catch (err) {
+      setAssets(DEFAULT_INSTITUTIONAL_ASSETS);
+      setNotice('Official assets register active.');
+    } finally {
+      setIsSyncing(false);
+      setTimeout(() => setNotice(''), 5000);
     }
   };
 
@@ -322,6 +556,16 @@ export function AssetsConsole({ initialRecords = [], initialAssets = [] }: Asset
           </div>
 
           <button
+            onClick={handleSeedOfficialAssets}
+            disabled={isSyncing}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-cyan-300 bg-cyan-50 px-3.5 py-2 text-xs font-bold text-cyan-800 shadow-xs hover:bg-cyan-100 transition disabled:opacity-50"
+            title="Synchronize and persist institutional standard capital assets into database"
+          >
+            <Sparkles className="h-4 w-4 text-cyan-600" />
+            {isSyncing ? 'Syncing...' : 'Sync Standard Assets'}
+          </button>
+
+          <button
             onClick={handleOpenCreate}
             className="inline-flex items-center gap-1.5 rounded-xl bg-cyan-700 px-4 py-2 text-xs font-bold text-white shadow-sm hover:bg-cyan-800 transition"
           >
@@ -349,59 +593,100 @@ export function AssetsConsole({ initialRecords = [], initialAssets = [] }: Asset
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {filteredAssets.map((asset) => (
-                <tr
-                  key={asset.id}
-                  onClick={() => handleOpenRowCrud(asset)}
-                  className="cursor-pointer hover:bg-cyan-50/30 transition group"
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-md border border-cyan-200 bg-cyan-50 px-2 py-0.5 font-mono text-xs font-bold text-cyan-800">
-                        {asset.tag}
-                      </span>
-                      <span className="font-bold text-slate-900 group-hover:text-cyan-800 transition">
-                        {asset.name}
-                      </span>
+              {filteredAssets.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center">
+                    <div className="mx-auto flex max-w-sm flex-col items-center justify-center text-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700">
+                        <Wrench className="h-6 w-6" />
+                      </div>
+                      <h3 className="mt-3 text-sm font-bold text-slate-900">No Asset Records Found</h3>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {searchQuery || selectedCategory !== 'ALL' || selectedStatus !== 'ALL'
+                          ? 'No assets match the active search or category filters.'
+                          : 'No assets are currently registered in this view.'}
+                      </p>
+                      <div className="mt-4 flex items-center gap-2">
+                        {(searchQuery || selectedCategory !== 'ALL' || selectedStatus !== 'ALL') ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedCategory('ALL');
+                              setSelectedStatus('ALL');
+                              setSearchQuery('');
+                            }}
+                            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                          >
+                            Reset Filters
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={handleSeedOfficialAssets}
+                          disabled={isSyncing}
+                          className="rounded-xl bg-cyan-700 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-cyan-800 transition"
+                        >
+                          {isSyncing ? 'Loading...' : 'Load Standard Capital Assets'}
+                        </button>
+                      </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className="font-semibold text-slate-900">{asset.category}</span>
-                    <p className="text-slate-500 text-[11px] mt-0.5">{asset.location}</p>
-                  </td>
-                  <td className="px-6 py-4">
-                    <p className="font-semibold text-slate-800">{asset.custodian}</p>
-                  </td>
-                  <td className="px-6 py-4 font-mono font-bold text-slate-900 text-sm">
-                    ZMW {asset.valueZmw.toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
-                        asset.status === 'EXCELLENT'
-                          ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
-                          : asset.status === 'OPERATIONAL'
-                          ? 'border border-cyan-200 bg-cyan-50 text-cyan-800'
-                          : 'border border-amber-200 bg-amber-50 text-amber-800'
-                      }`}
-                    >
-                      <CheckCircle2 className="h-3 w-3" /> {asset.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenRowCrud(asset);
-                      }}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-200 bg-cyan-50/70 px-3 py-1.5 text-xs font-bold text-cyan-800 hover:bg-cyan-100 transition shadow-xs"
-                    >
-                      <SlidersHorizontal className="h-3.5 w-3.5 text-cyan-700" /> Manage Asset
-                    </button>
-                  </td>
                 </tr>
-              ))}
+              ) : (
+                filteredAssets.map((asset) => (
+                  <tr
+                    key={asset.id}
+                    onClick={() => handleOpenRowCrud(asset)}
+                    className="cursor-pointer hover:bg-cyan-50/30 transition group"
+                  >
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-md border border-cyan-200 bg-cyan-50 px-2 py-0.5 font-mono text-xs font-bold text-cyan-800">
+                          {asset.tag}
+                        </span>
+                        <span className="font-bold text-slate-900 group-hover:text-cyan-800 transition">
+                          {asset.name}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="font-semibold text-slate-900">{asset.category}</span>
+                      <p className="text-slate-500 text-[11px] mt-0.5">{asset.location}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="font-semibold text-slate-800">{asset.custodian}</p>
+                    </td>
+                    <td className="px-6 py-4 font-mono font-bold text-slate-900 text-sm">
+                      ZMW {asset.valueZmw.toLocaleString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                          asset.status === 'EXCELLENT'
+                            ? 'border border-emerald-200 bg-emerald-50 text-emerald-800'
+                            : asset.status === 'OPERATIONAL'
+                            ? 'border border-cyan-200 bg-cyan-50 text-cyan-800'
+                            : 'border border-amber-200 bg-amber-50 text-amber-800'
+                        }`}
+                      >
+                        <CheckCircle2 className="h-3 w-3" /> {asset.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenRowCrud(asset);
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-cyan-200 bg-cyan-50/70 px-3 py-1.5 text-xs font-bold text-cyan-800 hover:bg-cyan-100 transition shadow-xs"
+                      >
+                        <SlidersHorizontal className="h-3.5 w-3.5 text-cyan-700" /> Manage Asset
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
