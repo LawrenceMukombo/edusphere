@@ -105,14 +105,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, message: 'Invalid email or password.' }, { status: 401 });
     }
 
-    // Reset failed login attempts and update lastLoginAt
-    await (prisma as any).user.update({
-      where: { id: user.id },
-      data: {
-        lastLoginAt: new Date(),
-        failedLoginAttempts: 0,
-      },
-    });
+    // Reset failed login attempts and update lastLoginAt safely
+    try {
+      await (prisma as any).user.update({
+        where: { id: user.id },
+        data: {
+          lastLoginAt: new Date(),
+          failedLoginAttempts: 0,
+        },
+      });
+    } catch (dbErr) {
+      console.warn('[AUTH_LOGIN_UPDATE_WARN] Non-critical user update error:', dbErr);
+    }
 
     // Record successful login audit event
     if (user.organisationId) {
@@ -209,11 +213,13 @@ export async function POST(req: Request) {
 
     return response;
   } catch (error: any) {
-    console.error('[AUTH_LOGIN_ERROR]', error?.message || error);
+    const errorMsg = error?.message || String(error);
+    console.error('[AUTH_LOGIN_ERROR]', errorMsg);
     return NextResponse.json(
       {
         success: false,
         message: 'Authentication service is temporarily unavailable. Please verify connection and try again.',
+        error: process.env.NODE_ENV !== 'production' || process.env.DEBUG_AUTH === 'true' ? errorMsg : undefined,
       },
       { status: 500 }
     );
