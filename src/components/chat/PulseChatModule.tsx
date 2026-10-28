@@ -876,12 +876,24 @@ export function PulseChatModule() {
           }}
           onClick={() => setActiveDropdownMsgId(null)}
         >
-          {/* Date Divider */}
-          <div className="flex items-center justify-center my-2">
-            <span className="rounded-md bg-white px-3 py-1 text-[10px] font-medium text-slate-500 shadow-2xs">
-              Today
-            </span>
-          </div>
+          {/* Date Divider or Empty State */}
+          {displayedMessages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100 text-slate-400 mb-3">
+                <MessageSquare size={22} className="opacity-60" />
+              </div>
+              <p className="text-xs font-bold text-slate-700">No messages yet</p>
+              <p className="text-[11px] text-slate-400 mt-0.5 max-w-xs">
+                Send a message to start this clinical or academic thread. Messages are securely stored and end-to-end encrypted.
+              </p>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center my-2">
+              <span className="rounded-md bg-white px-3 py-1 text-[10px] font-medium text-slate-500 shadow-2xs">
+                Today
+              </span>
+            </div>
+          )}
 
           {displayedMessages.map((msg) => {
             const isMe = Boolean(currentUserId) && msg.senderId === currentUserId;
