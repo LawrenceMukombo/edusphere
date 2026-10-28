@@ -39,6 +39,7 @@ import {
   Image as ImageIcon,
   AlertCircle,
   Activity,
+  MessageSquare,
 } from 'lucide-react';
 
 export interface ChatMessage {
@@ -189,7 +190,7 @@ export function PulseChatModule() {
     if (res.status === 401) {
       showError('Your session has expired. Please sign in again.');
     } else if (!res.ok || !data.success) {
-      showError(data.message || 'NWU Pulse could not complete this action.');
+      showError(data.message || 'Could not complete this action. Please try again.');
     }
     return { ok: res.ok && data.success, data };
   }
@@ -279,7 +280,7 @@ export function PulseChatModule() {
         showError('Your session has expired. Please sign in again.');
       }
     } catch (err) {
-      if (!silent) showError('Unable to reach NWU Pulse. Check your connection.');
+      if (!silent) showError('Unable to connect to chat. Please check your connection.');
     } finally {
       if (!silent) setIsLoading(false);
     }
@@ -545,7 +546,7 @@ export function PulseChatModule() {
           participantName: contact.name,
           participantRole: contact.role,
           department: contact.department,
-          initialMessage: `Hello ${contact.name}, opening direct communication channel via NWU Pulse.`,
+          initialMessage: `Hello ${contact.name}, starting a chat with you on NWUCHAS WhatsApp.`,
         }),
       });
 
@@ -613,26 +614,21 @@ export function PulseChatModule() {
 
       {/* LEFT SIDEBAR: CONVERSATIONS LIST */}
       <div className="flex w-full sm:w-80 md:w-96 flex-col border-r border-slate-200 bg-[#f0f2f5]">
-        {/* Top Header: Brand Name NWU Pulse */}
+        {/* Top Header: WhatsApp Campus Messenger */}
         <div className="flex items-center justify-between border-b border-slate-200 bg-[#f0f2f5] p-3 px-4">
           <div className="flex items-center gap-2.5">
             <div className="relative">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-emerald-600 via-[#00a884] to-teal-700 font-extrabold text-white shadow-sm">
-                <Activity size={20} className="text-white animate-pulse" />
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#00a884] font-extrabold text-white shadow-sm">
+                <MessageSquare size={20} className="text-white" />
               </div>
               <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white bg-emerald-500 shadow-xs"></span>
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <h3 className="text-sm font-black tracking-tight text-slate-900 leading-tight">
-                  NWU Pulse
-                </h3>
-                <span className="rounded-md bg-emerald-100 px-1.5 py-0.5 text-[9px] font-black uppercase text-emerald-800 tracking-wider">
-                  Live
-                </span>
-              </div>
-              <p className="text-[10px] text-emerald-800 font-semibold flex items-center gap-1">
-                Clinical & Campus Messenger
+              <h3 className="text-sm font-bold tracking-tight text-slate-900 leading-tight">
+                NWUCHAS Chats
+              </h3>
+              <p className="text-[11px] text-slate-500 font-normal">
+                Online
               </p>
             </div>
           </div>
@@ -641,7 +637,7 @@ export function PulseChatModule() {
             <button
               onClick={() => setShowNewChatModal(true)}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-700 shadow-xs hover:bg-emerald-50 hover:text-emerald-700 transition"
-              title="New Chat or Channel"
+              title="New Chat"
             >
               <Plus size={18} />
             </button>
@@ -681,10 +677,10 @@ export function PulseChatModule() {
                     : 'bg-[#f0f2f5] text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                {f === 'ALL' && 'All Chats'}
+                {f === 'ALL' && 'All'}
                 {f === 'UNREAD' && 'Unread'}
-                {f === 'GROUPS' && 'Clinical Groups'}
-                {f === 'STAFF' && 'Faculty & Staff'}
+                {f === 'GROUPS' && 'Groups'}
+                {f === 'STAFF' && 'Contacts'}
               </button>
             ))}
           </div>
@@ -730,9 +726,6 @@ export function PulseChatModule() {
                     <div className="flex items-center justify-between">
                       <h4 className="truncate text-xs font-bold text-slate-900 flex items-center gap-1">
                         {conv.title}
-                        {conv.isVerified && (
-                          <ShieldCheck size={13} className="text-[#00a884] shrink-0" />
-                        )}
                       </h4>
                       <span className="text-[10px] text-slate-400 shrink-0 font-medium">
                         {formattedTime}
@@ -782,17 +775,12 @@ export function PulseChatModule() {
                 <h3 className="text-sm font-bold text-slate-900">
                   {selectedConversation?.title}
                 </h3>
-                {selectedConversation?.isVerified && (
-                  <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-1.5 py-0.2 text-[10px] font-bold text-emerald-800">
-                    <ShieldCheck size={11} /> Verified
-                  </span>
-                )}
               </div>
               <p className="text-[11px] text-slate-500 flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
                 {selectedConversation?.type === 'GROUP'
-                  ? `${selectedConversation.participants?.length || 4} participants • NWU Pulse Network`
-                  : 'Active Now • Official Hospital Network'}
+                  ? `${selectedConversation.participants?.length || 4} participants`
+                  : 'Online'}
               </p>
             </div>
           </div>
@@ -888,14 +876,9 @@ export function PulseChatModule() {
           }}
           onClick={() => setActiveDropdownMsgId(null)}
         >
-          {/* Institutional Compliance Notice */}
-          <div className="mx-auto my-2 max-w-md rounded-lg bg-[#ffeecd] p-2 text-center text-[10px] text-amber-900 shadow-2xs border border-amber-200/80">
-            🔒 Messages within NWU Pulse are encrypted and archived under statutory medical regulatory compliance (NMCZ, HPCZ, HEA).
-          </div>
-
           {/* Date Divider */}
-          <div className="flex items-center justify-center my-3">
-            <span className="rounded-md bg-white px-3 py-1 text-[10px] font-bold text-slate-500 shadow-2xs uppercase tracking-wider">
+          <div className="flex items-center justify-center my-2">
+            <span className="rounded-md bg-white px-3 py-1 text-[10px] font-medium text-slate-500 shadow-2xs">
               Today
             </span>
           </div>
@@ -1059,12 +1042,9 @@ export function PulseChatModule() {
                   )}
 
                   {/* Sender Name for Group Chats */}
-                  {!isMe && !isDeleted && (
+                  {!isMe && !isDeleted && selectedConversation?.type === 'GROUP' && (
                     <div className="mb-1 flex items-center gap-1.5 font-bold text-[#008069] text-[11px]">
                       <span>{msg.senderName}</span>
-                      <span className="text-[9px] font-normal text-slate-400">
-                        • {msg.senderRole}
-                      </span>
                     </div>
                   )}
 
@@ -1391,9 +1371,9 @@ export function PulseChatModule() {
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
               <div className="flex items-center gap-2">
-                <Activity size={18} className="text-[#00a884]" />
-                <h3 className="font-extrabold text-sm text-slate-900">
-                  New NWU Pulse Communication
+                <MessageSquare size={18} className="text-[#00a884]" />
+                <h3 className="font-bold text-sm text-slate-900">
+                  New Chat
                 </h3>
               </div>
               <button
@@ -1405,7 +1385,7 @@ export function PulseChatModule() {
             </div>
 
             <p className="text-xs text-slate-500 mb-3">
-              Select an active healthcare practitioner or faculty member to initiate an instant encrypted session:
+              Select a contact to message:
             </p>
 
             <div className="max-h-72 overflow-y-auto divide-y divide-slate-100">
@@ -1548,7 +1528,7 @@ export function PulseChatModule() {
 
             <h3 className="text-base font-extrabold">{activeCall.title}</h3>
             <p className="text-xs text-emerald-400 font-semibold mt-1">
-              NWU Pulse Encrypted {activeCall.type === 'video' ? 'Video Telehealth' : 'Audio Call'}
+              End-to-end encrypted {activeCall.type === 'video' ? 'video call' : 'voice call'}
             </p>
 
             <div className="my-5 rounded-xl bg-slate-800/80 py-2 font-mono text-sm font-bold text-slate-200">

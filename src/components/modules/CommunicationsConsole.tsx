@@ -320,8 +320,7 @@ export function CommunicationsConsole({
             }`}
           >
             <MessageSquare className="h-4 w-4" />
-            WhatsApp Live Campus Chat
-            <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            WhatsApp Chats
           </button>
 
           <button

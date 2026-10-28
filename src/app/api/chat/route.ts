@@ -19,7 +19,7 @@ async function getAuthSession(headers: Headers) {
   return {
     orgId: session.organisationId || org?.id || 'nwuchas-main',
     userId: session.userId,
-    name: fullName || session.email || 'NWU Pulse User',
+    name: fullName || session.email || 'Campus User',
     role: session.role || 'STAFF',
   };
 }
@@ -35,9 +35,9 @@ function errorResponse(err: any) {
       { status: 403 }
     );
   }
-  console.error('[NWU Pulse] chat route error');
+  console.error('[Chat API] route error');
   return NextResponse.json(
-    { success: false, message: 'NWU Pulse could not complete this request. Please try again.', code: 'CHAT_ERROR' },
+    { success: false, message: 'Could not complete this request. Please try again.', code: 'CHAT_ERROR' },
     { status: 500 }
   );
 }
@@ -209,7 +209,7 @@ export async function POST(request: Request) {
       if (attachmentUrl) {
         if (!attachmentType || !ALLOWED_ATTACHMENT_TYPES.includes(attachmentType.split(';')[0])) {
           return NextResponse.json(
-            { success: false, message: 'This file type is not allowed in NWU Pulse.', code: 'INVALID_ATTACHMENT' },
+            { success: false, message: 'This file type is not supported.', code: 'INVALID_ATTACHMENT' },
             { status: 400 }
           );
         }
