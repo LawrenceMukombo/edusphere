@@ -218,8 +218,8 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         success: false,
-        message: 'Authentication service is temporarily unavailable. Please verify connection and try again.',
-        error: process.env.NODE_ENV !== 'production' || process.env.DEBUG_AUTH === 'true' ? errorMsg : undefined,
+        message: `Authentication service unavailable: ${errorMsg}`,
+        error: errorMsg,
       },
       { status: 500 }
     );
