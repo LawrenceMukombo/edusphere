@@ -7,6 +7,8 @@ import { prisma } from './db';
 import { signToken, AuthSession } from './auth';
 import { isSensitiveModule, getSensitiveModulePolicy } from '../lib/sensitiveModules';
 
+import { EmailService } from './email.service';
+
 export const DEMO_MFA_CODE = '742051'; // Derived from NWUCHAS Lumwana hotline: 0974240051
 const CHALLENGE_TTL_MS = 5 * 60 * 1000; // 5 minutes TTL
 const MAX_VERIFICATION_ATTEMPTS = 5;
@@ -114,11 +116,24 @@ export class MfaService {
 
     activeChallenges.set(challengeId, challenge);
 
-    // In production, an SMS gateway (e.g. AfricasTalking / Twilio) or SMTP service would dispatch this code.
-    // In our institutional deployment, we log the secure dispatch event and permit the Zambian hotline demo code.
-    if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_MFA_DISPATCH_LOG === 'true') {
-      console.log(`[NWUCHAS 2FA] OTP for user ${options.email} (${targetModule}): ${code} (Demo bypass: ${DEMO_MFA_CODE})`);
+    // 1. Dispatch OTP via SMTP email if email configured
+    const isSmtpConfigured = EmailService.isConfigured();
+    if (isSmtpConfigured && options.email) {
+      // Dispatch email asynchronously so UI response is snappy
+      EmailService.sendMfaOtp(options.email, code, targetModule).catch((err) => {
+        console.error('[MfaService] Error dispatching 2FA email:', err);
+      });
     }
+
+    // 2. Audit/log for security and diagnostics
+    if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_MFA_DISPATCH_LOG === 'true') {
+      console.log(`[NWUCHAS 2FA] OTP for user ${options.email} (${targetModule}): ${code}${!isSmtpConfigured ? ` (Fallback bypass: ${DEMO_MFA_CODE})` : ''}`);
+    }
+
+    // 3. Demo code hint policy (Step 3):
+    // In local development or when SMTP is not yet configured, provide demoCodeHint so staff are not locked out.
+    // As soon as SMTP credentials are set on production, demoCodeHint is undefined (hidden).
+    const showDemoHint = process.env.NODE_ENV !== 'production' || !isSmtpConfigured;
 
     return {
       challengeId,
@@ -128,7 +143,7 @@ export class MfaService {
       maskedEmail: maskEmail(options.email),
       expiresInSeconds: Math.floor(CHALLENGE_TTL_MS / 1000),
       expiresAt,
-      demoCodeHint: DEMO_MFA_CODE,
+      demoCodeHint: showDemoHint ? DEMO_MFA_CODE : undefined,
     };
   }
 
@@ -187,7 +202,10 @@ export class MfaService {
     }
 
     const cleanInputCode = code.trim();
-    const isCodeValid = cleanInputCode === challenge.code || cleanInputCode === DEMO_MFA_CODE;
+    const isSmtpConfigured = EmailService.isConfigured();
+    // Allow DEMO_MFA_CODE only if in development OR if SMTP is not configured yet (Step 3)
+    const isBypassPermitted = process.env.NODE_ENV !== 'production' || !isSmtpConfigured;
+    const isCodeValid = cleanInputCode === challenge.code || (isBypassPermitted && cleanInputCode === DEMO_MFA_CODE);
 
     if (!isCodeValid) {
       const remaining = MAX_VERIFICATION_ATTEMPTS - challenge.attempts;

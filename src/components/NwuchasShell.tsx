@@ -673,6 +673,20 @@ export function NwuchasShell({ children }: { children: React.ReactNode }) {
 
       {/* Universal Enterprise Search Modal with AI & 360° Dossiers */}
       <UniversalSearchModal isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
+
+      {/* Institutional Two-Factor Authentication Step-Up Modal */}
+      <TwoFactorChallengeModal
+        isOpen={isMfaModalOpen}
+        targetModule={mfaTargetModule}
+        onSuccess={handleMfaSuccess}
+        onCancel={() => {
+          setIsMfaModalOpen(false);
+          // If user cancels on a sensitive route, return them to executive portal
+          if (isCurrentRouteSensitive) {
+            window.location.href = '/portal/executive';
+          }
+        }}
+      />
     </div>
   );
 }

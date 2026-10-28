@@ -35,7 +35,7 @@ export function TwoFactorChallengeModal({
   const [maskedPhone, setMaskedPhone] = useState<string>('+260 96***0051');
   const [maskedEmail, setMaskedEmail] = useState<string>('p****l@nwuchas.edu.zm');
   const [expiresIn, setExpiresIn] = useState<number>(300);
-  const [demoCode, setDemoCode] = useState<string>('742051');
+  const [demoCode, setDemoCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isVerifying, setIsVerifying] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -93,6 +93,8 @@ export function TwoFactorChallengeModal({
       setExpiresIn(data.data.expiresInSeconds || 300);
       if (data.data.demoCodeHint) {
         setDemoCode(data.data.demoCodeHint);
+      } else {
+        setDemoCode(null);
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Error generating verification challenge.');
@@ -152,6 +154,7 @@ export function TwoFactorChallengeModal({
   };
 
   const handleFillDemoCode = () => {
+    if (!demoCode) return;
     const chars = demoCode.split('');
     setDigits(chars);
     submitVerification(demoCode);
@@ -294,21 +297,23 @@ export function TwoFactorChallengeModal({
           </div>
         </div>
 
-        {/* Demo Code Quick-Fill Helper for Testing & Evaluation */}
-        <div className="mt-4 flex items-center justify-center">
-          <button
-            type="button"
-            onClick={handleFillDemoCode}
-            disabled={isVerifying}
-            className="group flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600 hover:border-cyan-500 hover:bg-cyan-50 hover:text-cyan-900 transition shadow-2xs"
-            title="Institutional Zambian hotline bypass code for testing and evaluation"
-          >
-            <Sparkles size={12} className="text-amber-500 group-hover:scale-110" />
-            <span>Institution Hotline Demo Code:</span>
-            <span className="font-mono font-bold text-cyan-700 underline">{demoCode}</span>
-            <span className="text-[10px] text-slate-400">(Click to auto-fill)</span>
-          </button>
-        </div>
+        {/* Demo Code Quick-Fill Helper for Testing & Evaluation (Displayed only in dev or transitional fallback) */}
+        {demoCode && (
+          <div className="mt-4 flex items-center justify-center">
+            <button
+              type="button"
+              onClick={handleFillDemoCode}
+              disabled={isVerifying}
+              className="group flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold text-slate-600 hover:border-cyan-500 hover:bg-cyan-50 hover:text-cyan-900 transition shadow-2xs"
+              title="Institutional Zambian hotline bypass code for testing and evaluation"
+            >
+              <Sparkles size={12} className="text-amber-500 group-hover:scale-110" />
+              <span>Institution Hotline Demo Code:</span>
+              <span className="font-mono font-bold text-cyan-700 underline">{demoCode}</span>
+              <span className="text-[10px] text-slate-400">(Click to auto-fill)</span>
+            </button>
+          </div>
+        )}
 
         {/* Error Alert */}
         {errorMessage && (

@@ -43,7 +43,7 @@ import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { InteractiveChart } from '@/components/InteractiveChart';
 import { useCampus } from '@/components/CampusContext';
 import { ModuleGate } from '@/components/ModuleGate';
-import { Finance2FAModal } from '@/components/Finance2FAModal';
+import { TwoFactorChallengeModal } from '@/components/auth/TwoFactorChallengeModal';
 import {
   SEED_SCHOOL_ASSETS,
   SchoolAssetItem,
@@ -560,15 +560,17 @@ export default function AssetsPage() {
     >
       <div className="space-y-6 w-full pb-16">
         {/* 2FA Challenge for Financial / Asset Reserve Security */}
-        {!is2FAVerified && (
-          <Finance2FAModal
-            onSuccess={() => {
-              setIs2FAVerified(true);
-              showToast('2FA Security Clearance Verified: School Asset Register Unlocked.');
-            }}
-            actionTitle="Access School Fixed Asset Register & Depreciation Ledgers"
-          />
-        )}
+        <TwoFactorChallengeModal
+          isOpen={!is2FAVerified}
+          targetModule="assets"
+          onSuccess={() => {
+            setIs2FAVerified(true);
+            showToast('2FA Security Clearance Verified: School Asset Register Unlocked.');
+          }}
+          onCancel={() => {
+            window.location.href = '/portal/executive';
+          }}
+        />
 
         {/* Toast Notification */}
         {toastMessage && (
