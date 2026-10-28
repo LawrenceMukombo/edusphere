@@ -32,11 +32,11 @@ const activeChallenges = new Map<string, MfaChallenge>();
 /** Clean up expired challenges */
 function purgeExpiredChallenges(): void {
   const now = Date.now();
-  for (const [id, challenge] of activeChallenges.entries()) {
+  activeChallenges.forEach((challenge, id) => {
     if (challenge.expiresAt < now || challenge.isUsed) {
       activeChallenges.delete(id);
     }
-  }
+  });
 }
 
 /** Utility to mask a phone number for user privacy (e.g. +260 964 240051 -> +260 96***0051) */
@@ -117,7 +117,7 @@ export class MfaService {
     activeChallenges.set(challengeId, challenge);
 
     // 1. Dispatch OTP via SMTP email if email configured
-    const isSmtpConfigured = EmailService.isConfigured();
+    const isSmtpConfigured = await EmailService.isConfigured();
     if (isSmtpConfigured && options.email) {
       // Dispatch email asynchronously so UI response is snappy
       EmailService.sendMfaOtp(options.email, code, targetModule).catch((err) => {
@@ -202,7 +202,7 @@ export class MfaService {
     }
 
     const cleanInputCode = code.trim();
-    const isSmtpConfigured = EmailService.isConfigured();
+    const isSmtpConfigured = await EmailService.isConfigured();
     // Allow DEMO_MFA_CODE only if in development OR if SMTP is not configured yet (Step 3)
     const isBypassPermitted = process.env.NODE_ENV !== 'production' || !isSmtpConfigured;
     const isCodeValid = cleanInputCode === challenge.code || (isBypassPermitted && cleanInputCode === DEMO_MFA_CODE);

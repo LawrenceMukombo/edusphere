@@ -31,6 +31,7 @@ import {
   Database,
   Wifi,
   WifiOff,
+  Mail,
 } from 'lucide-react';
 import { EnterpriseTable, ColumnDef } from '@/components/EnterpriseTable';
 import { useCampus } from '@/components/CampusContext';
@@ -44,13 +45,14 @@ import {
 } from '@/lib/appSettings';
 import { openEduSphereDB } from '@/lib/offlineSync';
 import { DataSovereigntyBackupConsole } from '@/components/admin/DataSovereigntyBackupConsole';
+import { SmtpGatewaySettingsCard } from '@/components/admin/SmtpGatewaySettingsCard';
 
 export function SystemSettingsConsole() {
   const { selectedCampus, campusInfo } = useCampus();
   const [settings, setSettings] = useState<AppSettings>(loadAppSettings());
   const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
   const [activeTab, setActiveTab] = useState<
-    'licensing' | 'modules' | 'infrastructure' | 'finance' | 'compliance' | 'storage' | 'audit'
+    'licensing' | 'modules' | 'infrastructure' | 'finance' | 'compliance' | 'storage' | 'email' | 'audit'
   >('licensing');
   const [isSaving, setIsSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -222,6 +224,7 @@ export function SystemSettingsConsole() {
             { id: 'finance', label: 'Mobile Money & Arrears Gate', icon: DollarSign },
             { id: 'compliance', label: 'MoE & Statutory Compliance', icon: ShieldCheck },
             { id: 'storage', label: 'Local Backups & Storage', icon: HardDrive },
+            { id: 'email', label: 'Email Gateway & 2FA', icon: Mail },
             { id: 'audit', label: 'Audit Trail & Event Log', icon: FileText },
           ].map((tab) => {
             const Icon = tab.icon;
@@ -1595,6 +1598,13 @@ export function SystemSettingsConsole() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB 7: INSTITUTIONAL EMAIL & MFA SMTP GATEWAY */}
+      {activeTab === 'email' && (
+        <div className="space-y-6 animate-in fade-in-50 duration-200">
+          <SmtpGatewaySettingsCard />
         </div>
       )}
 
