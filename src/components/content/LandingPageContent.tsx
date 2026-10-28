@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { SYSTEM_VERSION } from '@/config/version';
 import {
   GraduationCap,
   ShieldCheck,
@@ -927,10 +928,18 @@ export function LandingPageContent({
 
           <div className="mt-12 pt-8 border-t border-blue-900/40 text-center text-xs text-slate-400 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p>© {new Date().getFullYear()} North Western University College of Health and Applied Sciences. All rights reserved.</p>
-            <div className="flex items-center gap-4 text-xs">
+            <div className="flex flex-wrap items-center justify-center gap-4 text-xs">
               <Link href="/login" className="text-sky-300 hover:text-white transition">Staff Sign In</Link>
               <span>•</span>
               <Link href="/apply" className="text-[#8DC63F] hover:underline">Student Admissions</Link>
+              <span>•</span>
+              <span
+                id="footer-app-version"
+                className="rounded-full border border-blue-800/60 bg-blue-950/40 px-2.5 py-0.5 font-mono text-[11px] text-slate-400"
+                title={`${SYSTEM_VERSION.releaseName} — released ${SYSTEM_VERSION.releaseDate}`}
+              >
+                NWU-CMIS {SYSTEM_VERSION.version}
+              </span>
             </div>
           </div>
         </div>

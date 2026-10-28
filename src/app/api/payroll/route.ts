@@ -4,7 +4,7 @@ import { PayrollService } from '@/server/payroll/payroll.service';
 import { prisma } from '@/server/db';
 import { SystemRole } from '@prisma/client';
 
-export function mapJobTitleToRole(jobTitle?: string | null): SystemRole {
+function mapJobTitleToRole(jobTitle?: string | null): SystemRole {
   const t = (jobTitle || '').toLowerCase();
   if (t.includes('principal') || t.includes('chief executive')) return SystemRole.INSTITUTION_ADMIN;
   if (t.includes('owner') || t.includes('proprietor')) return SystemRole.PLATFORM_SUPER_ADMIN;
@@ -20,7 +20,7 @@ export function mapJobTitleToRole(jobTitle?: string | null): SystemRole {
   return SystemRole.LECTURER;
 }
 
-export async function ensureStaffSystemUser(staffId: string, organisationId: string, preferredRole?: string | null) {
+async function ensureStaffSystemUser(staffId: string, organisationId: string, preferredRole?: string | null) {
   const staff = await prisma.staff.findUnique({
     where: { id: staffId },
     include: { user: true },

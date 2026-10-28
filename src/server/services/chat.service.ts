@@ -12,8 +12,25 @@ export interface ChatMessage {
   attachmentUrl?: string;
   attachmentName?: string;
   attachmentType?: string;
+  attachmentSize?: string;
   createdAt: string;
-  status: 'sent' | 'delivered' | 'read';
+  status: 'sent' | 'delivered' | 'read' | 'deleted';
+  isDeleted?: boolean;
+  deletedFor?: string[];
+  isEdited?: boolean;
+  editedAt?: string;
+  isForwarded?: boolean;
+  isStarred?: boolean;
+  replyTo?: {
+    id: string;
+    senderName: string;
+    text: string;
+  };
+  reactions?: {
+    emoji: string;
+    count: number;
+    users: string[];
+  }[];
 }
 
 export interface ChatConversation {
@@ -23,6 +40,8 @@ export interface ChatConversation {
   department?: string;
   avatar?: string;
   isVerified?: boolean;
+  isMuted?: boolean;
+  isPinned?: boolean;
   participants: {
     id: string;
     name: string;
@@ -34,7 +53,7 @@ export interface ChatConversation {
     text: string;
     senderName: string;
     createdAt: string;
-    status: 'sent' | 'delivered' | 'read';
+    status: 'sent' | 'delivered' | 'read' | 'deleted';
     isMine?: boolean;
   };
   unreadCount: number;
@@ -176,6 +195,7 @@ export const DEFAULT_MESSAGES: Record<string, ChatMessage[]> = {
       attachmentName: 'Solwezi_Ward_Rotation_Schedule_Nov2026.pdf',
       attachmentUrl: '#',
       attachmentType: 'application/pdf',
+      attachmentSize: '1.4 MB',
       createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
       status: 'read',
     },
@@ -256,9 +276,12 @@ export class ChatService {
       attachmentName?: string;
       attachmentUrl?: string;
       attachmentType?: string;
+      attachmentSize?: string;
+      replyTo?: { id: string; senderName: string; text: string };
+      isForwarded?: boolean;
     }
   ): Promise<ChatMessage> {
-    const { conversationId, text, attachmentName, attachmentUrl, attachmentType } = params;
+    const { conversationId, text, attachmentName, attachmentUrl, attachmentType, attachmentSize, replyTo, isForwarded } = params;
 
     const newMessage: ChatMessage = {
       id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
@@ -270,6 +293,9 @@ export class ChatService {
       attachmentName,
       attachmentUrl,
       attachmentType,
+      attachmentSize,
+      replyTo,
+      isForwarded,
       createdAt: new Date().toISOString(),
       status: 'delivered',
     };
@@ -351,11 +377,294 @@ export class ChatService {
       details: {
         conversationId,
         hasAttachment: Boolean(attachmentName),
+        isForwarded: Boolean(isForwarded),
         charCount: text.length,
       },
     });
 
     return newMessage;
+  }
+
+  static async saveMessages(orgId: string, conversationId: string, messages: ChatMessage[]): Promise<void> {
+    await prisma.moduleWorkspaceRecord.upsert({
+      where: {
+        organisationId_moduleSlug_title: {
+          organisationId: orgId,
+          moduleSlug: 'campus_chat',
+          title: `CHAT_MESSAGES_${conversationId}`,
+        },
+      },
+      create: {
+        organisationId: orgId,
+        moduleSlug: 'campus_chat',
+        title: `CHAT_MESSAGES_${conversationId}`,
+        status: 'ACTIVE',
+        summary: `${messages.length} messages in conversation ${conversationId}`,
+        metadataJson: JSON.stringify(messages),
+      },
+      update: {
+        metadataJson: JSON.stringify(messages),
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  static async editMessage(
+    orgId: string,
+    userId: string,
+    conversationId: string,
+    messageId: string,
+    newText: string
+  ): Promise<ChatMessage | null> {
+    const currentMessages = await this.getMessages(orgId, conversationId);
+    const idx = currentMessages.findIndex((m) => m.id === messageId);
+    if (idx === -1) return null;
+    const msg = currentMessages[idx];
+    if (msg.senderId !== userId) throw new Error('FORBIDDEN: Only the sender can edit this message');
+    if (msg.isDeleted) throw new Error('Cannot edit a deleted message');
+
+    currentMessages[idx] = { ...msg, text: newText, isEdited: true, editedAt: new Date().toISOString() };
+    await this.saveMessages(orgId, conversationId, currentMessages);
+
+    await logAuditEvent({
+      organisationId: orgId,
+      userId,
+      action: 'CHAT_MESSAGE_EDITED',
+      entityType: 'ChatMessage',
+      entityId: messageId,
+      details: { conversationId },
+    });
+
+    return currentMessages[idx];
+  }
+
+  static async deleteMessage(
+    orgId: string,
+    userId: string,
+    conversationId: string,
+    messageId: string,
+    scope: 'me' | 'everyone' = 'everyone'
+  ): Promise<ChatMessage | null> {
+    const currentMessages = await this.getMessages(orgId, conversationId);
+    const targetIdx = currentMessages.findIndex((m) => m.id === messageId);
+    if (targetIdx === -1) return null;
+
+    if (scope === 'me') {
+      const msg = currentMessages[targetIdx];
+      const deletedFor = Array.from(new Set([...(msg.deletedFor || []), userId]));
+      currentMessages[targetIdx] = { ...msg, deletedFor };
+      await this.saveMessages(orgId, conversationId, currentMessages);
+      await logAuditEvent({
+        organisationId: orgId,
+        userId,
+        action: 'CHAT_MESSAGE_DELETED_FOR_ME',
+        entityType: 'ChatMessage',
+        entityId: messageId,
+        details: { conversationId },
+      });
+      return currentMessages[targetIdx];
+    }
+
+    if (currentMessages[targetIdx].senderId !== userId) {
+      throw new Error('FORBIDDEN: Only the sender can delete this message for everyone');
+    }
+
+    currentMessages[targetIdx] = {
+      ...currentMessages[targetIdx],
+      text: '🚫 This message was deleted',
+      attachmentName: undefined,
+      attachmentUrl: undefined,
+      attachmentType: undefined,
+      attachmentSize: undefined,
+      isDeleted: true,
+      status: 'deleted',
+    };
+
+    await prisma.moduleWorkspaceRecord.upsert({
+      where: {
+        organisationId_moduleSlug_title: {
+          organisationId: orgId,
+          moduleSlug: 'campus_chat',
+          title: `CHAT_MESSAGES_${conversationId}`,
+        },
+      },
+      create: {
+        organisationId: orgId,
+        moduleSlug: 'campus_chat',
+        title: `CHAT_MESSAGES_${conversationId}`,
+        status: 'ACTIVE',
+        summary: `${currentMessages.length} messages in conversation ${conversationId}`,
+        metadataJson: JSON.stringify(currentMessages),
+      },
+      update: {
+        metadataJson: JSON.stringify(currentMessages),
+        updatedAt: new Date(),
+      },
+    });
+
+    // Update conversation last message if it was the deleted one
+    const convs = await this.getConversations(orgId);
+    const cIdx = convs.findIndex((c) => c.id === conversationId);
+    if (cIdx >= 0 && convs[cIdx].lastMessage) {
+      convs[cIdx].lastMessage!.text = '🚫 This message was deleted';
+      convs[cIdx].lastMessage!.status = 'deleted';
+      await prisma.moduleWorkspaceRecord.update({
+        where: {
+          organisationId_moduleSlug_title: {
+            organisationId: orgId,
+            moduleSlug: 'campus_chat',
+            title: 'CHAT_CONVERSATIONS_INDEX',
+          },
+        },
+        data: {
+          metadataJson: JSON.stringify(convs),
+          updatedAt: new Date(),
+        },
+      });
+    }
+
+    await logAuditEvent({
+      organisationId: orgId,
+      userId,
+      action: 'CHAT_MESSAGE_DELETED',
+      entityType: 'ChatMessage',
+      entityId: messageId,
+      details: { conversationId },
+    });
+
+    return currentMessages[targetIdx];
+  }
+
+  static async forwardMessage(
+    orgId: string,
+    sender: { id: string; name: string; role: string },
+    params: {
+      messageId: string;
+      fromConversationId: string;
+      targetConversationIds: string[];
+    }
+  ): Promise<ChatMessage[]> {
+    const fromMessages = await this.getMessages(orgId, params.fromConversationId);
+    const original = fromMessages.find((m) => m.id === params.messageId);
+    if (!original) throw new Error('Original message not found');
+
+    const forwardedList: ChatMessage[] = [];
+
+    for (const targetId of params.targetConversationIds) {
+      const forwarded = await this.sendMessage(orgId, sender, {
+        conversationId: targetId,
+        text: original.text,
+        attachmentName: original.attachmentName,
+        attachmentUrl: original.attachmentUrl,
+        attachmentType: original.attachmentType,
+        attachmentSize: original.attachmentSize,
+        isForwarded: true,
+      });
+      forwardedList.push(forwarded);
+    }
+
+    await logAuditEvent({
+      organisationId: orgId,
+      userId: sender.id,
+      action: 'CHAT_MESSAGE_FORWARDED',
+      entityType: 'ChatMessage',
+      entityId: params.messageId,
+      details: {
+        fromConversationId: params.fromConversationId,
+        targetConversationIds: params.targetConversationIds,
+      },
+    });
+
+    return forwardedList;
+  }
+
+  static async reactMessage(
+    orgId: string,
+    user: { id: string; name: string },
+    conversationId: string,
+    messageId: string,
+    emoji: string
+  ): Promise<ChatMessage | null> {
+    const currentMessages = await this.getMessages(orgId, conversationId);
+    const targetIdx = currentMessages.findIndex((m) => m.id === messageId);
+    if (targetIdx === -1) return null;
+
+    const msg = currentMessages[targetIdx];
+    const reactions = msg.reactions ? [...msg.reactions] : [];
+    const rIdx = reactions.findIndex((r) => r.emoji === emoji);
+
+    if (rIdx >= 0) {
+      const hasUser = reactions[rIdx].users.includes(user.name);
+      if (hasUser) {
+        reactions[rIdx].users = reactions[rIdx].users.filter((u) => u !== user.name);
+        reactions[rIdx].count -= 1;
+        if (reactions[rIdx].count <= 0) {
+          reactions.splice(rIdx, 1);
+        }
+      } else {
+        reactions[rIdx].users.push(user.name);
+        reactions[rIdx].count += 1;
+      }
+    } else {
+      reactions.push({
+        emoji,
+        count: 1,
+        users: [user.name],
+      });
+    }
+
+    currentMessages[targetIdx] = {
+      ...msg,
+      reactions,
+    };
+
+    await prisma.moduleWorkspaceRecord.update({
+      where: {
+        organisationId_moduleSlug_title: {
+          organisationId: orgId,
+          moduleSlug: 'campus_chat',
+          title: `CHAT_MESSAGES_${conversationId}`,
+        },
+      },
+      data: {
+        metadataJson: JSON.stringify(currentMessages),
+        updatedAt: new Date(),
+      },
+    });
+
+    return currentMessages[targetIdx];
+  }
+
+  static async toggleStarMessage(
+    orgId: string,
+    conversationId: string,
+    messageId: string
+  ): Promise<ChatMessage | null> {
+    const currentMessages = await this.getMessages(orgId, conversationId);
+    const targetIdx = currentMessages.findIndex((m) => m.id === messageId);
+    if (targetIdx === -1) return null;
+
+    const msg = currentMessages[targetIdx];
+    currentMessages[targetIdx] = {
+      ...msg,
+      isStarred: !msg.isStarred,
+    };
+
+    await prisma.moduleWorkspaceRecord.update({
+      where: {
+        organisationId_moduleSlug_title: {
+          organisationId: orgId,
+          moduleSlug: 'campus_chat',
+          title: `CHAT_MESSAGES_${conversationId}`,
+        },
+      },
+      data: {
+        metadataJson: JSON.stringify(currentMessages),
+        updatedAt: new Date(),
+      },
+    });
+
+    return currentMessages[targetIdx];
   }
 
   static async createConversation(
