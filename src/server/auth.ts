@@ -64,7 +64,15 @@ export interface AuthSession {
 }
 
 export function signToken(session: AuthSession, expiresInSeconds = 28800): string {
-  return jwt.sign(session, getJwtSecret(), { expiresIn: expiresInSeconds });
+  // Strip standard JWT registered claims if session was decoded from an existing token
+  // to prevent jsonwebtoken error: "Bad 'options.expiresIn' option the payload already has an 'exp' property."
+  const cleanPayload = { ...session };
+  delete (cleanPayload as any).iat;
+  delete (cleanPayload as any).exp;
+  delete (cleanPayload as any).nbf;
+  delete (cleanPayload as any).jti;
+
+  return jwt.sign(cleanPayload, getJwtSecret(), { expiresIn: expiresInSeconds });
 }
 
 export function verifyToken(token: string): AuthSession | null {
