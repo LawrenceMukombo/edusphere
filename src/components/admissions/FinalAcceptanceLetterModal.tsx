@@ -18,7 +18,10 @@ export function FinalAcceptanceLetterModal({
     ? JSON.parse(application.statusHistory.find((h) => h.metadataJson)!.metadataJson!)
     : {};
 
-  const studentNumber = application.enrolledLearner?.studentNumber || `NWU-2026-00${Math.floor(20 + Math.random() * 80)}`;
+  // Only a real, server-issued student number may appear on an official letter.
+  const studentNumber = application.enrolledLearner?.studentNumber || null;
+  const isEnrolled = Boolean(studentNumber);
+  const paymentReference: string | null = meta.paymentConfirmation?.reference || null;
   const refNumber = `NWU/REG/ACCEPT/2026/${application.applicationNumber.replace('NWU-APP-', '')}`;
   const issueDate = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -39,13 +42,26 @@ export function FinalAcceptanceLetterModal({
           </span>
           <div className="flex items-center gap-2">
             <button
+              id="print-acceptance-letter"
               onClick={() => window.print()}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-4 py-1.5 text-xs font-bold text-white hover:bg-emerald-800 transition shadow-sm"
+              disabled={!isEnrolled}
+              title={isEnrolled ? 'Print the official letter' : 'Available once the learner has been enrolled and issued a student number'}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-700 px-4 py-1.5 text-xs font-bold text-white hover:bg-emerald-800 transition shadow-sm disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Printer className="h-3.5 w-3.5" /> Print Acceptance Certificate
             </button>
           </div>
         </div>
+
+        {!isEnrolled && (
+          <div
+            role="alert"
+            className="mt-4 rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 print:hidden"
+          >
+            <strong>Draft preview — not yet valid.</strong> This applicant has not been enrolled, so no student
+            number has been issued. Complete enrolment in the Admissions workflow before printing this letter.
+          </div>
+        )}
 
         {/* Printable Official Letterhead */}
         <div className="mt-6 text-slate-800 print:mt-0 font-serif leading-relaxed">
@@ -77,7 +93,7 @@ export function FinalAcceptanceLetterModal({
             <div className="flex items-center gap-3">
               <span>Matriculation Student Number: </span>
               <span className="font-mono text-sm font-extrabold text-emerald-800 border border-emerald-300 bg-emerald-50 px-2.5 py-0.5 rounded-md">
-                {studentNumber}
+                {studentNumber || 'Pending enrolment'}
               </span>
             </div>
           </div>
@@ -87,8 +103,8 @@ export function FinalAcceptanceLetterModal({
             <p className="font-bold text-sm text-slate-900">
               {application.firstName} {application.middleName || ''} {application.lastName}
             </p>
-            <p className="text-slate-700">NRC: {meta.nrc || 'Zambian National'}</p>
-            <p className="text-slate-700">{meta.residentialAddress || 'Manyama, Kalumbila'}</p>
+            <p className="text-slate-700">NRC: {meta.nrc || 'Not recorded'}</p>
+            {meta.residentialAddress && <p className="text-slate-700">{meta.residentialAddress}</p>}
           </div>
 
           {/* Subject */}
@@ -102,11 +118,11 @@ export function FinalAcceptanceLetterModal({
           {/* Letter Content */}
           <div className="mt-4 space-y-3 text-xs leading-relaxed font-sans text-slate-700">
             <p>
-              Following your acceptance of our Provisional Offer and the successful verification of your tuition deposit through the College Bursary (Ref: <span className="font-mono font-bold text-emerald-800">{meta.paymentConfirmation?.reference || 'MTN-ZM-TXN-VERIFIED'}</span>), the Senate and Management of North Western University College of Health and Applied Sciences are pleased to confer upon you <strong>Full Formal Admission</strong> as a matriculated student.
+              Following your acceptance of our Provisional Offer and the successful verification of your tuition deposit through the College Bursary (Ref: <span className="font-mono font-bold text-emerald-800">{paymentReference || 'Pending verification'}</span>), the Senate and Management of North Western University College of Health and Applied Sciences are pleased to confer upon you <strong>Full Formal Admission</strong> as a matriculated student.
             </p>
 
             <p>
-              You have been formally indexed and assigned Student Identification Number: <strong className="font-mono text-emerald-800">{studentNumber}</strong>.
+              You have been formally indexed and assigned Student Identification Number: <strong className="font-mono text-emerald-800">{studentNumber || 'Pending enrolment'}</strong>.
             </p>
 
             {/* Reporting and Induction Grid */}
